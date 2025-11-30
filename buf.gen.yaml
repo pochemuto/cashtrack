@@ -8,6 +8,10 @@ plugins:
     opt:
       - paths=source_relative
       - simple
+  - local: protoc-gen-es
+    out: gen
+    include_imports: true
+    opt: target=ts
 managed:
   enabled: true
   override:

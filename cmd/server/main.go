@@ -10,6 +10,26 @@ import (
 	"connectrpc.com/validate"
 )
 
+func cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Connect-Protocol-Version, Connect-Timeout-Ms, Connect-Accept-Encoding, Connect-Content-Encoding")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	greeter := &server.GreetServer{}
 	mux := http.NewServeMux()
@@ -25,7 +45,7 @@ func main() {
 	p.SetUnencryptedHTTP2(true)
 	s := http.Server{
 		Addr:      "localhost:8080",
-		Handler:   mux,
+		Handler:   cors(mux),
 		Protocols: p,
 	}
 	s.ListenAndServe()
