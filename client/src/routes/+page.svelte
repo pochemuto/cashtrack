@@ -1,11 +1,12 @@
 <script lang="ts">
-    import { Client } from "../client";
+    import type GreetResponse from "../../../gen/greet/v1/greet_pb";
+    import {Client} from "../client";
 
-    let message = $state("Nothing");
     let name = $state("");
+    let result = $state<Promise<GreetResponse>>();
+
     async function greet() {
-        let res = await Client.greet({"name": name});
-        message = res.greeting;
+        result = Client.greet({"name": name})
     }
 </script>
 
@@ -16,7 +17,20 @@
 <input type="text" bind:value={name}>
 <button onclick={greet}>Say hello to: {name}</button>
 
-<p>{message}</p>
+
+{#if result}
+    {#await result}
+        <!-- promise is pending -->
+        <p>waiting for the promise to resolve...</p>
+    {:then value}
+        <!-- promise was fulfilled or not a Promise -->
+        <p>The value is {value.greeting}</p>
+    {:catch error}
+        <!-- promise was rejected -->
+        <p>Something went wrong: {error.message}</p>
+    {/await}
+{/if}
 
 <style>
+
 </style>

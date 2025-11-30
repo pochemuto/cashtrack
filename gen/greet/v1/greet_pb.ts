@@ -33,12 +33,13 @@ export const GreetRequestSchema: GenMessage<GreetRequest> = /*@__PURE__*/
 /**
  * @generated from message greet.v1.GreetResponse
  */
-export type GreetResponse = Message<"greet.v1.GreetResponse"> & {
+type GreetResponse = Message<"greet.v1.GreetResponse"> & {
   /**
    * @generated from field: string greeting = 1;
    */
   greeting: string;
 };
+export default GreetResponse
 
 /**
  * Describes the message greet.v1.GreetResponse.
