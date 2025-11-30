@@ -1,4 +1,5 @@
-POST http://localhost:8080/greet.v1.GreetService/Greet
-Content-Type: application/json
+GRPC localhost:8080/greet.v1.GreetService/Greet
 
-{"name": "Jane"}
+{
+  "name": "Luke"
+}
