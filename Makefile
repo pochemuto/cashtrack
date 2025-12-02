@@ -24,4 +24,7 @@ dev-local:
 dev:
 	docker compose -f docker-compose.dev.yml up --build --abort-on-container-exit
 
+prod:
+	docker compose up --build
+
 .PHONY: generate server client build-generate-image run-generate

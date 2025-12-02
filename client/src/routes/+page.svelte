@@ -2,9 +2,14 @@
     import type {GreetResponse} from "../gen/greet/v1/greet_pb";
     import {Client} from "../client";
     import {page} from "$app/state";
+    import {onMount} from "svelte";
 
-    let name = $state(page.url.searchParams.get("name") ?? "World");
+    let name = $state("");
     let result = $state<Promise<GreetResponse>>();
+
+    onMount(() => {
+        name =  page.url.searchParams.get("name") ?? "World";
+    });
 
     async function greet() {
         result = Client.greet({"name": name})
