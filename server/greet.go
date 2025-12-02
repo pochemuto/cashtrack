@@ -13,7 +13,46 @@ import (
 
 type GreetServer struct{}
 
-var greatings = []string{"Hello", "Ola", "Привет"}
+var greatings = []string{
+	"Hello",
+	"Ola",
+	"Привет",
+	"Bonjour",
+	"Hola",
+	"Ciao",
+	"Guten Tag",
+	"Salam",
+	"Shalom",
+	"Namaste",
+	"Konnichiwa",
+	"Nǐ hǎo",
+	"Annyeonghaseyo",
+	"Merhaba",
+	"Sawubona",
+	"Habari",
+	"Sveiki",
+	"Tere",
+	"Ahoj",
+	"Zdravo",
+	"Selam",
+	"Hej",
+	"Hei",
+	"God dag",
+	"Dzień dobry",
+	"Yassas",
+	"Szia",
+	"Halo",
+	"Selamat siang",
+	"Xin chào",
+	"Halo",
+	"Shwmae",
+	"Dia dhuit",
+	"Olá",
+	"Salut",
+	"Sawasdee",
+	"Marhaba",
+	"Sain baina uu",
+}
 
 func NewGreetHandler() *Handler {
 	greeter := new(GreetServer)

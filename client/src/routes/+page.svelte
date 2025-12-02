@@ -14,8 +14,11 @@
     <title>Say hello</title>
 </svelte:head>
 
-<input type="text" bind:value={name}>
-Name: <button onclick={greet}>Say hello for: {name}</button>
+<form>
+    <label for="name">Name: </label>
+    <input type="text" name="name" bind:value={name}>
+    <button onclick={greet}>Say hello for: {name}</button>
+</form>
 
 
 {#if result}
@@ -23,14 +26,12 @@ Name: <button onclick={greet}>Say hello for: {name}</button>
         <!-- promise is pending -->
         <p>waiting for the promise to resolve...</p>
     {:then value}
-        <!-- promise was fulfilled or not a Promise -->
-        <p>The value is {value.greeting}</p>
+        <blockquote>
+            <!-- promise was fulfilled or not a Promise -->
+            <p>{value.greeting}</p>
+        </blockquote>
     {:catch error}
         <!-- promise was rejected -->
         <p>Something went wrong: {error.message}</p>
     {/await}
 {/if}
-
-<style>
-
-</style>

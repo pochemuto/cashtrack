@@ -35,6 +35,7 @@
 	"dependencies": {
 		"@connectrpc/connect": "^2.1.1",
 		"@connectrpc/connect-node": "^2.1.1",
-		"@connectrpc/connect-web": "^2.1.1"
+		"@connectrpc/connect-web": "^2.1.1",
+		"simpledotcss": "^2.3.7"
 	}
 }
