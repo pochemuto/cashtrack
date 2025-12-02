@@ -2,15 +2,19 @@
 
 ## Development local
 
-1. Server:
+- Full stack:
     ```shell
-    go run server/cmd/server/main.go
+    make dev-local
     ```
 
-2. Client:
+- Server:
     ```shell
-    cd client
-    npm run dev
+    make server
     ```
-   
+
+- Client:
+    ```shell
+    make client
+    ```
+
 ## Docker local
