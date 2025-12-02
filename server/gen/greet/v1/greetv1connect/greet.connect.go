@@ -5,7 +5,7 @@
 package greetv1connect
 
 import (
-	v1 "cashtrack/gen/greet/v1"
+	v1 "cashtrack/server/gen/greet/v1"
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"

@@ -1,9 +1,11 @@
 import { createClient } from "@connectrpc/connect";
-import { GreetService } from "../../gen/greet/v1/greet_pb"
+import { GreetService } from "./gen/greet/v1/greet_pb"
 import { createConnectTransport } from "@connectrpc/connect-web";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/";
+
 const transport = createConnectTransport({
-    baseUrl: "http://localhost:8080",
+    baseUrl: API_BASE_URL,
 });
 
 export const Client = createClient(GreetService, transport);

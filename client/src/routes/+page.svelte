@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type GreetResponse from "../../../gen/greet/v1/greet_pb";
+    import type {GreetResponse} from "../gen/greet/v1/greet_pb";
     import {Client} from "../client";
 
     let name = $state("");
@@ -15,7 +15,7 @@
 </svelte:head>
 
 <input type="text" bind:value={name}>
-<button onclick={greet}>Say hello to: {name}</button>
+Name: <button onclick={greet}>Say hello for: {name}</button>
 
 
 {#if result}

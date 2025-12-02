@@ -9,9 +9,17 @@ require (
 	connectrpc.com/connect v1.19.1 // indirect
 	connectrpc.com/validate v0.6.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
+	github.com/caarlos0/env/v11 v11.3.1 // indirect
 	github.com/google/cel-go v0.26.1 // indirect
+	github.com/google/wire v0.7.0 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/rs/zerolog v1.34.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stoewer/go-strcase v1.3.1 // indirect
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250922171735-9219d122eba9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250922171735-9219d122eba9 // indirect
