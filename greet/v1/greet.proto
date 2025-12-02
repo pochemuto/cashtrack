@@ -13,6 +13,7 @@ message GreetRequest {
 
 message GreetResponse {
   string greeting = 1;
+  string language = 2;
 }
 
 service GreetService {

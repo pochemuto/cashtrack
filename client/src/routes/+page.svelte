@@ -1,8 +1,9 @@
 <script lang="ts">
     import type {GreetResponse} from "../gen/greet/v1/greet_pb";
     import {Client} from "../client";
+    import {page} from "$app/state";
 
-    let name = $state("");
+    let name = $state(page.url.searchParams.get("name") ?? "World");
     let result = $state<Promise<GreetResponse>>();
 
     async function greet() {
@@ -14,6 +15,11 @@
     <title>Say hello</title>
 </svelte:head>
 
+<style>
+    .lang {
+        font-size: 0.8em;
+    }
+</style>
 <form>
     <label for="name">Name: </label>
     <input type="text" name="name" bind:value={name}>
@@ -29,6 +35,9 @@
         <blockquote>
             <!-- promise was fulfilled or not a Promise -->
             <p>{value.greeting}</p>
+            {#if value.language}
+                <span class="lang"> - {value.language}</span>
+            {/if}
         </blockquote>
     {:catch error}
         <!-- promise was rejected -->

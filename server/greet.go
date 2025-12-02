@@ -13,45 +13,49 @@ import (
 
 type GreetServer struct{}
 
-var greatings = []string{
-	"Hello",
-	"Ola",
-	"Привет",
-	"Bonjour",
-	"Hola",
-	"Ciao",
-	"Guten Tag",
-	"Salam",
-	"Shalom",
-	"Namaste",
-	"Konnichiwa",
-	"Nǐ hǎo",
-	"Annyeonghaseyo",
-	"Merhaba",
-	"Sawubona",
-	"Habari",
-	"Sveiki",
-	"Tere",
-	"Ahoj",
-	"Zdravo",
-	"Selam",
-	"Hej",
-	"Hei",
-	"God dag",
-	"Dzień dobry",
-	"Yassas",
-	"Szia",
-	"Halo",
-	"Selamat siang",
-	"Xin chào",
-	"Halo",
-	"Shwmae",
-	"Dia dhuit",
-	"Olá",
-	"Salut",
-	"Sawasdee",
-	"Marhaba",
-	"Sain baina uu",
+type Greeting struct {
+	Text     string
+	Language string
+}
+
+var greetings = []Greeting{
+	{Text: "Hello", Language: "English"},
+	{Text: "Ola", Language: "Portuguese"},
+	{Text: "Привет", Language: "Russian"},
+	{Text: "Bonjour", Language: "French"},
+	{Text: "Hola", Language: "Spanish"},
+	{Text: "Ciao", Language: "Italian"},
+	{Text: "Guten Tag", Language: "German"},
+	{Text: "Salam", Language: "Arabic"},
+	{Text: "Shalom", Language: "Hebrew"},
+	{Text: "Namaste", Language: "Hindi"},
+	{Text: "Konnichiwa", Language: "Japanese"},
+	{Text: "Nǐ hǎo", Language: "Chinese (Mandarin)"},
+	{Text: "Annyeonghaseyo", Language: "Korean"},
+	{Text: "Merhaba", Language: "Turkish"},
+	{Text: "Sawubona", Language: "Zulu"},
+	{Text: "Habari", Language: "Swahili"},
+	{Text: "Sveiki", Language: "Latvian"},
+	{Text: "Tere", Language: "Estonian"},
+	{Text: "Ahoj", Language: "Czech/Slovak"},
+	{Text: "Zdravo", Language: "Serbian/Croatian/Bosnian"},
+	{Text: "Selam", Language: "Amharic/Tigrinya/Turkish informal"},
+	{Text: "Hej", Language: "Swedish"},
+	{Text: "Hei", Language: "Norwegian"},
+	{Text: "God dag", Language: "Danish/Norwegian"},
+	{Text: "Dzień dobry", Language: "Polish"},
+	{Text: "Yassas", Language: "Greek"},
+	{Text: "Szia", Language: "Hungarian"},
+	{Text: "Halo", Language: "Indonesian"},
+	{Text: "Selamat siang", Language: "Indonesian (daytime)"},
+	{Text: "Xin chào", Language: "Vietnamese"},
+	{Text: "Shwmae", Language: "Welsh"},
+	{Text: "Dia dhuit", Language: "Irish"},
+	{Text: "Olá", Language: "Portuguese"},
+	{Text: "Salut", Language: "Romanian/French informal"},
+	{Text: "Sawasdee", Language: "Thai"},
+	{Text: "Marhaba", Language: "Arabic (Levant/Gulf)"},
+	{Text: "Sain baina uu", Language: "Mongolian"},
 }
 
 func NewGreetHandler() *Handler {
@@ -70,9 +74,10 @@ func (s *GreetServer) Greet(
 	req *greetv1.GreetRequest,
 ) (*greetv1.GreetResponse, error) {
 
-	n := rand.Int() % len(greatings)
+	n := rand.Int() % len(greetings)
 	res := &greetv1.GreetResponse{
-		Greeting: fmt.Sprintf("%s, %s!", greatings[n], req.Name),
+		Greeting: fmt.Sprintf("%s, %s!", greetings[n].Text, req.Name),
+		Language: greetings[n].Language,
 	}
 
 	return res, nil

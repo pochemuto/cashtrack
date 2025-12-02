@@ -69,6 +69,7 @@ func (x *GreetRequest) GetName() string {
 type GreetResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Greeting      string                 `protobuf:"bytes,1,opt,name=greeting,proto3" json:"greeting,omitempty"`
+	Language      string                 `protobuf:"bytes,2,opt,name=language,proto3" json:"language,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -110,15 +111,23 @@ func (x *GreetResponse) GetGreeting() string {
 	return ""
 }
 
+func (x *GreetResponse) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
 var File_greet_v1_greet_proto protoreflect.FileDescriptor
 
 const file_greet_v1_greet_proto_rawDesc = "" +
 	"\n" +
 	"\x14greet/v1/greet.proto\x12\bgreet.v1\x1a\x1bbuf/validate/validate.proto\"-\n" +
 	"\fGreetRequest\x12\x1d\n" +
-	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x182R\x04name\"+\n" +
+	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x182R\x04name\"G\n" +
 	"\rGreetResponse\x12\x1a\n" +
-	"\bgreeting\x18\x01 \x01(\tR\bgreeting2J\n" +
+	"\bgreeting\x18\x01 \x01(\tR\bgreeting\x12\x1a\n" +
+	"\blanguage\x18\x02 \x01(\tR\blanguage2J\n" +
 	"\fGreetService\x12:\n" +
 	"\x05Greet\x12\x16.greet.v1.GreetRequest\x1a\x17.greet.v1.GreetResponse\"\x00B\x82\x01\n" +
 	"\fcom.greet.v1B\n" +

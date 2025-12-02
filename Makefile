@@ -21,4 +21,7 @@ generate: build-generate-image run-generate
 dev-local:
 	make -j2 server client
 
+dev:
+	docker compose -f docker-compose.dev.yml up --build --abort-on-container-exit
+
 .PHONY: generate server client build-generate-image run-generate

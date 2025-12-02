@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file greet/v1/greet.proto.
  */
 export const file_greet_v1_greet: GenFile = /*@__PURE__*/
-  fileDesc("ChRncmVldC92MS9ncmVldC5wcm90bxIIZ3JlZXQudjEiJwoMR3JlZXRSZXF1ZXN0EhcKBG5hbWUYASABKAlCCbpIBnIEEAEYMiIhCg1HcmVldFJlc3BvbnNlEhAKCGdyZWV0aW5nGAEgASgJMkoKDEdyZWV0U2VydmljZRI6CgVHcmVldBIWLmdyZWV0LnYxLkdyZWV0UmVxdWVzdBoXLmdyZWV0LnYxLkdyZWV0UmVzcG9uc2UiAEKCAQoMY29tLmdyZWV0LnYxQgpHcmVldFByb3RvUAFaJWNhc2h0cmFjay9zZXJ2ZXIvZ2VuL2dyZWV0L3YxO2dyZWV0djGiAgNHWFiqAghHcmVldC5WMcoCCEdyZWV0XFYx4gIUR3JlZXRcVjFcR1BCTWV0YWRhdGHqAglHcmVldDo6VjFiBnByb3RvMw", [file_buf_validate_validate]);
+  fileDesc("ChRncmVldC92MS9ncmVldC5wcm90bxIIZ3JlZXQudjEiJwoMR3JlZXRSZXF1ZXN0EhcKBG5hbWUYASABKAlCCbpIBnIEEAEYMiIzCg1HcmVldFJlc3BvbnNlEhAKCGdyZWV0aW5nGAEgASgJEhAKCGxhbmd1YWdlGAIgASgJMkoKDEdyZWV0U2VydmljZRI6CgVHcmVldBIWLmdyZWV0LnYxLkdyZWV0UmVxdWVzdBoXLmdyZWV0LnYxLkdyZWV0UmVzcG9uc2UiAEKCAQoMY29tLmdyZWV0LnYxQgpHcmVldFByb3RvUAFaJWNhc2h0cmFjay9zZXJ2ZXIvZ2VuL2dyZWV0L3YxO2dyZWV0djGiAgNHWFiqAghHcmVldC5WMcoCCEdyZWV0XFYx4gIUR3JlZXRcVjFcR1BCTWV0YWRhdGHqAglHcmVldDo6VjFiBnByb3RvMw", [file_buf_validate_validate]);
 
 /**
  * @generated from message greet.v1.GreetRequest
@@ -38,6 +38,11 @@ export type GreetResponse = Message<"greet.v1.GreetResponse"> & {
    * @generated from field: string greeting = 1;
    */
   greeting: string;
+
+  /**
+   * @generated from field: string language = 2;
+   */
+  language: string;
 };
 
 /**
