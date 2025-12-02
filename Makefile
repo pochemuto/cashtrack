@@ -18,7 +18,11 @@ client:
 
 generate: build-generate-image run-generate
 
+dev-local-deps:
+	docker compose -f docker-compose.dev.yml up -d db
+
 dev-local:
+	make dev-local-deps
 	make -j2 server client
 
 dev:

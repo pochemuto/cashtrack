@@ -1,42 +1,39 @@
 services:
-  cashtrack-api:
+  api:
     build:
       dockerfile: Dockerfile.server.dev
-    container_name: cashtrack-api-dev
     expose:
       - "8080"
     environment:
-      - DATABASE_URL=postgres://cashtrack:cashtrack@cashtrack-db:5432/cashtrack?sslmode=disable
+      - DATABASE_URL=postgres://cashtrack:cashtrack@db:5432/cashtrack?sslmode=disable
 
     depends_on:
-      - cashtrack-db
+      - db
     volumes:
       - ./server:/app/server
 
-  cashtrack-ui:
+  ui:
     build:
       dockerfile: Dockerfile.ui.dev
-    container_name: cashtrack-ui-dev
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://cashtrack-api:8080
+      - VITE_API_URL=http://api:8080
     depends_on:
-      - cashtrack-api
+      - api
     volumes:
       - ./client/src:/ui/client/src
       - ./client/static:/ui/client/static
 
-  cashtrack-db:
+  db:
     image: postgres:16-alpine
-    container_name: cashtrack-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: cashtrack
       POSTGRES_USER: cashtrack
       POSTGRES_PASSWORD: cashtrack
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - cashtrack-db-data:/var/lib/postgresql/data
 
