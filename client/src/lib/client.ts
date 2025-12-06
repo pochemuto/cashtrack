@@ -1,5 +1,5 @@
 import { createClient } from "@connectrpc/connect";
-import { GreetService } from "./gen/greet/v1/greet_pb"
+import { GreetService } from "$lib/gen/greet/v1/greet_pb"
 import { createConnectTransport } from "@connectrpc/connect-web";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/";

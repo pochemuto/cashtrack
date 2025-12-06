@@ -1,6 +1,6 @@
 <script lang="ts">
-    import type {GreetResponse} from "../gen/greet/v1/greet_pb";
-    import {Client} from "../client";
+    import type {GreetResponse} from "$lib/gen/greet/v1/greet_pb";
+    import {Client} from "$lib/client";
     import {page} from "$app/state";
     import {onMount} from "svelte";
 

@@ -9,7 +9,7 @@ plugins:
       - paths=source_relative
       - simple
   - local: protoc-gen-es
-    out: client/src/gen
+    out: client/src/lib/gen
     include_imports: true
     opt: target=ts
 managed:
