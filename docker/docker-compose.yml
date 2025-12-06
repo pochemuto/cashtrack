@@ -1,6 +1,8 @@
 services:
   cashtrack:
-    build: .
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
     container_name: cashtrack
     ports:
       - "8080:8080"

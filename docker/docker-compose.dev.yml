@@ -1,7 +1,8 @@
 services:
   api:
     build:
-      dockerfile: Dockerfile.server.dev
+      context: ../
+      dockerfile: docker/Dockerfile.server.dev
     expose:
       - "8080"
     environment:
@@ -10,11 +11,12 @@ services:
     depends_on:
       - db
     volumes:
-      - ./server:/app/server
+      - ../server:/app/server
 
   ui:
     build:
-      dockerfile: Dockerfile.ui.dev
+      context: ../
+      dockerfile: docker/Dockerfile.ui.dev
     ports:
       - "5173:5173"
     environment:
@@ -22,8 +24,8 @@ services:
     depends_on:
       - api
     volumes:
-      - ./client/src:/ui/client/src
-      - ./client/static:/ui/client/static
+      - ../client/src:/ui/client/src
+      - ../client/static:/ui/client/static
 
   db:
     image: postgres:16-alpine
