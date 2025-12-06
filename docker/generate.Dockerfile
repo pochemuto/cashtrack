@@ -2,11 +2,12 @@ FROM golang:1.25.4-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache git build-base nodejs npm
+RUN apk add --no-cache git build-base nodejs npm postgresql-client
 
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10 \
     && go install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.19.1 \
     && go install github.com/bufbuild/buf/cmd/buf@v1.61.0 \
-    && go install github.com/google/wire/cmd/wire@v0.7.0
+    && go install github.com/google/wire/cmd/wire@v0.7.0 \
+    && go install github.com/pressly/goose/v3/cmd/goose@v3.26.0
 
 RUN npm install -g @bufbuild/protoc-gen-es

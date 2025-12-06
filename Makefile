@@ -7,7 +7,7 @@ frontend:
 	cd frontend && npm run dev
 
 generate:
-	docker compose -f docker/docker-compose.generate.yml -p cashtrack-gen up generator
+	docker compose -f docker/docker-compose.generate.yml -p cashtrack-gen up generator --build
 
 dev-local-deps:
 	docker compose -f docker/docker-compose.dev.yml -p cashtrack-dev-local up -d db
