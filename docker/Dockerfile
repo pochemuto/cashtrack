@@ -1,26 +1,26 @@
-FROM node:20-alpine AS ui-builder
+FROM node:20-alpine AS frontend-builder
 
-WORKDIR /ui
+WORKDIR /frontend
 
-COPY client/package*.json ./
+COPY frontend/package*.json ./
 RUN npm install
 
-COPY client .
+COPY frontend .
 RUN npm run build
 
 
 
-FROM golang:1.25.4-alpine AS go-builder
+FROM golang:1.25.4-alpine AS backend-builder
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY server server
-COPY --from=ui-builder /ui/build ./public
+COPY backend backend
+COPY --from=frontend-builder /frontend/build ./public
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o app ./server/cmd/server
+RUN CGO_ENABLED=0 GOS=linux go build -o app ./backend/cmd/server
 
 
 
@@ -28,8 +28,8 @@ FROM alpine:3.20
 
 WORKDIR /app
 
-COPY --from=go-builder /app/app .
-COPY --from=go-builder /app/public ./public
+COPY --from=backend-builder /app/app .
+COPY --from=backend-builder /app/public ./public
 
 EXPOSE 8080
 

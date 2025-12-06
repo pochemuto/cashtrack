@@ -7,8 +7,8 @@ RUN go install github.com/air-verse/air@latest
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY server server
+COPY backend backend
 
 EXPOSE 8080
 
-CMD ["air", "-c", "server/.air.toml"]
+CMD ["air", "-c", "backend/.air.toml"]

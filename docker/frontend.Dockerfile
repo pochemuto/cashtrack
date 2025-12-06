@@ -1,12 +1,12 @@
 FROM node:20-alpine
 
-WORKDIR /ui/client
+WORKDIR /frontend
 
-COPY client/package*.json .
+COPY frontend/package*.json .
 
 RUN npm install
 
-COPY client ./
+COPY frontend ./
 
 EXPOSE 5173
 

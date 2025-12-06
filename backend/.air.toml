@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./tmp/cashtrack ./server/cmd/server"
+cmd = "go build -o ./tmp/cashtrack ./backend/cmd/server"
 bin = "tmp/cashtrack"
 include_ext = ["go"]
 exclude_dir = ["tmp", "vendor"]

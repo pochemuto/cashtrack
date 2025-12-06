@@ -1,25 +1,25 @@
 CODEGEN_IMAGE=cashtrack-codegen
 
-server:
-	go run server/cmd/server/main.go
+backend:
+	go run backend/cmd/server/main.go
 
-client:
-	cd client && npm run dev
+frontend:
+	cd frontend && npm run dev
 
 generate:
-	docker compose -f docker/docker-compose.generate.yml up generator
+	docker compose -f docker/docker-compose.generate.yml -p cashtrack-gen up generator
 
 dev-local-deps:
-	docker compose -f docker/docker-compose.dev.yml up -d db
+	docker compose -f docker/docker-compose.dev.yml -p cashtrack-dev-local up -d db
 
 dev-local:
 	make dev-local-deps
-	make -j2 server client
+	make -j2 backend frontend
 
 dev:
-	docker compose -f docker/docker-compose.dev.yml up --build --abort-on-container-exit
+	docker compose -f docker/docker-compose.dev.yml -p cashtrack-dev up --build --abort-on-container-exit
 
 prod:
-	docker compose -f docker/docker-compose.yml up --build
+	docker compose -f docker/docker-compose.yml -p cashtrack up --build
 
-.PHONY: generate server client
+.PHONY: generate backend frontend dev prod dev-local

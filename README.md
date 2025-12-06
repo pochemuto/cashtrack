@@ -7,14 +7,14 @@
     make dev-local
     ```
 
-- Server:
+- Backend:
     ```shell
-    make server
+    make backend
     ```
 
-- Client:
+- Frontend:
     ```shell
-    make client
+    make frontend
     ```
 
 ## Docker local

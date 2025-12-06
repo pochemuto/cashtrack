@@ -1,8 +1,8 @@
 services:
-  api:
+  backend:
     build:
       context: ../
-      dockerfile: docker/Dockerfile.server.dev
+      dockerfile: docker/backend.Dockerfile
     expose:
       - "8080"
     environment:
@@ -11,21 +11,21 @@ services:
     depends_on:
       - db
     volumes:
-      - ../server:/app/server
+      - ../backend:/app/backend
 
-  ui:
+  frontend:
     build:
       context: ../
-      dockerfile: docker/Dockerfile.ui.dev
+      dockerfile: docker/frontend.Dockerfile
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://api:8080
+      - VITE_API_URL=http://backend:8080
     depends_on:
-      - api
+      - backend
     volumes:
-      - ../client/src:/ui/client/src
-      - ../client/static:/ui/client/static
+      - ../frontend/src:/frontend/src
+      - ../frontend/static:/frontend/static
 
   db:
     image: postgres:16-alpine

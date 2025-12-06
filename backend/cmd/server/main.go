@@ -1,7 +1,7 @@
 package main
 
 import (
-	cashtrack "cashtrack/server"
+	cashtrack "cashtrack/backend"
 	"context"
 )
 
