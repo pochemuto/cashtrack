@@ -8,8 +8,8 @@ services:
       sh -c '
         set -e
       
+        rm -rf backend/gen frontend/gen
         buf generate
-        wire ./...
         goose up
       
         pg_dump "postgresql://cashtrack:cashtrack@db:5432/cashtrack" \
@@ -35,8 +35,9 @@ services:
           db/schema.raw.sql >> db/schema.sql
       
         rm db/schema.raw.sql
-      
         sqlc generate
+      
+        wire ./...
       '
     volumes:
       - type: bind

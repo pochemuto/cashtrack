@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.10
 // 	protoc        (unknown)
-// source: greet/v1/greet.proto
+// source: api/v1/greet.proto
 
-package greetv1
+package apiv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
@@ -31,7 +31,7 @@ type GreetRequest struct {
 
 func (x *GreetRequest) Reset() {
 	*x = GreetRequest{}
-	mi := &file_greet_v1_greet_proto_msgTypes[0]
+	mi := &file_api_v1_greet_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -43,7 +43,7 @@ func (x *GreetRequest) String() string {
 func (*GreetRequest) ProtoMessage() {}
 
 func (x *GreetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_greet_v1_greet_proto_msgTypes[0]
+	mi := &file_api_v1_greet_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -56,7 +56,7 @@ func (x *GreetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GreetRequest.ProtoReflect.Descriptor instead.
 func (*GreetRequest) Descriptor() ([]byte, []int) {
-	return file_greet_v1_greet_proto_rawDescGZIP(), []int{0}
+	return file_api_v1_greet_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *GreetRequest) GetName() string {
@@ -76,7 +76,7 @@ type GreetResponse struct {
 
 func (x *GreetResponse) Reset() {
 	*x = GreetResponse{}
-	mi := &file_greet_v1_greet_proto_msgTypes[1]
+	mi := &file_api_v1_greet_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -88,7 +88,7 @@ func (x *GreetResponse) String() string {
 func (*GreetResponse) ProtoMessage() {}
 
 func (x *GreetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_greet_v1_greet_proto_msgTypes[1]
+	mi := &file_api_v1_greet_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -101,7 +101,7 @@ func (x *GreetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GreetResponse.ProtoReflect.Descriptor instead.
 func (*GreetResponse) Descriptor() ([]byte, []int) {
-	return file_greet_v1_greet_proto_rawDescGZIP(), []int{1}
+	return file_api_v1_greet_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GreetResponse) GetGreeting() string {
@@ -118,41 +118,42 @@ func (x *GreetResponse) GetLanguage() string {
 	return ""
 }
 
-var File_greet_v1_greet_proto protoreflect.FileDescriptor
+var File_api_v1_greet_proto protoreflect.FileDescriptor
 
-const file_greet_v1_greet_proto_rawDesc = "" +
+const file_api_v1_greet_proto_rawDesc = "" +
 	"\n" +
-	"\x14greet/v1/greet.proto\x12\bgreet.v1\x1a\x1bbuf/validate/validate.proto\"-\n" +
+	"\x12api/v1/greet.proto\x12\x06api.v1\x1a\x1bbuf/validate/validate.proto\"-\n" +
 	"\fGreetRequest\x12\x1d\n" +
 	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x182R\x04name\"G\n" +
 	"\rGreetResponse\x12\x1a\n" +
 	"\bgreeting\x18\x01 \x01(\tR\bgreeting\x12\x1a\n" +
-	"\blanguage\x18\x02 \x01(\tR\blanguage2J\n" +
-	"\fGreetService\x12:\n" +
-	"\x05Greet\x12\x16.greet.v1.GreetRequest\x1a\x17.greet.v1.GreetResponse\"\x00B\x83\x01\n" +
-	"\fcom.greet.v1B\n" +
-	"GreetProtoP\x01Z&cashtrack/backend/gen/greet/v1;greetv1\xa2\x02\x03GXX\xaa\x02\bGreet.V1\xca\x02\bGreet\\V1\xe2\x02\x14Greet\\V1\\GPBMetadata\xea\x02\tGreet::V1b\x06proto3"
+	"\blanguage\x18\x02 \x01(\tR\blanguage2F\n" +
+	"\fGreetService\x126\n" +
+	"\x05Greet\x12\x14.api.v1.GreetRequest\x1a\x15.api.v1.GreetResponse\"\x00Bu\n" +
+	"\n" +
+	"com.api.v1B\n" +
+	"GreetProtoP\x01Z\"cashtrack/backend/gen/api/v1;apiv1\xa2\x02\x03AXX\xaa\x02\x06Api.V1\xca\x02\x06Api\\V1\xe2\x02\x12Api\\V1\\GPBMetadata\xea\x02\aApi::V1b\x06proto3"
 
 var (
-	file_greet_v1_greet_proto_rawDescOnce sync.Once
-	file_greet_v1_greet_proto_rawDescData []byte
+	file_api_v1_greet_proto_rawDescOnce sync.Once
+	file_api_v1_greet_proto_rawDescData []byte
 )
 
-func file_greet_v1_greet_proto_rawDescGZIP() []byte {
-	file_greet_v1_greet_proto_rawDescOnce.Do(func() {
-		file_greet_v1_greet_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_greet_v1_greet_proto_rawDesc), len(file_greet_v1_greet_proto_rawDesc)))
+func file_api_v1_greet_proto_rawDescGZIP() []byte {
+	file_api_v1_greet_proto_rawDescOnce.Do(func() {
+		file_api_v1_greet_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_v1_greet_proto_rawDesc), len(file_api_v1_greet_proto_rawDesc)))
 	})
-	return file_greet_v1_greet_proto_rawDescData
+	return file_api_v1_greet_proto_rawDescData
 }
 
-var file_greet_v1_greet_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_greet_v1_greet_proto_goTypes = []any{
-	(*GreetRequest)(nil),  // 0: greet.v1.GreetRequest
-	(*GreetResponse)(nil), // 1: greet.v1.GreetResponse
+var file_api_v1_greet_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_v1_greet_proto_goTypes = []any{
+	(*GreetRequest)(nil),  // 0: api.v1.GreetRequest
+	(*GreetResponse)(nil), // 1: api.v1.GreetResponse
 }
-var file_greet_v1_greet_proto_depIdxs = []int32{
-	0, // 0: greet.v1.GreetService.Greet:input_type -> greet.v1.GreetRequest
-	1, // 1: greet.v1.GreetService.Greet:output_type -> greet.v1.GreetResponse
+var file_api_v1_greet_proto_depIdxs = []int32{
+	0, // 0: api.v1.GreetService.Greet:input_type -> api.v1.GreetRequest
+	1, // 1: api.v1.GreetService.Greet:output_type -> api.v1.GreetResponse
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -160,26 +161,26 @@ var file_greet_v1_greet_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_greet_v1_greet_proto_init() }
-func file_greet_v1_greet_proto_init() {
-	if File_greet_v1_greet_proto != nil {
+func init() { file_api_v1_greet_proto_init() }
+func file_api_v1_greet_proto_init() {
+	if File_api_v1_greet_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_greet_v1_greet_proto_rawDesc), len(file_greet_v1_greet_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_greet_proto_rawDesc), len(file_api_v1_greet_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_greet_v1_greet_proto_goTypes,
-		DependencyIndexes: file_greet_v1_greet_proto_depIdxs,
-		MessageInfos:      file_greet_v1_greet_proto_msgTypes,
+		GoTypes:           file_api_v1_greet_proto_goTypes,
+		DependencyIndexes: file_api_v1_greet_proto_depIdxs,
+		MessageInfos:      file_api_v1_greet_proto_msgTypes,
 	}.Build()
-	File_greet_v1_greet_proto = out.File
-	file_greet_v1_greet_proto_goTypes = nil
-	file_greet_v1_greet_proto_depIdxs = nil
+	File_api_v1_greet_proto = out.File
+	file_api_v1_greet_proto_goTypes = nil
+	file_api_v1_greet_proto_depIdxs = nil
 }

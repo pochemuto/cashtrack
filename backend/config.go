@@ -12,6 +12,7 @@ import (
 
 type Config struct {
 	ServerConfig `envPrefix:"SERVER_" envDefault:""`
+	DbConfig     `envPrefix:"DB_" envDefault:""`
 }
 
 func loadOptional(file string) error {
