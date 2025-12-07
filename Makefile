@@ -9,7 +9,7 @@ frontend:
 	cd frontend && npm run dev
 
 generate:
-	docker compose -f $(COMPOSE_GEN) -p cashtrack-gen up generator
+	docker compose -f $(COMPOSE_GEN) -p cashtrack-gen up generator --build
 
 dev-local-deps:
 	docker compose -f $(COMPOSE_DEV) -p cashtrack-dev-local up -d db
@@ -24,7 +24,7 @@ dev:
 prod:
 	docker compose -f $(COMPOSE_PROD) -p cashtrack up --build
 
-migrate:
+new-migration:
 	@if [ -z "$(name)" ]; then echo "Usage: make migrate name=migration_name"; exit 1; fi
 	docker compose -f $(COMPOSE_GEN) -p cashtrack-gen run --build --rm generator \
 	  sh -c "goose -s create $(name) sql"
