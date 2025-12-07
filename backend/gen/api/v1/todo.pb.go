@@ -7,9 +7,11 @@
 package apiv1
 
 import (
+	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
+	sync "sync"
 	unsafe "unsafe"
 )
 
@@ -20,18 +22,218 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRequest) Reset() {
+	*x = ListRequest{}
+	mi := &file_api_v1_todo_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRequest) ProtoMessage() {}
+
+func (x *ListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_todo_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRequest.ProtoReflect.Descriptor instead.
+func (*ListRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{0}
+}
+
+type ListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Item          []string               `protobuf:"bytes,1,rep,name=item,proto3" json:"item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListResponse) Reset() {
+	*x = ListResponse{}
+	mi := &file_api_v1_todo_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListResponse) ProtoMessage() {}
+
+func (x *ListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_todo_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListResponse.ProtoReflect.Descriptor instead.
+func (*ListResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ListResponse) GetItem() []string {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+type RemoveRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Item          string                 `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveRequest) Reset() {
+	*x = RemoveRequest{}
+	mi := &file_api_v1_todo_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveRequest) ProtoMessage() {}
+
+func (x *RemoveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_todo_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveRequest.ProtoReflect.Descriptor instead.
+func (*RemoveRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *RemoveRequest) GetItem() string {
+	if x != nil {
+		return x.Item
+	}
+	return ""
+}
+
+type RemoveResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Item          []string               `protobuf:"bytes,1,rep,name=item,proto3" json:"item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveResponse) Reset() {
+	*x = RemoveResponse{}
+	mi := &file_api_v1_todo_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveResponse) ProtoMessage() {}
+
+func (x *RemoveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_todo_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveResponse.ProtoReflect.Descriptor instead.
+func (*RemoveResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RemoveResponse) GetItem() []string {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
 var File_api_v1_todo_proto protoreflect.FileDescriptor
 
 const file_api_v1_todo_proto_rawDesc = "" +
 	"\n" +
-	"\x11api/v1/todo.proto\x12\x06api.v1Bt\n" +
+	"\x11api/v1/todo.proto\x12\x06api.v1\x1a\x1bbuf/validate/validate.proto\"\r\n" +
+	"\vListRequest\"\"\n" +
+	"\fListResponse\x12\x12\n" +
+	"\x04item\x18\x01 \x03(\tR\x04item\"#\n" +
+	"\rRemoveRequest\x12\x12\n" +
+	"\x04item\x18\x01 \x01(\tR\x04item\"$\n" +
+	"\x0eRemoveResponse\x12\x12\n" +
+	"\x04item\x18\x01 \x03(\tR\x04item2}\n" +
+	"\vTodoService\x123\n" +
+	"\x04List\x12\x13.api.v1.ListRequest\x1a\x14.api.v1.ListResponse\"\x00\x129\n" +
+	"\x06Remove\x12\x15.api.v1.RemoveRequest\x1a\x16.api.v1.RemoveResponse\"\x00Bt\n" +
 	"\n" +
-	"com.api.v1B\tTodoProtoP\x01Z\"cashtrack/backend/gen/api/v1;apiv1\xa2\x02\x03AXX\xaa\x02\x06Api.V1\xca\x02\x06Api\\V1\xe2\x02\x12Api\\V1\\GPBMetadata\xea\x02\aApi::V1"
+	"com.api.v1B\tTodoProtoP\x01Z\"cashtrack/backend/gen/api/v1;apiv1\xa2\x02\x03AXX\xaa\x02\x06Api.V1\xca\x02\x06Api\\V1\xe2\x02\x12Api\\V1\\GPBMetadata\xea\x02\aApi::V1b\x06proto3"
 
-var file_api_v1_todo_proto_goTypes = []any{}
+var (
+	file_api_v1_todo_proto_rawDescOnce sync.Once
+	file_api_v1_todo_proto_rawDescData []byte
+)
+
+func file_api_v1_todo_proto_rawDescGZIP() []byte {
+	file_api_v1_todo_proto_rawDescOnce.Do(func() {
+		file_api_v1_todo_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_v1_todo_proto_rawDesc), len(file_api_v1_todo_proto_rawDesc)))
+	})
+	return file_api_v1_todo_proto_rawDescData
+}
+
+var file_api_v1_todo_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_api_v1_todo_proto_goTypes = []any{
+	(*ListRequest)(nil),    // 0: api.v1.ListRequest
+	(*ListResponse)(nil),   // 1: api.v1.ListResponse
+	(*RemoveRequest)(nil),  // 2: api.v1.RemoveRequest
+	(*RemoveResponse)(nil), // 3: api.v1.RemoveResponse
+}
 var file_api_v1_todo_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
+	0, // 0: api.v1.TodoService.List:input_type -> api.v1.ListRequest
+	2, // 1: api.v1.TodoService.Remove:input_type -> api.v1.RemoveRequest
+	1, // 2: api.v1.TodoService.List:output_type -> api.v1.ListResponse
+	3, // 3: api.v1.TodoService.Remove:output_type -> api.v1.RemoveResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -48,12 +250,13 @@ func file_api_v1_todo_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_todo_proto_rawDesc), len(file_api_v1_todo_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   0,
+			NumMessages:   4,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_api_v1_todo_proto_goTypes,
 		DependencyIndexes: file_api_v1_todo_proto_depIdxs,
+		MessageInfos:      file_api_v1_todo_proto_msgTypes,
 	}.Build()
 	File_api_v1_todo_proto = out.File
 	file_api_v1_todo_proto_goTypes = nil

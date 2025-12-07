@@ -47,6 +47,7 @@ func ProvideConfig() (Config, error) {
 	}
 
 	var config Config
+	log.Info().Msgf("Parsing environment variables")
 	err := env.ParseWithOptions(&config, env.Options{RequiredIfNoDef: true, UseFieldNameByDefault: true})
 	if err != nil {
 		return config, err

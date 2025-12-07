@@ -27,5 +27,5 @@ func InitializeHttpServer(ctx context.Context) (*http.Server, error) {
 // wire.go:
 
 func handlers() []*Handler {
-	return []*Handler{NewGreetHandler()}
+	return []*Handler{NewGreetHandler(), NewTodoHandler()}
 }

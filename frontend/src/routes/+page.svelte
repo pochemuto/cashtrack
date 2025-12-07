@@ -1,51 +1,41 @@
 <script lang="ts">
-    import type {GreetResponse} from "$lib/gen/api/v1/greet_pb";
-    import {Client} from "$lib/client";
-    import {page} from "$app/state";
+    import type {ListResponse} from "$lib/gen/api/v1/todo_pb";
+    import {Todo} from "$lib/api";
     import {onMount} from "svelte";
 
-    let name = $state("");
-    let result = $state<Promise<GreetResponse>>();
+    let result = $state<Promise<string[]>>();
 
-    onMount(() => {
-        name =  page.url.searchParams.get("name") ?? "World";
-    });
+    onMount(load);
+    async function load() {
+        result = Todo.list({}).then((response) => response.item);
+    }
 
-    async function greet() {
-        result = Client.greet({"name": name})
+    async function remove(item: string) {
+        let response = Todo.remove({item});
+        result = Promise.resolve((await response).item);
     }
 </script>
 
 <svelte:head>
-    <title>Say hello</title>
+    <title>Todo</title>
 </svelte:head>
-
-<style>
-    .lang {
-        font-size: 0.8em;
-    }
-</style>
-<form>
-    <label for="name">Name: </label>
-    <input type="text" name="name" bind:value={name}>
-    <button onclick={greet}>Say hello for: {name}</button>
-</form>
 
 
 {#if result}
     {#await result}
-        <!-- promise is pending -->
-        <p>waiting for the promise to resolve...</p>
+        <p>Loading...</p>
     {:then value}
-        <blockquote>
-            <!-- promise was fulfilled or not a Promise -->
-            <p>{value.greeting}</p>
-            {#if value.language}
-                <span class="lang"> - {value.language}</span>
-            {/if}
-        </blockquote>
+        <ul>
+            {#each value as item}
+                <li><button class="remove-button" onclick={() => remove(item)}>x</button> {item}</li>
+            {/each}
+        </ul>
     {:catch error}
         <!-- promise was rejected -->
         <p>Something went wrong: {error.message}</p>
     {/await}
 {/if}
+
+<style>
+    .remove-button {padding: 0 5px}
+</style>

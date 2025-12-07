@@ -8,6 +8,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY backend backend
+COPY .env.development .env.development
 
 EXPOSE 8080
 

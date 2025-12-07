@@ -10,7 +10,7 @@ import (
 import "github.com/google/wire"
 
 func handlers() []*Handler {
-	return []*Handler{NewGreetHandler()}
+	return []*Handler{NewGreetHandler(), NewTodoHandler()}
 }
 
 func InitializeHttpServer(ctx context.Context) (*http.Server, error) {
