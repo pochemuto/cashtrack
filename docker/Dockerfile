@@ -17,10 +17,10 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY backend backen
+COPY backend backend
 COPY --from=frontend-builder /frontend/build ./public
 
-RUN CGO_ENABLED=0 GOS=linux go build -o app ./backend/cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -o app ./backend/cmd/server
 
 
 
