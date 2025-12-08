@@ -46,6 +46,9 @@ func NewHttpServer(config ServerConfig, handlers []*Handler) *http.Server {
 		log.Info().Msgf("Serving %s", handler.Path)
 		mux.Handle(handler.Path, handler.Handler)
 	}
+	mux.Handle("/health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
 
 	p := new(http.Protocols)
 	p.SetHTTP1(true)

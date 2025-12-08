@@ -9,13 +9,18 @@ services:
       - db
     volumes:
       - ../backend:/app/backend
+    healthcheck:
+      test: curl -f https://localhost:8080 || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 3
 
   frontend:
     build:
       context: ../
       dockerfile: docker/frontend.Dockerfile
     ports:
-      - "15173:5173"
+      - "5173:5173"
     environment:
       - VITE_API_URL=http://backend:8080
     depends_on:

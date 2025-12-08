@@ -23,7 +23,7 @@ func NewTodoHandler() *Handler {
 		// Validation via Protovalidate is almost always recommended
 		connect.WithInterceptors(validate.NewInterceptor()),
 	)
-	todo.items = []string{"Buy milk", "Buy eggs", "Buy bread", "Do laundry", "Do homework"}
+	todo.items = []string{"Buy milk", "Buy eggs", "Buy bread", "Do laundry", "Do homework", "Go to the gym"}
 	todo.initial = append([]string{}, todo.items...)
 	return &Handler{Path: path, Handler: handler}
 }
