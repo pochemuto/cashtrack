@@ -20,7 +20,10 @@ RUN go mod download
 COPY backend backend
 COPY --from=frontend-builder /frontend/build ./public
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o app ./backend/cmd/server
+ARG TARGETOS
+ARG TARGETARCH
+ENV CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH
+RUN go build -o app ./backend/cmd/server
 
 
 

@@ -1,6 +1,9 @@
 COMPOSE_DEV=docker/docker-compose.dev.yml
 COMPOSE_GEN=docker/docker-compose.generate.yml
 COMPOSE_PROD=docker/docker-compose.yml
+COMPOSE_BUILD=docker/docker-compose.build.yml
+IMAGE=pochemuto/cashtrack
+TAG=latest
 
 backend:
 	go run backend/cmd/server/main.go
@@ -21,8 +24,21 @@ dev-local:
 dev:
 	docker compose -f $(COMPOSE_DEV) -p cashtrack-dev up --build --abort-on-container-exit
 
-prod:
-	docker compose -f $(COMPOSE_PROD) -p cashtrack up --build
+build:
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-t $(IMAGE):$(TAG) \
+		-f docker/Dockerfile \
+		--push \
+		.
+
+push:
+	docker compose -f $(COMPOSE_PROD) -f $(COMPOSE_BUILD) push
+
+deploy:
+	docker --context $(context) compose -f $(COMPOSE_PROD) pull
+	docker --context $(context) compose -f $(COMPOSE_PROD) -p cashtrack up -d
+
 
 new-migration:
 	@if [ -z "$(name)" ]; then echo "Usage: make migrate name=migration_name"; exit 1; fi
