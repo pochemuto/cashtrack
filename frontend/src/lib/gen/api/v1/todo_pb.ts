@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/todo.proto.
  */
 export const file_api_v1_todo: GenFile = /*@__PURE__*/
-  fileDesc("ChFhcGkvdjEvdG9kby5wcm90bxIGYXBpLnYxIg0KC0xpc3RSZXF1ZXN0IhwKDExpc3RSZXNwb25zZRIMCgRpdGVtGAEgAygJIh0KDVJlbW92ZVJlcXVlc3QSDAoEaXRlbRgBIAEoCSIeCg5SZW1vdmVSZXNwb25zZRIMCgRpdGVtGAEgAygJMn0KC1RvZG9TZXJ2aWNlEjMKBExpc3QSEy5hcGkudjEuTGlzdFJlcXVlc3QaFC5hcGkudjEuTGlzdFJlc3BvbnNlIgASOQoGUmVtb3ZlEhUuYXBpLnYxLlJlbW92ZVJlcXVlc3QaFi5hcGkudjEuUmVtb3ZlUmVzcG9uc2UiAEJ0Cgpjb20uYXBpLnYxQglUb2RvUHJvdG9QAVoiY2FzaHRyYWNrL2JhY2tlbmQvZ2VuL2FwaS92MTthcGl2MaICA0FYWKoCBkFwaS5WMcoCBkFwaVxWMeICEkFwaVxWMVxHUEJNZXRhZGF0YeoCB0FwaTo6VjFiBnByb3RvMw", [file_buf_validate_validate]);
+  fileDesc("ChFhcGkvdjEvdG9kby5wcm90bxIGYXBpLnYxIg0KC0xpc3RSZXF1ZXN0Ii8KDExpc3RSZXNwb25zZRIfCgVpdGVtcxgBIAMoCzIQLmFwaS52MS5MaXN0SXRlbSIbCg1SZW1vdmVSZXF1ZXN0EgoKAmlkGAEgASgFIiUKCExpc3RJdGVtEgoKAmlkGAEgASgFEg0KBXRpdGxlGAIgASgJIjEKDlJlbW92ZVJlc3BvbnNlEh8KBWl0ZW1zGAEgAygLMhAuYXBpLnYxLkxpc3RJdGVtIi0KCkFkZFJlcXVlc3QSHwoFaXRlbXMYAiADKAsyEC5hcGkudjEuTGlzdEl0ZW0iLgoLQWRkUmVzcG9uc2USHwoFaXRlbXMYASADKAsyEC5hcGkudjEuTGlzdEl0ZW0yrwEKC1RvZG9TZXJ2aWNlEjMKBExpc3QSEy5hcGkudjEuTGlzdFJlcXVlc3QaFC5hcGkudjEuTGlzdFJlc3BvbnNlIgASOQoGUmVtb3ZlEhUuYXBpLnYxLlJlbW92ZVJlcXVlc3QaFi5hcGkudjEuUmVtb3ZlUmVzcG9uc2UiABIwCgNBZGQSEi5hcGkudjEuQWRkUmVxdWVzdBoTLmFwaS52MS5BZGRSZXNwb25zZSIAQnQKCmNvbS5hcGkudjFCCVRvZG9Qcm90b1ABWiJjYXNodHJhY2svYmFja2VuZC9nZW4vYXBpL3YxO2FwaXYxogIDQVhYqgIGQXBpLlYxygIGQXBpXFYx4gISQXBpXFYxXEdQQk1ldGFkYXRh6gIHQXBpOjpWMWIGcHJvdG8z", [file_buf_validate_validate]);
 
 /**
  * @generated from message api.v1.ListRequest
@@ -31,9 +31,9 @@ export const ListRequestSchema: GenMessage<ListRequest> = /*@__PURE__*/
  */
 export type ListResponse = Message<"api.v1.ListResponse"> & {
   /**
-   * @generated from field: repeated string item = 1;
+   * @generated from field: repeated api.v1.ListItem items = 1;
    */
-  item: string[];
+  items: ListItem[];
 };
 
 /**
@@ -48,9 +48,9 @@ export const ListResponseSchema: GenMessage<ListResponse> = /*@__PURE__*/
  */
 export type RemoveRequest = Message<"api.v1.RemoveRequest"> & {
   /**
-   * @generated from field: string item = 1;
+   * @generated from field: int32 id = 1;
    */
-  item: string;
+  id: number;
 };
 
 /**
@@ -61,13 +61,35 @@ export const RemoveRequestSchema: GenMessage<RemoveRequest> = /*@__PURE__*/
   messageDesc(file_api_v1_todo, 2);
 
 /**
+ * @generated from message api.v1.ListItem
+ */
+export type ListItem = Message<"api.v1.ListItem"> & {
+  /**
+   * @generated from field: int32 id = 1;
+   */
+  id: number;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message api.v1.ListItem.
+ * Use `create(ListItemSchema)` to create a new message.
+ */
+export const ListItemSchema: GenMessage<ListItem> = /*@__PURE__*/
+  messageDesc(file_api_v1_todo, 3);
+
+/**
  * @generated from message api.v1.RemoveResponse
  */
 export type RemoveResponse = Message<"api.v1.RemoveResponse"> & {
   /**
-   * @generated from field: repeated string item = 1;
+   * @generated from field: repeated api.v1.ListItem items = 1;
    */
-  item: string[];
+  items: ListItem[];
 };
 
 /**
@@ -75,7 +97,41 @@ export type RemoveResponse = Message<"api.v1.RemoveResponse"> & {
  * Use `create(RemoveResponseSchema)` to create a new message.
  */
 export const RemoveResponseSchema: GenMessage<RemoveResponse> = /*@__PURE__*/
-  messageDesc(file_api_v1_todo, 3);
+  messageDesc(file_api_v1_todo, 4);
+
+/**
+ * @generated from message api.v1.AddRequest
+ */
+export type AddRequest = Message<"api.v1.AddRequest"> & {
+  /**
+   * @generated from field: repeated api.v1.ListItem items = 2;
+   */
+  items: ListItem[];
+};
+
+/**
+ * Describes the message api.v1.AddRequest.
+ * Use `create(AddRequestSchema)` to create a new message.
+ */
+export const AddRequestSchema: GenMessage<AddRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_todo, 5);
+
+/**
+ * @generated from message api.v1.AddResponse
+ */
+export type AddResponse = Message<"api.v1.AddResponse"> & {
+  /**
+   * @generated from field: repeated api.v1.ListItem items = 1;
+   */
+  items: ListItem[];
+};
+
+/**
+ * Describes the message api.v1.AddResponse.
+ * Use `create(AddResponseSchema)` to create a new message.
+ */
+export const AddResponseSchema: GenMessage<AddResponse> = /*@__PURE__*/
+  messageDesc(file_api_v1_todo, 6);
 
 /**
  * @generated from service api.v1.TodoService
@@ -96,6 +152,14 @@ export const TodoService: GenService<{
     methodKind: "unary";
     input: typeof RemoveRequestSchema;
     output: typeof RemoveResponseSchema;
+  },
+  /**
+   * @generated from rpc api.v1.TodoService.Add
+   */
+  add: {
+    methodKind: "unary";
+    input: typeof AddRequestSchema;
+    output: typeof AddResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_api_v1_todo, 0);

@@ -24,7 +24,7 @@ dev-local:
 dev:
 	docker compose -f $(COMPOSE_DEV) -p cashtrack-dev up --build --abort-on-container-exit
 
-build:
+push:
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
 		-t $(IMAGE):$(TAG) \
@@ -32,10 +32,8 @@ build:
 		--push \
 		.
 
-push:
-	docker compose -f $(COMPOSE_PROD) -f $(COMPOSE_BUILD) push
-
 deploy:
+	@if [ -z "$(context)" ]; then echo "Usage: make deploy context=docker_context"; exit 1; fi
 	docker --context $(context) compose -f $(COMPOSE_PROD) pull
 	docker --context $(context) compose -f $(COMPOSE_PROD) -p cashtrack up -d
 

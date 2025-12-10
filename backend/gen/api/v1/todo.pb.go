@@ -60,7 +60,7 @@ func (*ListRequest) Descriptor() ([]byte, []int) {
 
 type ListResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Item          []string               `protobuf:"bytes,1,rep,name=item,proto3" json:"item,omitempty"`
+	Items         []*ListItem            `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -95,16 +95,16 @@ func (*ListResponse) Descriptor() ([]byte, []int) {
 	return file_api_v1_todo_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ListResponse) GetItem() []string {
+func (x *ListResponse) GetItems() []*ListItem {
 	if x != nil {
-		return x.Item
+		return x.Items
 	}
 	return nil
 }
 
 type RemoveRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Item          string                 `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -139,23 +139,75 @@ func (*RemoveRequest) Descriptor() ([]byte, []int) {
 	return file_api_v1_todo_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *RemoveRequest) GetItem() string {
+func (x *RemoveRequest) GetId() int32 {
 	if x != nil {
-		return x.Item
+		return x.Id
+	}
+	return 0
+}
+
+type ListItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListItem) Reset() {
+	*x = ListItem{}
+	mi := &file_api_v1_todo_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListItem) ProtoMessage() {}
+
+func (x *ListItem) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_todo_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListItem.ProtoReflect.Descriptor instead.
+func (*ListItem) Descriptor() ([]byte, []int) {
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ListItem) GetId() int32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *ListItem) GetTitle() string {
+	if x != nil {
+		return x.Title
 	}
 	return ""
 }
 
 type RemoveResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Item          []string               `protobuf:"bytes,1,rep,name=item,proto3" json:"item,omitempty"`
+	Items         []*ListItem            `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RemoveResponse) Reset() {
 	*x = RemoveResponse{}
-	mi := &file_api_v1_todo_proto_msgTypes[3]
+	mi := &file_api_v1_todo_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -167,7 +219,7 @@ func (x *RemoveResponse) String() string {
 func (*RemoveResponse) ProtoMessage() {}
 
 func (x *RemoveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_todo_proto_msgTypes[3]
+	mi := &file_api_v1_todo_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -180,12 +232,100 @@ func (x *RemoveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveResponse.ProtoReflect.Descriptor instead.
 func (*RemoveResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_todo_proto_rawDescGZIP(), []int{3}
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *RemoveResponse) GetItem() []string {
+func (x *RemoveResponse) GetItems() []*ListItem {
 	if x != nil {
-		return x.Item
+		return x.Items
+	}
+	return nil
+}
+
+type AddRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*ListItem            `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddRequest) Reset() {
+	*x = AddRequest{}
+	mi := &file_api_v1_todo_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddRequest) ProtoMessage() {}
+
+func (x *AddRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_todo_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddRequest.ProtoReflect.Descriptor instead.
+func (*AddRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AddRequest) GetItems() []*ListItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type AddResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*ListItem            `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddResponse) Reset() {
+	*x = AddResponse{}
+	mi := &file_api_v1_todo_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddResponse) ProtoMessage() {}
+
+func (x *AddResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_todo_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddResponse.ProtoReflect.Descriptor instead.
+func (*AddResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AddResponse) GetItems() []*ListItem {
+	if x != nil {
+		return x.Items
 	}
 	return nil
 }
@@ -195,16 +335,25 @@ var File_api_v1_todo_proto protoreflect.FileDescriptor
 const file_api_v1_todo_proto_rawDesc = "" +
 	"\n" +
 	"\x11api/v1/todo.proto\x12\x06api.v1\x1a\x1bbuf/validate/validate.proto\"\r\n" +
-	"\vListRequest\"\"\n" +
-	"\fListResponse\x12\x12\n" +
-	"\x04item\x18\x01 \x03(\tR\x04item\"#\n" +
-	"\rRemoveRequest\x12\x12\n" +
-	"\x04item\x18\x01 \x01(\tR\x04item\"$\n" +
-	"\x0eRemoveResponse\x12\x12\n" +
-	"\x04item\x18\x01 \x03(\tR\x04item2}\n" +
+	"\vListRequest\"6\n" +
+	"\fListResponse\x12&\n" +
+	"\x05items\x18\x01 \x03(\v2\x10.api.v1.ListItemR\x05items\"\x1f\n" +
+	"\rRemoveRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x05R\x02id\"0\n" +
+	"\bListItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\"8\n" +
+	"\x0eRemoveResponse\x12&\n" +
+	"\x05items\x18\x01 \x03(\v2\x10.api.v1.ListItemR\x05items\"4\n" +
+	"\n" +
+	"AddRequest\x12&\n" +
+	"\x05items\x18\x02 \x03(\v2\x10.api.v1.ListItemR\x05items\"5\n" +
+	"\vAddResponse\x12&\n" +
+	"\x05items\x18\x01 \x03(\v2\x10.api.v1.ListItemR\x05items2\xaf\x01\n" +
 	"\vTodoService\x123\n" +
 	"\x04List\x12\x13.api.v1.ListRequest\x1a\x14.api.v1.ListResponse\"\x00\x129\n" +
-	"\x06Remove\x12\x15.api.v1.RemoveRequest\x1a\x16.api.v1.RemoveResponse\"\x00Bt\n" +
+	"\x06Remove\x12\x15.api.v1.RemoveRequest\x1a\x16.api.v1.RemoveResponse\"\x00\x120\n" +
+	"\x03Add\x12\x12.api.v1.AddRequest\x1a\x13.api.v1.AddResponse\"\x00Bt\n" +
 	"\n" +
 	"com.api.v1B\tTodoProtoP\x01Z\"cashtrack/backend/gen/api/v1;apiv1\xa2\x02\x03AXX\xaa\x02\x06Api.V1\xca\x02\x06Api\\V1\xe2\x02\x12Api\\V1\\GPBMetadata\xea\x02\aApi::V1b\x06proto3"
 
@@ -220,23 +369,32 @@ func file_api_v1_todo_proto_rawDescGZIP() []byte {
 	return file_api_v1_todo_proto_rawDescData
 }
 
-var file_api_v1_todo_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_api_v1_todo_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_api_v1_todo_proto_goTypes = []any{
 	(*ListRequest)(nil),    // 0: api.v1.ListRequest
 	(*ListResponse)(nil),   // 1: api.v1.ListResponse
 	(*RemoveRequest)(nil),  // 2: api.v1.RemoveRequest
-	(*RemoveResponse)(nil), // 3: api.v1.RemoveResponse
+	(*ListItem)(nil),       // 3: api.v1.ListItem
+	(*RemoveResponse)(nil), // 4: api.v1.RemoveResponse
+	(*AddRequest)(nil),     // 5: api.v1.AddRequest
+	(*AddResponse)(nil),    // 6: api.v1.AddResponse
 }
 var file_api_v1_todo_proto_depIdxs = []int32{
-	0, // 0: api.v1.TodoService.List:input_type -> api.v1.ListRequest
-	2, // 1: api.v1.TodoService.Remove:input_type -> api.v1.RemoveRequest
-	1, // 2: api.v1.TodoService.List:output_type -> api.v1.ListResponse
-	3, // 3: api.v1.TodoService.Remove:output_type -> api.v1.RemoveResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	3, // 0: api.v1.ListResponse.items:type_name -> api.v1.ListItem
+	3, // 1: api.v1.RemoveResponse.items:type_name -> api.v1.ListItem
+	3, // 2: api.v1.AddRequest.items:type_name -> api.v1.ListItem
+	3, // 3: api.v1.AddResponse.items:type_name -> api.v1.ListItem
+	0, // 4: api.v1.TodoService.List:input_type -> api.v1.ListRequest
+	2, // 5: api.v1.TodoService.Remove:input_type -> api.v1.RemoveRequest
+	5, // 6: api.v1.TodoService.Add:input_type -> api.v1.AddRequest
+	1, // 7: api.v1.TodoService.List:output_type -> api.v1.ListResponse
+	4, // 8: api.v1.TodoService.Remove:output_type -> api.v1.RemoveResponse
+	6, // 9: api.v1.TodoService.Add:output_type -> api.v1.AddResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_todo_proto_init() }
@@ -250,7 +408,7 @@ func file_api_v1_todo_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_todo_proto_rawDesc), len(file_api_v1_todo_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
