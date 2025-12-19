@@ -4,6 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
+		"local": "vite dev --mode localhost",
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
@@ -30,7 +31,8 @@
 		"svelte-check": "^4.3.4",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.47.0",
-		"vite": "^7.2.2"
+		"vite": "^7.2.2",
+		"vite-plugin-devtools-json": "^1.0.0"
 	},
 	"dependencies": {
 		"@connectrpc/connect": "^2.1.1",

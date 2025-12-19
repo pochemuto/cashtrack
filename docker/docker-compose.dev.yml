@@ -3,8 +3,6 @@ services:
     build:
       context: ../
       dockerfile: docker/backend.Dockerfile
-    env_file:
-      - ../.env.development
     ports:
       - "8080:8080"
     depends_on:
@@ -12,15 +10,13 @@ services:
         condition: service_completed_successfully
     volumes:
       - ../backend:/app/backend
-    environment:
-      DB_CONNECTION_STRING: postgresql://cashtrack:cashtrack@db:5432/cashtrack
+    env_file:
+      - ../.env.development
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 3
-    profiles:
-      - backend
 
   frontend:
     build:
@@ -35,8 +31,6 @@ services:
     volumes:
       - ../frontend/src:/frontend/src
       - ../frontend/static:/frontend/static
-    profiles:
-      - frontend
 
   migrate:
     build:
@@ -64,13 +58,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    profiles:
-      - localhost
   
   db:
     image: postgres:16-alpine
-    profiles:
-      - localhost
     restart: unless-stopped
     environment:
       POSTGRES_DB: cashtrack

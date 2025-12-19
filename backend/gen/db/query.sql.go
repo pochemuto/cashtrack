@@ -10,16 +10,11 @@ import (
 )
 
 const addTodo = `-- name: AddTodo :exec
-INSERT INTO todo (id, title) VALUES ($1, $2)
+INSERT INTO todo (title) VALUES ($1)
 `
 
-type AddTodoParams struct {
-	ID    int32
-	Title string
-}
-
-func (q *Queries) AddTodo(ctx context.Context, arg AddTodoParams) error {
-	_, err := q.db.Exec(ctx, addTodo, arg.ID, arg.Title)
+func (q *Queries) AddTodo(ctx context.Context, title string) error {
+	_, err := q.db.Exec(ctx, addTodo, title)
 	return err
 }
 

@@ -2,7 +2,7 @@
 SELECT * FROM todo;
 
 -- name: AddTodo :exec
-INSERT INTO todo (id, title) VALUES ($1, $2);
+INSERT INTO todo (title) VALUES ($1);
 
 -- name: RemoveTodo :exec
 DELETE FROM todo WHERE id = $1;

@@ -3,7 +3,6 @@ package cashtrack
 import (
 	apiv1 "cashtrack/backend/gen/api/v1"
 	"cashtrack/backend/gen/api/v1/apiv1connect"
-	"cashtrack/backend/gen/db"
 	"context"
 
 	"connectrpc.com/connect"
@@ -58,9 +57,7 @@ func (s *TodoService) List(
 
 func (s *TodoService) Add(ctx context.Context, req *apiv1.AddRequest) (*apiv1.AddResponse, error) {
 	for _, item := range req.Items {
-		err := s.db.Queries.AddTodo(ctx, db.AddTodoParams{
-			Title: item.Title,
-		})
+		err := s.db.Queries.AddTodo(ctx, item.Title)
 		if err != nil {
 			return nil, err
 		}

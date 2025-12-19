@@ -5,16 +5,16 @@ IMAGE=pochemuto/cashtrack
 TAG=latest
 
 backend:
-	go run backend/cmd/server/main.go
+	CASHTRACK_ENV=localhost go run backend/cmd/server/main.go
 
 frontend:
-	cd frontend && npm run dev
+	cd frontend && NODE_ENV=localhost npm run local
 
 generate:
 	docker compose -f $(COMPOSE_GEN) -p cashtrack-gen up generator --build
 
 development-local-deps:
-	docker compose -f $(COMPOSE_DEV) -p cashtrack-dev-local --profile localhost up -d db migrate
+	docker compose -f $(COMPOSE_DEV) -p cashtrack-dev-local up -d db migrate
 
 development-local:
 	$(MAKE) development-local-deps
