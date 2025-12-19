@@ -9,16 +9,17 @@ import (
 )
 import "github.com/google/wire"
 
-func handlers() []*Handler {
-	return []*Handler{NewGreetHandler(), NewTodoHandler()}
+func handlers(todo *TodoHandler, greet *GreetHandler) []*Handler {
+	return []*Handler{(*Handler)(todo), (*Handler)(greet)}
 }
 
 func InitializeHttpServer(ctx context.Context) (*http.Server, error) {
 	wire.Build(
 		handlers,
+		NewGreetHandler, NewTodoHandler,
 		ProvideConfig,
-		wire.FieldsOf(new(Config), "ServerConfig"),
-		NewHttpServer,
+		wire.FieldsOf(new(Config), "ServerConfig", "db"),
+		NewHttpServer, NewPgxPool, NewDB,
 	)
 	return nil, nil
 }

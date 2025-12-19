@@ -9,7 +9,7 @@ import (
 
 type Db struct {
 	conn    *pgxpool.Pool
-	queries *db.Queries
+	Queries *db.Queries
 }
 
 type DbConfig struct {
@@ -28,9 +28,9 @@ func NewPgxPool(ctx context.Context, config DbConfig) (*pgxpool.Pool, error) {
 	return conn, nil
 }
 
-func NewDB(conn *pgxpool.Pool) (Db, error) {
-	return Db{
+func NewDB(conn *pgxpool.Pool) (*Db, error) {
+	return &Db{
 		conn:    conn,
-		queries: db.New(conn),
+		Queries: db.New(conn),
 	}, nil
 }

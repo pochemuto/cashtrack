@@ -58,7 +58,9 @@ var greetings = []Greeting{
 	{Text: "Sain baina uu", Language: "Mongolian"},
 }
 
-func NewGreetHandler() *Handler {
+type GreetHandler Handler
+
+func NewGreetHandler() *GreetHandler {
 	greeter := new(GreetService)
 
 	path, handler := apiv1connect.NewGreetServiceHandler(
@@ -66,7 +68,7 @@ func NewGreetHandler() *Handler {
 		// Validation via Protovalidate is almost always recommended
 		connect.WithInterceptors(validate.NewInterceptor()),
 	)
-	return &Handler{Path: path, Handler: handler}
+	return &GreetHandler{Path: path, Handler: handler}
 }
 
 func (s *GreetService) Greet(

@@ -3,34 +3,74 @@ services:
     build:
       context: ../
       dockerfile: docker/backend.Dockerfile
-    expose:
-      - "8080"
+    env_file:
+      - ../.env.development
+    ports:
+      - "8080:8080"
     depends_on:
-      - db
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - ../backend:/app/backend
+    environment:
+      DB_CONNECTION_STRING: postgresql://cashtrack:cashtrack@db:5432/cashtrack
     healthcheck:
-      test: curl -f https://localhost:8080 || exit 1
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 3
+    profiles:
+      - backend
 
   frontend:
     build:
       context: ../
       dockerfile: docker/frontend.Dockerfile
+    env_file:
+      - ../frontend/.env.development
     ports:
       - "5173:5173"
-    environment:
-      - VITE_API_URL=http://backend:8080
     depends_on:
       - backend
     volumes:
       - ../frontend/src:/frontend/src
       - ../frontend/static:/frontend/static
+    profiles:
+      - frontend
 
+  migrate:
+    build:
+      context: ../
+      dockerfile: docker/generate.Dockerfile
+    working_dir: /app
+    env_file:
+      - ../.env.development
+    volumes:
+      - type: bind
+        source: ..
+        target: /app
+    command: >
+      sh -c '
+        set -e
+        for i in $(seq 1 20); do
+          goose up && exit 0 || echo "goose retry $$i"; sleep 2;
+        done; exit 1
+      '
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgresql://cashtrack:cashtrack@db:5432/cashtrack
+      GOOSE_MIGRATION_DIR: ./db/migrations
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - localhost
+  
   db:
     image: postgres:16-alpine
+    profiles:
+      - localhost
     restart: unless-stopped
     environment:
       POSTGRES_DB: cashtrack
@@ -40,6 +80,11 @@ services:
       - "25432:5432"
     volumes:
       - cashtrack-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cashtrack -d cashtrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   cashtrack-db-data:

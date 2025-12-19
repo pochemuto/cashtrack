@@ -12,7 +12,7 @@ import (
 
 type Config struct {
 	ServerConfig `envPrefix:"SERVER_" envDefault:""`
-	DbConfig     `envPrefix:"DB_" envDefault:""`
+	Db           DbConfig `envPrefix:"DB_" envDefault:""`
 }
 
 func loadOptional(file string) error {
@@ -52,5 +52,6 @@ func ProvideConfig() (Config, error) {
 	if err != nil {
 		return config, err
 	}
+	log.Info().Msgf("Environment variables parsed: %v", config)
 	return config, nil
 }

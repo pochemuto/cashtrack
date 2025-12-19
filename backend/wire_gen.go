@@ -19,13 +19,24 @@ func InitializeHttpServer(ctx context.Context) (*http.Server, error) {
 		return nil, err
 	}
 	serverConfig := config.ServerConfig
-	v := handlers()
+	dbConfig := config.Db
+	pool, err := NewPgxPool(ctx, dbConfig)
+	if err != nil {
+		return nil, err
+	}
+	db, err := NewDB(pool)
+	if err != nil {
+		return nil, err
+	}
+	todoHandler := NewTodoHandler(db)
+	greetHandler := NewGreetHandler()
+	v := handlers(todoHandler, greetHandler)
 	server := NewHttpServer(serverConfig, v)
 	return server, nil
 }
 
 // wire.go:
 
-func handlers() []*Handler {
-	return []*Handler{NewGreetHandler(), NewTodoHandler()}
+func handlers(todo *TodoHandler, greet *GreetHandler) []*Handler {
+	return []*Handler{(*Handler)(todo), (*Handler)(greet)}
 }

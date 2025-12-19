@@ -3,3 +3,8 @@
 //   sqlc v1.30.0
 
 package db
+
+type Todo struct {
+	ID    int32
+	Title string
+}

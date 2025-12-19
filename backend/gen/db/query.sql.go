@@ -9,13 +9,49 @@ import (
 	"context"
 )
 
-const getOne = `-- name: GetOne :one
-SELECT 1
+const addTodo = `-- name: AddTodo :exec
+INSERT INTO todo (id, title) VALUES ($1, $2)
 `
 
-func (q *Queries) GetOne(ctx context.Context) (int32, error) {
-	row := q.db.QueryRow(ctx, getOne)
-	var column_1 int32
-	err := row.Scan(&column_1)
-	return column_1, err
+type AddTodoParams struct {
+	ID    int32
+	Title string
+}
+
+func (q *Queries) AddTodo(ctx context.Context, arg AddTodoParams) error {
+	_, err := q.db.Exec(ctx, addTodo, arg.ID, arg.Title)
+	return err
+}
+
+const listTodos = `-- name: ListTodos :many
+SELECT id, title FROM todo
+`
+
+func (q *Queries) ListTodos(ctx context.Context) ([]Todo, error) {
+	rows, err := q.db.Query(ctx, listTodos)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Todo
+	for rows.Next() {
+		var i Todo
+		if err := rows.Scan(&i.ID, &i.Title); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const removeTodo = `-- name: RemoveTodo :exec
+DELETE FROM todo WHERE id = $1
+`
+
+func (q *Queries) RemoveTodo(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, removeTodo, id)
+	return err
 }
