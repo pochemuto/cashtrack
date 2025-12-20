@@ -3,3 +3,8 @@ services:
     build:
       context: ../
       dockerfile: docker/Dockerfile
+
+  migrate:
+    build:
+      context: ../
+      dockerfile: docker/generate.Dockerfile

@@ -30,6 +30,12 @@ push:
 		-f docker/Dockerfile \
 		--push \
 		.
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-t $(IMAGE):migrate \
+		-f docker/generate.Dockerfile \
+		--push \
+		.
 
 deploy:
 	@if [ -z "$(context)" ]; then echo "Usage: make deploy context=docker_context"; exit 1; fi

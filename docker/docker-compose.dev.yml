@@ -50,10 +50,6 @@ services:
           goose up && exit 0 || echo "goose retry $$i"; sleep 2;
         done; exit 1
       '
-    environment:
-      GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: postgresql://cashtrack:cashtrack@db:5432/cashtrack
-      GOOSE_MIGRATION_DIR: ./db/migrations
     restart: "no"
     depends_on:
       db:

@@ -33,6 +33,7 @@ WORKDIR /app
 
 COPY --from=backend-builder /app/app .
 COPY --from=backend-builder /app/public ./public
+COPY .env.production .
 
 EXPOSE 8080
 

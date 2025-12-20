@@ -12,3 +12,5 @@ RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10 \
     && go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
 
 RUN npm install -g @bufbuild/protoc-gen-es
+
+COPY db/migrations /app/db/migrations
