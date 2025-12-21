@@ -46,7 +46,9 @@
         <ul>
             {#each value as item}
                 <li class="item">
-                    <button class="btn btn-sm remove-button" onclick={() => remove(item.id)}>x</button> {item.title}
+                    <button class="btn btn-xs btn-secondary btn-ghost btn-circle"
+                            onclick={() => remove(item.id)}>x</button>
+                    {item.title}
                 </li>
             {/each}
         </ul>
@@ -79,10 +81,6 @@
     </div>
 </section>  
 <style>
-    .remove-button {
-        padding: 0 5px;
-        height: 22px;
-    }
     .item {
         vertical-align: middle;
     }
