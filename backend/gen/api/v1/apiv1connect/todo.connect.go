@@ -39,6 +39,8 @@ const (
 	TodoServiceRemoveProcedure = "/api.v1.TodoService/Remove"
 	// TodoServiceAddProcedure is the fully-qualified name of the TodoService's Add RPC.
 	TodoServiceAddProcedure = "/api.v1.TodoService/Add"
+	// TodoServiceAddRandomProcedure is the fully-qualified name of the TodoService's AddRandom RPC.
+	TodoServiceAddRandomProcedure = "/api.v1.TodoService/AddRandom"
 )
 
 // TodoServiceClient is a client for the api.v1.TodoService service.
@@ -46,6 +48,7 @@ type TodoServiceClient interface {
 	List(context.Context, *v1.ListRequest) (*v1.ListResponse, error)
 	Remove(context.Context, *v1.RemoveRequest) (*v1.RemoveResponse, error)
 	Add(context.Context, *v1.AddRequest) (*v1.AddResponse, error)
+	AddRandom(context.Context, *v1.AddRandomRequest) (*v1.AddRandomResponse, error)
 }
 
 // NewTodoServiceClient constructs a client for the api.v1.TodoService service. By default, it uses
@@ -77,14 +80,21 @@ func NewTodoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(todoServiceMethods.ByName("Add")),
 			connect.WithClientOptions(opts...),
 		),
+		addRandom: connect.NewClient[v1.AddRandomRequest, v1.AddRandomResponse](
+			httpClient,
+			baseURL+TodoServiceAddRandomProcedure,
+			connect.WithSchema(todoServiceMethods.ByName("AddRandom")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // todoServiceClient implements TodoServiceClient.
 type todoServiceClient struct {
-	list   *connect.Client[v1.ListRequest, v1.ListResponse]
-	remove *connect.Client[v1.RemoveRequest, v1.RemoveResponse]
-	add    *connect.Client[v1.AddRequest, v1.AddResponse]
+	list      *connect.Client[v1.ListRequest, v1.ListResponse]
+	remove    *connect.Client[v1.RemoveRequest, v1.RemoveResponse]
+	add       *connect.Client[v1.AddRequest, v1.AddResponse]
+	addRandom *connect.Client[v1.AddRandomRequest, v1.AddRandomResponse]
 }
 
 // List calls api.v1.TodoService.List.
@@ -114,11 +124,21 @@ func (c *todoServiceClient) Add(ctx context.Context, req *v1.AddRequest) (*v1.Ad
 	return nil, err
 }
 
+// AddRandom calls api.v1.TodoService.AddRandom.
+func (c *todoServiceClient) AddRandom(ctx context.Context, req *v1.AddRandomRequest) (*v1.AddRandomResponse, error) {
+	response, err := c.addRandom.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // TodoServiceHandler is an implementation of the api.v1.TodoService service.
 type TodoServiceHandler interface {
 	List(context.Context, *v1.ListRequest) (*v1.ListResponse, error)
 	Remove(context.Context, *v1.RemoveRequest) (*v1.RemoveResponse, error)
 	Add(context.Context, *v1.AddRequest) (*v1.AddResponse, error)
+	AddRandom(context.Context, *v1.AddRandomRequest) (*v1.AddRandomResponse, error)
 }
 
 // NewTodoServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -146,6 +166,12 @@ func NewTodoServiceHandler(svc TodoServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(todoServiceMethods.ByName("Add")),
 		connect.WithHandlerOptions(opts...),
 	)
+	todoServiceAddRandomHandler := connect.NewUnaryHandlerSimple(
+		TodoServiceAddRandomProcedure,
+		svc.AddRandom,
+		connect.WithSchema(todoServiceMethods.ByName("AddRandom")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/api.v1.TodoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TodoServiceListProcedure:
@@ -154,6 +180,8 @@ func NewTodoServiceHandler(svc TodoServiceHandler, opts ...connect.HandlerOption
 			todoServiceRemoveHandler.ServeHTTP(w, r)
 		case TodoServiceAddProcedure:
 			todoServiceAddHandler.ServeHTTP(w, r)
+		case TodoServiceAddRandomProcedure:
+			todoServiceAddRandomHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -173,4 +201,8 @@ func (UnimplementedTodoServiceHandler) Remove(context.Context, *v1.RemoveRequest
 
 func (UnimplementedTodoServiceHandler) Add(context.Context, *v1.AddRequest) (*v1.AddResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.v1.TodoService.Add is not implemented"))
+}
+
+func (UnimplementedTodoServiceHandler) AddRandom(context.Context, *v1.AddRandomRequest) (*v1.AddRandomResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.v1.TodoService.AddRandom is not implemented"))
 }

@@ -18,6 +18,16 @@ func (q *Queries) AddTodo(ctx context.Context, title string) error {
 	return err
 }
 
+const addTodosBatch = `-- name: AddTodosBatch :exec
+INSERT INTO todo (title)
+SELECT unnest($1::text[])
+`
+
+func (q *Queries) AddTodosBatch(ctx context.Context, dollar_1 []string) error {
+	_, err := q.db.Exec(ctx, addTodosBatch, dollar_1)
+	return err
+}
+
 const listTodos = `-- name: ListTodos :many
 SELECT id, title FROM todo
 `

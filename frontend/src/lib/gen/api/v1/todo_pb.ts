@@ -11,7 +11,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/todo.proto.
  */
 export const file_api_v1_todo: GenFile = /*@__PURE__*/
-  fileDesc("ChFhcGkvdjEvdG9kby5wcm90bxIGYXBpLnYxIg0KC0xpc3RSZXF1ZXN0Ii8KDExpc3RSZXNwb25zZRIfCgVpdGVtcxgBIAMoCzIQLmFwaS52MS5MaXN0SXRlbSIbCg1SZW1vdmVSZXF1ZXN0EgoKAmlkGAEgASgFIiUKCExpc3RJdGVtEgoKAmlkGAEgASgFEg0KBXRpdGxlGAIgASgJIjEKDlJlbW92ZVJlc3BvbnNlEh8KBWl0ZW1zGAEgAygLMhAuYXBpLnYxLkxpc3RJdGVtIi0KCkFkZFJlcXVlc3QSHwoFaXRlbXMYAiADKAsyEC5hcGkudjEuTGlzdEl0ZW0iLgoLQWRkUmVzcG9uc2USHwoFaXRlbXMYASADKAsyEC5hcGkudjEuTGlzdEl0ZW0yrwEKC1RvZG9TZXJ2aWNlEjMKBExpc3QSEy5hcGkudjEuTGlzdFJlcXVlc3QaFC5hcGkudjEuTGlzdFJlc3BvbnNlIgASOQoGUmVtb3ZlEhUuYXBpLnYxLlJlbW92ZVJlcXVlc3QaFi5hcGkudjEuUmVtb3ZlUmVzcG9uc2UiABIwCgNBZGQSEi5hcGkudjEuQWRkUmVxdWVzdBoTLmFwaS52MS5BZGRSZXNwb25zZSIAQnQKCmNvbS5hcGkudjFCCVRvZG9Qcm90b1ABWiJjYXNodHJhY2svYmFja2VuZC9nZW4vYXBpL3YxO2FwaXYxogIDQVhYqgIGQXBpLlYxygIGQXBpXFYx4gISQXBpXFYxXEdQQk1ldGFkYXRh6gIHQXBpOjpWMWIGcHJvdG8z", [file_buf_validate_validate]);
+  fileDesc("ChFhcGkvdjEvdG9kby5wcm90bxIGYXBpLnYxIg0KC0xpc3RSZXF1ZXN0Ii8KDExpc3RSZXNwb25zZRIfCgVpdGVtcxgBIAMoCzIQLmFwaS52MS5MaXN0SXRlbSIbCg1SZW1vdmVSZXF1ZXN0EgoKAmlkGAEgASgFIiUKCExpc3RJdGVtEgoKAmlkGAEgASgFEg0KBXRpdGxlGAIgASgJIjEKDlJlbW92ZVJlc3BvbnNlEh8KBWl0ZW1zGAEgAygLMhAuYXBpLnYxLkxpc3RJdGVtIi0KCkFkZFJlcXVlc3QSHwoFaXRlbXMYAiADKAsyEC5hcGkudjEuTGlzdEl0ZW0iLgoLQWRkUmVzcG9uc2USHwoFaXRlbXMYASADKAsyEC5hcGkudjEuTGlzdEl0ZW0iEgoQQWRkUmFuZG9tUmVxdWVzdCI0ChFBZGRSYW5kb21SZXNwb25zZRIfCgVpdGVtcxgBIAMoCzIQLmFwaS52MS5MaXN0SXRlbTLzAQoLVG9kb1NlcnZpY2USMwoETGlzdBITLmFwaS52MS5MaXN0UmVxdWVzdBoULmFwaS52MS5MaXN0UmVzcG9uc2UiABI5CgZSZW1vdmUSFS5hcGkudjEuUmVtb3ZlUmVxdWVzdBoWLmFwaS52MS5SZW1vdmVSZXNwb25zZSIAEjAKA0FkZBISLmFwaS52MS5BZGRSZXF1ZXN0GhMuYXBpLnYxLkFkZFJlc3BvbnNlIgASQgoJQWRkUmFuZG9tEhguYXBpLnYxLkFkZFJhbmRvbVJlcXVlc3QaGS5hcGkudjEuQWRkUmFuZG9tUmVzcG9uc2UiAEJ0Cgpjb20uYXBpLnYxQglUb2RvUHJvdG9QAVoiY2FzaHRyYWNrL2JhY2tlbmQvZ2VuL2FwaS92MTthcGl2MaICA0FYWKoCBkFwaS5WMcoCBkFwaVxWMeICEkFwaVxWMVxHUEJNZXRhZGF0YeoCB0FwaTo6VjFiBnByb3RvMw", [file_buf_validate_validate]);
 
 /**
  * @generated from message api.v1.ListRequest
@@ -134,6 +134,36 @@ export const AddResponseSchema: GenMessage<AddResponse> = /*@__PURE__*/
   messageDesc(file_api_v1_todo, 6);
 
 /**
+ * @generated from message api.v1.AddRandomRequest
+ */
+export type AddRandomRequest = Message<"api.v1.AddRandomRequest"> & {
+};
+
+/**
+ * Describes the message api.v1.AddRandomRequest.
+ * Use `create(AddRandomRequestSchema)` to create a new message.
+ */
+export const AddRandomRequestSchema: GenMessage<AddRandomRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_todo, 7);
+
+/**
+ * @generated from message api.v1.AddRandomResponse
+ */
+export type AddRandomResponse = Message<"api.v1.AddRandomResponse"> & {
+  /**
+   * @generated from field: repeated api.v1.ListItem items = 1;
+   */
+  items: ListItem[];
+};
+
+/**
+ * Describes the message api.v1.AddRandomResponse.
+ * Use `create(AddRandomResponseSchema)` to create a new message.
+ */
+export const AddRandomResponseSchema: GenMessage<AddRandomResponse> = /*@__PURE__*/
+  messageDesc(file_api_v1_todo, 8);
+
+/**
  * @generated from service api.v1.TodoService
  */
 export const TodoService: GenService<{
@@ -160,6 +190,14 @@ export const TodoService: GenService<{
     methodKind: "unary";
     input: typeof AddRequestSchema;
     output: typeof AddResponseSchema;
+  },
+  /**
+   * @generated from rpc api.v1.TodoService.AddRandom
+   */
+  addRandom: {
+    methodKind: "unary";
+    input: typeof AddRandomRequestSchema;
+    output: typeof AddRandomResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_api_v1_todo, 0);

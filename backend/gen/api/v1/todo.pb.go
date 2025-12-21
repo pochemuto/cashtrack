@@ -330,6 +330,86 @@ func (x *AddResponse) GetItems() []*ListItem {
 	return nil
 }
 
+type AddRandomRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddRandomRequest) Reset() {
+	*x = AddRandomRequest{}
+	mi := &file_api_v1_todo_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddRandomRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddRandomRequest) ProtoMessage() {}
+
+func (x *AddRandomRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_todo_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddRandomRequest.ProtoReflect.Descriptor instead.
+func (*AddRandomRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{7}
+}
+
+type AddRandomResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*ListItem            `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddRandomResponse) Reset() {
+	*x = AddRandomResponse{}
+	mi := &file_api_v1_todo_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddRandomResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddRandomResponse) ProtoMessage() {}
+
+func (x *AddRandomResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_todo_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddRandomResponse.ProtoReflect.Descriptor instead.
+func (*AddRandomResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_todo_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AddRandomResponse) GetItems() []*ListItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_api_v1_todo_proto protoreflect.FileDescriptor
 
 const file_api_v1_todo_proto_rawDesc = "" +
@@ -349,11 +429,15 @@ const file_api_v1_todo_proto_rawDesc = "" +
 	"AddRequest\x12&\n" +
 	"\x05items\x18\x02 \x03(\v2\x10.api.v1.ListItemR\x05items\"5\n" +
 	"\vAddResponse\x12&\n" +
-	"\x05items\x18\x01 \x03(\v2\x10.api.v1.ListItemR\x05items2\xaf\x01\n" +
+	"\x05items\x18\x01 \x03(\v2\x10.api.v1.ListItemR\x05items\"\x12\n" +
+	"\x10AddRandomRequest\";\n" +
+	"\x11AddRandomResponse\x12&\n" +
+	"\x05items\x18\x01 \x03(\v2\x10.api.v1.ListItemR\x05items2\xf3\x01\n" +
 	"\vTodoService\x123\n" +
 	"\x04List\x12\x13.api.v1.ListRequest\x1a\x14.api.v1.ListResponse\"\x00\x129\n" +
 	"\x06Remove\x12\x15.api.v1.RemoveRequest\x1a\x16.api.v1.RemoveResponse\"\x00\x120\n" +
-	"\x03Add\x12\x12.api.v1.AddRequest\x1a\x13.api.v1.AddResponse\"\x00Bt\n" +
+	"\x03Add\x12\x12.api.v1.AddRequest\x1a\x13.api.v1.AddResponse\"\x00\x12B\n" +
+	"\tAddRandom\x12\x18.api.v1.AddRandomRequest\x1a\x19.api.v1.AddRandomResponse\"\x00Bt\n" +
 	"\n" +
 	"com.api.v1B\tTodoProtoP\x01Z\"cashtrack/backend/gen/api/v1;apiv1\xa2\x02\x03AXX\xaa\x02\x06Api.V1\xca\x02\x06Api\\V1\xe2\x02\x12Api\\V1\\GPBMetadata\xea\x02\aApi::V1b\x06proto3"
 
@@ -369,32 +453,37 @@ func file_api_v1_todo_proto_rawDescGZIP() []byte {
 	return file_api_v1_todo_proto_rawDescData
 }
 
-var file_api_v1_todo_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_api_v1_todo_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_api_v1_todo_proto_goTypes = []any{
-	(*ListRequest)(nil),    // 0: api.v1.ListRequest
-	(*ListResponse)(nil),   // 1: api.v1.ListResponse
-	(*RemoveRequest)(nil),  // 2: api.v1.RemoveRequest
-	(*ListItem)(nil),       // 3: api.v1.ListItem
-	(*RemoveResponse)(nil), // 4: api.v1.RemoveResponse
-	(*AddRequest)(nil),     // 5: api.v1.AddRequest
-	(*AddResponse)(nil),    // 6: api.v1.AddResponse
+	(*ListRequest)(nil),       // 0: api.v1.ListRequest
+	(*ListResponse)(nil),      // 1: api.v1.ListResponse
+	(*RemoveRequest)(nil),     // 2: api.v1.RemoveRequest
+	(*ListItem)(nil),          // 3: api.v1.ListItem
+	(*RemoveResponse)(nil),    // 4: api.v1.RemoveResponse
+	(*AddRequest)(nil),        // 5: api.v1.AddRequest
+	(*AddResponse)(nil),       // 6: api.v1.AddResponse
+	(*AddRandomRequest)(nil),  // 7: api.v1.AddRandomRequest
+	(*AddRandomResponse)(nil), // 8: api.v1.AddRandomResponse
 }
 var file_api_v1_todo_proto_depIdxs = []int32{
 	3, // 0: api.v1.ListResponse.items:type_name -> api.v1.ListItem
 	3, // 1: api.v1.RemoveResponse.items:type_name -> api.v1.ListItem
 	3, // 2: api.v1.AddRequest.items:type_name -> api.v1.ListItem
 	3, // 3: api.v1.AddResponse.items:type_name -> api.v1.ListItem
-	0, // 4: api.v1.TodoService.List:input_type -> api.v1.ListRequest
-	2, // 5: api.v1.TodoService.Remove:input_type -> api.v1.RemoveRequest
-	5, // 6: api.v1.TodoService.Add:input_type -> api.v1.AddRequest
-	1, // 7: api.v1.TodoService.List:output_type -> api.v1.ListResponse
-	4, // 8: api.v1.TodoService.Remove:output_type -> api.v1.RemoveResponse
-	6, // 9: api.v1.TodoService.Add:output_type -> api.v1.AddResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 4: api.v1.AddRandomResponse.items:type_name -> api.v1.ListItem
+	0, // 5: api.v1.TodoService.List:input_type -> api.v1.ListRequest
+	2, // 6: api.v1.TodoService.Remove:input_type -> api.v1.RemoveRequest
+	5, // 7: api.v1.TodoService.Add:input_type -> api.v1.AddRequest
+	7, // 8: api.v1.TodoService.AddRandom:input_type -> api.v1.AddRandomRequest
+	1, // 9: api.v1.TodoService.List:output_type -> api.v1.ListResponse
+	4, // 10: api.v1.TodoService.Remove:output_type -> api.v1.RemoveResponse
+	6, // 11: api.v1.TodoService.Add:output_type -> api.v1.AddResponse
+	8, // 12: api.v1.TodoService.AddRandom:output_type -> api.v1.AddRandomResponse
+	9, // [9:13] is the sub-list for method output_type
+	5, // [5:9] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_todo_proto_init() }
@@ -408,7 +497,7 @@ func file_api_v1_todo_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_todo_proto_rawDesc), len(file_api_v1_todo_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

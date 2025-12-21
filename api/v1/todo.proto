@@ -31,8 +31,17 @@ message AddResponse {
   repeated ListItem items = 1;
 }
 
+message AddRandomRequest {
+  
+}
+
+message AddRandomResponse {
+  repeated ListItem items = 1;
+}
+
 service TodoService {
   rpc List(ListRequest) returns (ListResponse) {}
   rpc Remove(RemoveRequest) returns (RemoveResponse) {}
   rpc Add(AddRequest) returns (AddResponse) {}
+  rpc AddRandom(AddRandomRequest) returns (AddRandomResponse) {}
 }

@@ -27,6 +27,12 @@
         newItem = "";
         input.focus();
     }
+
+    async function random() {
+        let response = await Todo.addRandom({});
+        result = Promise.resolve(response.items);
+        input.focus();
+    }
 </script>
 
 <svelte:head>
@@ -73,6 +79,8 @@
                     +
                 </button>
                 </div>
+
+                <button class="btn" onclick={() => random()}>Add items</button>
             </div>
 
             </form>
