@@ -38,6 +38,9 @@
 		"@connectrpc/connect": "^2.1.1",
 		"@connectrpc/connect-node": "^2.1.1",
 		"@connectrpc/connect-web": "^2.1.1",
-		"simpledotcss": "^2.3.7"
+		"@tailwindcss/vite": "^4.1.18",
+		"daisyui": "^5.5.14",
+		"simpledotcss": "^2.3.7",
+		"tailwindcss": "^4.1.18"
 	}
 }

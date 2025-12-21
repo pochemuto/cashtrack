@@ -34,6 +34,11 @@
 </svelte:head>
 
 
+<section class="mx-auto w-full max-w-2xl">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body gap-4">
+
+
 {#if result}
     {#await result}
         <p>Loading...</p>
@@ -41,19 +46,37 @@
         <ul>
             {#each value as item}
                 <li>
-                    <button class="remove-button" onclick={() => remove(item.id)}>x</button> {item.title}</li>
+                    <button class="btn btn-sm remove-button" onclick={() => remove(item.id)}>x</button> {item.title}</li>
             {/each}
         </ul>
-        <form onsubmit="{add}">
-        <input type="text" bind:value={newItem} bind:this={input}>
-        <button type="submit">+</button>
-        </form>
     {:catch error}
         <!-- promise was rejected -->
         <p>Something went wrong: {error.message}</p>
     {/await}
 {/if}
 
+            <form onsubmit="{add}">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <label class="form-control w-full">
+                    <input
+                            type="text"
+                            bind:value={newItem}
+                            bind:this={input}
+                            placeholder="new item"
+                            class="input input-bordered w-full"
+                    />
+                </label>
+
+                <button class="btn">
+                    +
+                </button>
+            </div>
+
+            </form>
+
+            </div>
+    </div>
+</section>  
 <style>
     .remove-button {
         padding: 0 5px
