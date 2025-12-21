@@ -45,8 +45,9 @@
     {:then value}
         <ul>
             {#each value as item}
-                <li>
-                    <button class="btn btn-sm remove-button" onclick={() => remove(item.id)}>x</button> {item.title}</li>
+                <li class="item">
+                    <button class="btn btn-sm remove-button" onclick={() => remove(item.id)}>x</button> {item.title}
+                </li>
             {/each}
         </ul>
     {:catch error}
@@ -57,19 +58,19 @@
 
             <form onsubmit="{add}">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <label class="form-control w-full">
+                <div class="join">
                     <input
                             type="text"
                             bind:value={newItem}
                             bind:this={input}
-                            placeholder="new item"
-                            class="input input-bordered w-full"
+                            placeholder="new item "
+                            class="input input-bordered join-item"
                     />
-                </label>
 
-                <button class="btn">
+                <button class="btn join-item">
                     +
                 </button>
+                </div>
             </div>
 
             </form>
@@ -79,6 +80,10 @@
 </section>  
 <style>
     .remove-button {
-        padding: 0 5px
+        padding: 0 5px;
+        height: 22px;
+    }
+    .item {
+        vertical-align: middle;
     }
 </style>
