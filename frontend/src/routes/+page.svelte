@@ -3,35 +3,77 @@
     import type {ListItem} from "$lib/gen/api/v1/todo_pb"
     import {onMount} from "svelte";
 
-    let result = $state<Promise<ListItem[]>>();
+    type Item = {
+        id: number,
+        title: string
+        removing: boolean
+    }
+
+    function fromServer(item: ListItem): Item {
+        return {
+            id: item.id,
+            title: item.title,
+            removing: false
+        }
+    }
+
+    function applyServer(serverItems: ListItem[]) {
+        const prevRemoving = new Map<number, boolean>((items ?? []).map(i => [i.id, i.removing]));
+        items = serverItems.map((s) => ({
+            id: s.id,
+            title: s.title,
+            removing: prevRemoving.get(s.id) ?? false,
+        }));
+    }
+
+    let items = $state<Item[] | null>(null);
+    let loading = $state(false);
     let newItem = $state("");
+    let opLoading = $state(false);
     let input: HTMLInputElement;
 
     onMount(load);
 
     async function load() {
-        result = Todo.list({}).then((response) => response.items);
+        loading = true;
+        try {
+            const response = await Todo.list({});
+            applyServer(response.items);
+        } finally {
+            loading = false;
+        }
     }
 
-    async function remove(id: number) {
-        let response = Todo.remove({id});
-        result = Promise.resolve((await response).items);
+    async function remove(item: Item) {
+        item.removing = true;
+        const response = await Todo.remove({id: item.id});
+        applyServer(response.items);
     }
 
     async function add() {
         if (!newItem) {
             return;
         }
-        let response = await Todo.add({items: [{title: newItem}]});
-        result = Promise.resolve(response.items);
-        newItem = "";
-        input.focus();
+        opLoading = true;
+        try {
+            const response = await Todo.add({items: [{title: newItem}]});
+            applyServer(response.items);
+            newItem = "";
+            input.focus();
+        } finally {
+            opLoading = false;
+        }
     }
 
     async function random() {
-        let response = await Todo.addRandom({});
-        result = Promise.resolve(response.items);
-        input.focus();
+        opLoading = true;
+        try {
+            const response = await Todo.addRandom({});
+            applyServer(response.items);
+            input.focus();
+        } finally {
+            opLoading = false;
+        }
     }
 </script>
 
@@ -44,52 +86,69 @@
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body gap-4">
 
+            {#if loading}
+                <p>Loading...</p>
+            {/if}
 
-{#if result}
-    {#await result}
-        <p>Loading...</p>
-    {:then value}
-        <ul>
-            {#each value as item}
-                <li class="item">
-                    <button class="btn btn-xs btn-secondary btn-ghost btn-circle"
-                            onclick={() => remove(item.id)}>x</button>
-                    {item.title}
-                </li>
-            {/each}
-        </ul>
-    {:catch error}
-        <!-- promise was rejected -->
-        <p>Something went wrong: {error.message}</p>
-    {/await}
-{/if}
+            {#if items}
+                <ul>
+                    {#each items as item}
+                        <li class="item" class:removing={item.removing}>
+                            <button class="btn btn-xs btn-secondary btn-ghost btn-circle"
+                                    class:btn-disabled={item.removing}
+                                    onclick={() => remove(item)}>x
+                            </button>
+                            {item.title}
+                        </li>
+                    {/each}
+                </ul>
+            {/if}
 
             <form onsubmit="{add}">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-                <div class="join">
-                    <input
-                            type="text"
-                            bind:value={newItem}
-                            bind:this={input}
-                            placeholder="new item "
-                            class="input input-bordered join-item"
-                    />
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div class="join">
+                        <input
+                                type="text"
+                                bind:value={newItem}
+                                bind:this={input}
+                                placeholder="new item "
+                                class="input input-bordered join-item"
+                                disabled={opLoading}
+                        />
 
-                <button class="btn join-item">
-                    +
-                </button>
+                        <button class="btn join-item" disabled={opLoading}>
+                            {#if opLoading}
+                                <span class="loading loading-spinner"></span>
+                            {:else}
+                                +
+                            {/if}
+                        </button>
+                    </div>
+
+                    <button
+                            type="button"
+                            class="btn"
+                            disabled={opLoading}
+                            onclick={() => random()}
+                    >
+                        {#if opLoading}
+                            <span class="loading loading-spinner"></span>
+                        {/if}
+                        Add items
+                    </button>
                 </div>
-
-                <button class="btn" onclick={() => random()}>Add items</button>
-            </div>
 
             </form>
 
-            </div>
+        </div>
     </div>
-</section>  
+</section>
 <style>
     .item {
         vertical-align: middle;
+    }
+
+    .removing {
+        opacity: 0.5;
     }
 </style>

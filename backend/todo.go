@@ -169,7 +169,9 @@ func (s *TodoService) AddRandom(ctx context.Context, req *apiv1.AddRandomRequest
 	for i, idx := range indices {
 		randomTodos[i] = todos[idx]
 	}
-	s.db.Queries.AddTodosBatch(ctx, randomTodos)
+	if err := s.db.Queries.AddTodosBatch(ctx, randomTodos); err != nil {
+		return nil, err
+	}
 	res := &apiv1.AddRandomResponse{}
 	items, err := s.listTodos(ctx)
 	if err != nil {
