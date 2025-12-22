@@ -1,5 +1,5 @@
 -- name: ListTodos :many
-SELECT * FROM todo;
+SELECT * FROM todo ORDER BY id;
 
 -- name: AddTodo :exec
 INSERT INTO todo (title) VALUES ($1);

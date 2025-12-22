@@ -29,7 +29,7 @@ func (q *Queries) AddTodosBatch(ctx context.Context, dollar_1 []string) error {
 }
 
 const listTodos = `-- name: ListTodos :many
-SELECT id, title FROM todo
+SELECT id, title FROM todo ORDER BY id
 `
 
 func (q *Queries) ListTodos(ctx context.Context) ([]Todo, error) {
