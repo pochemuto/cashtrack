@@ -4,7 +4,23 @@
 
 package db
 
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+type Session struct {
+	ID      pgtype.UUID
+	UserID  pgtype.Int4
+	Expires pgtype.Timestamptz
+}
+
 type Todo struct {
 	ID    int32
 	Title string
+}
+
+type User struct {
+	ID       int32
+	Username string
+	Password string
 }
