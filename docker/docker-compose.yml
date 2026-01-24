@@ -3,6 +3,8 @@ services:
     image: pochemuto/cashtrack:latest
     ports:
       - "8080:8080"
+    env_file:
+      - ../.env.production.local
     environment:
       - CASHTRACK_ENV=production
     depends_on:

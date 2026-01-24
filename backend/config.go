@@ -42,6 +42,9 @@ func ProvideConfig() (Config, error) {
 	if err := loadOptional(".env." + appEnv); err != nil {
 		return Config{}, err
 	}
+	if err := loadOptional(".env." + appEnv + ".local"); err != nil {
+		return Config{}, err
+	}
 	if "test" != appEnv {
 		if err := loadOptional(".env.local"); err != nil {
 			return Config{}, err
