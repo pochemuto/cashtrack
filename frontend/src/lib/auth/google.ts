@@ -20,6 +20,9 @@ export function initializeGoogleSignIn(
         client_id: clientId,
         callback: onCredential,
         auto_select: false,
+        // TODO: Re-enable FedCM once Google origin/client ID config is fixed.
+        // Current error: "The given origin is not allowed for the given client ID."
+        use_fedcm_for_prompt: false,
     });
 
     const shouldRenderButton = options.renderButton ?? true;
