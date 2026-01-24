@@ -1,0 +1,57 @@
+<script lang="ts">
+    import {onMount} from "svelte";
+    import {cancelGoogleSignIn, initializeGoogleSignIn} from "$lib/auth/google";
+
+    const GOOGLE_CLIENT_ID = "1010772966942-khflv7f816n0bqebf7mll7hb0eu589r0.apps.googleusercontent.com";
+    let googleButtonEl: HTMLDivElement | null = null;
+
+    declare global {
+        interface Window {
+            google?: typeof google;
+        }
+    }
+
+    function handleGoogleCredential(response: google.accounts.id.CredentialResponse) {
+        console.info("Google credential received", response);
+        const baseUrl = import.meta.env.VITE_API_URL;
+        const authUrl = baseUrl ? new URL("auth", baseUrl).toString() : "/auth";
+        window.location.href = authUrl;
+    }
+
+    onMount(() => {
+        let cancelled = false;
+
+        const tryInit = () => {
+            if (cancelled) {
+                return;
+            }
+            if (initializeGoogleSignIn(googleButtonEl, GOOGLE_CLIENT_ID, handleGoogleCredential)) {
+                return;
+            }
+            requestAnimationFrame(tryInit);
+        };
+
+        tryInit();
+
+        return () => {
+            cancelled = true;
+            cancelGoogleSignIn();
+        };
+    });
+</script>
+
+<svelte:head>
+    <title>Login</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</svelte:head>
+
+<section class="mx-auto w-full max-w-2xl">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body gap-6 text-center">
+            <h1 class="text-2xl font-semibold">Sign in</h1>
+            <div class="flex justify-center">
+                <div bind:this={googleButtonEl} class="min-h-[40px]"></div>
+            </div>
+        </div>
+    </div>
+</section>
