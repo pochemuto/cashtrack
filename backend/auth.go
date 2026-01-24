@@ -14,6 +14,7 @@ import (
 
 type AuthHandler Handler
 type AuthMeHandler Handler
+type AuthLogoutHandler Handler
 
 const sessionCookieName = "session_id"
 const sessionDuration = 7 * 24 * time.Hour
@@ -114,6 +115,36 @@ func NewAuthMeHandler(db *Db) *AuthMeHandler {
 			if err := json.NewEncoder(w).Encode(user); err != nil {
 				http.Error(w, "failed to encode response", http.StatusInternalServerError)
 			}
+		}),
+	}
+}
+
+func NewAuthLogoutHandler(db *Db) *AuthLogoutHandler {
+	return &AuthLogoutHandler{
+		Path: "/auth/logout",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+
+			cookie, err := r.Cookie(sessionCookieName)
+			if err == nil && cookie.Value != "" {
+				_, _ = db.conn.Exec(r.Context(), `DELETE FROM sessions WHERE id = $1`, cookie.Value)
+			}
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     sessionCookieName,
+				Value:    "",
+				Path:     "/",
+				Expires:  time.Unix(0, 0),
+				MaxAge:   -1,
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+				Secure:   r.TLS != nil,
+			})
+
+			w.WriteHeader(http.StatusNoContent)
 		}),
 	}
 }

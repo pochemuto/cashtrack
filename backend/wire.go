@@ -9,14 +9,14 @@ import (
 )
 import "github.com/google/wire"
 
-func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler) []*Handler {
-	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe)}
+func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler) []*Handler {
+	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout)}
 }
 
 func InitializeHttpServer(ctx context.Context) (*http.Server, error) {
 	wire.Build(
 		handlers,
-		NewGreetHandler, NewTodoHandler, NewAuthHandler, NewAuthMeHandler,
+		NewGreetHandler, NewTodoHandler, NewAuthHandler, NewAuthMeHandler, NewAuthLogoutHandler,
 		ProvideConfig,
 		wire.FieldsOf(new(Config), "ServerConfig", "db"),
 		NewHttpServer, NewPgxPool, NewDB,

@@ -1,7 +1,7 @@
 <script lang="ts">
     import favicon from '$lib/assets/favicon.svg';
     import "../app.css";
-    import {loadUser, user} from "../user";
+    import {loadUser, logoutUser, user} from "../user";
     import {onMount} from "svelte";
     import {cancelGoogleSignIn, initializeGoogleSignIn} from "$lib/auth/google";
     import {resolveApiUrl} from "$lib/url";
@@ -72,8 +72,15 @@
         <a class="btn btn-ghost text-xl" href="/">Cashtrack</a>
     </div>
     {#if $user}
-        <div class="flex-none">
-            <span class="px-4 text-sm opacity-70">{$user.username}</span>
+        <div class="dropdown dropdown-end">
+            <div tabindex="0" role="button" class="btn btn-ghost">
+                {$user.username}
+            </div>
+            <ul class="menu dropdown-content mt-2 w-40 rounded-box bg-base-100 p-2 shadow">
+                <li>
+                    <button type="button" onclick={() => logoutUser()}>Logout</button>
+                </li>
+            </ul>
         </div>
     {:else}
         <div class="flex-none">

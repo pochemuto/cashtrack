@@ -26,3 +26,14 @@ export async function loadUser() {
     }
     return undefined;
 }
+
+export async function logoutUser() {
+    try {
+        await fetch(resolveApiUrl("auth/logout"), {
+            method: "POST",
+            credentials: "include",
+        });
+    } finally {
+        user.set(undefined);
+    }
+}
