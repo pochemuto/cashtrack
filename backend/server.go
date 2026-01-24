@@ -93,9 +93,18 @@ func spaFileServer(root string) http.Handler {
 			defer f.Close()
 			info, statErr := f.Stat()
 			if statErr == nil && !info.IsDir() {
-				fileServer.ServeHTTP(w, r)
+				r2 := *r
+				r2.URL.Path = r.URL.Path
+				fileServer.ServeHTTP(w, &r2)
 				return
 			}
+		}
+
+		htmlPath := r.URL.Path + ".html"
+		if f, err := fileSystem.Open(htmlPath); err == nil {
+			f.Close()
+			http.ServeFile(w, r, filepath.Join(root, filepath.FromSlash(htmlPath)))
+			return
 		}
 
 		http.ServeFile(w, r, indexPath)
