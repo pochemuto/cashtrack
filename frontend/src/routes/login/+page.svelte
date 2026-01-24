@@ -1,6 +1,7 @@
 <script lang="ts">
     import {onMount} from "svelte";
     import {cancelGoogleSignIn, initializeGoogleSignIn} from "$lib/auth/google";
+    import {resolveApiUrl} from "$lib/url";
 
     const GOOGLE_CLIENT_ID = "1010772966942-khflv7f816n0bqebf7mll7hb0eu589r0.apps.googleusercontent.com";
     let googleButtonEl: HTMLDivElement | null = null;
@@ -13,9 +14,7 @@
 
     function handleGoogleCredential(response: google.accounts.id.CredentialResponse) {
         console.info("Google credential received", response);
-        const baseUrl = import.meta.env.VITE_API_URL;
-        const authUrl = baseUrl ? new URL("auth", baseUrl).toString() : "/auth";
-        window.location.href = authUrl;
+        window.location.href = resolveApiUrl("auth");
     }
 
     onMount(() => {
