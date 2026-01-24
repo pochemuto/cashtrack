@@ -14,7 +14,11 @@
 
     function handleGoogleCredential(response: google.accounts.id.CredentialResponse) {
         console.info("Google credential received", response);
-        window.location.href = resolveApiUrl("auth");
+        const redirect = window.location.origin;
+        const authUrl = resolveApiUrl(
+            `auth?credential=${encodeURIComponent(response.credential)}&redirect=${encodeURIComponent(redirect)}`
+        );
+        window.location.href = authUrl;
     }
 
     onMount(() => {

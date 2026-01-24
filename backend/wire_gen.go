@@ -30,14 +30,15 @@ func InitializeHttpServer(ctx context.Context) (*http.Server, error) {
 	}
 	todoHandler := NewTodoHandler(db)
 	greetHandler := NewGreetHandler()
-	authHandler := NewAuthHandler()
-	v := handlers(todoHandler, greetHandler, authHandler)
+	authHandler := NewAuthHandler(db)
+	authMeHandler := NewAuthMeHandler(db)
+	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler)
 	server := NewHttpServer(serverConfig, v)
 	return server, nil
 }
 
 // wire.go:
 
-func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler) []*Handler {
-	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth)}
+func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler) []*Handler {
+	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe)}
 }

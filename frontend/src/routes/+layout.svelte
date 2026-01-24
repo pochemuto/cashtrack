@@ -1,7 +1,7 @@
 <script lang="ts">
     import favicon from '$lib/assets/favicon.svg';
     import "../app.css";
-    import {user} from "../user";
+    import {loadUser, user} from "../user";
     import {onMount} from "svelte";
     import {cancelGoogleSignIn, initializeGoogleSignIn} from "$lib/auth/google";
     import {resolveApiUrl} from "$lib/url";
@@ -18,12 +18,18 @@
 
     function handleGoogleCredential(response: google.accounts.id.CredentialResponse) {
         console.info("Google credential received", response);
-        window.location.href = resolveApiUrl("auth");
+        const redirect = window.location.origin;
+        const authUrl = resolveApiUrl(
+            `auth?credential=${encodeURIComponent(response.credential)}&redirect=${encodeURIComponent(redirect)}`
+        );
+        window.location.href = authUrl;
     }
 
     onMount(() => {
         let destroyed = false;
         let promptRequested = false;
+
+        void loadUser();
 
         const tryInit = () => {
             if (destroyed || !promptRequested) {
@@ -65,7 +71,11 @@
     <div class="flex-1">
         <a class="btn btn-ghost text-xl" href="/">Cashtrack</a>
     </div>
-    {#if $user === undefined}
+    {#if $user}
+        <div class="flex-none">
+            <span class="px-4 text-sm opacity-70">{$user.username}</span>
+        </div>
+    {:else}
         <div class="flex-none">
             <a class="btn btn-outline" href="/login">Login</a>
         </div>
