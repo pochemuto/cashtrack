@@ -12,7 +12,12 @@ import (
 
 type Config struct {
 	ServerConfig `envPrefix:"SERVER_" envDefault:""`
-	Db           DbConfig `envPrefix:"DB_" envDefault:""`
+	Db           DbConfig     `envPrefix:"DB_" envDefault:""`
+	Google       GoogleConfig `envPrefix:"GOOGLE_" envDefault:""`
+}
+
+type GoogleConfig struct {
+	ClientSecret string `envDefault:""`
 }
 
 func loadOptional(file string) error {
