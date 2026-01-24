@@ -16,6 +16,9 @@
 
     function handleGoogleCredential(response: google.accounts.id.CredentialResponse) {
         console.info("Google credential received", response);
+        const baseUrl = import.meta.env.VITE_API_URL;
+        const authUrl = baseUrl ? new URL("auth", baseUrl).toString() : "/auth";
+        window.location.href = authUrl;
     }
 
     function initializeGoogleSignIn() {
