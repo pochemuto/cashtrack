@@ -1,9 +1,15 @@
 type GoogleCredentialHandler = (response: google.accounts.id.CredentialResponse) => void;
 
+type GoogleSignInOptions = {
+    prompt?: boolean;
+    renderButton?: boolean;
+};
+
 export function initializeGoogleSignIn(
     buttonEl: HTMLDivElement | null,
     clientId: string,
-    onCredential: GoogleCredentialHandler
+    onCredential: GoogleCredentialHandler,
+    options: GoogleSignInOptions = {}
 ): boolean {
     const googleApi = window.google;
     if (!googleApi?.accounts?.id) {
@@ -16,7 +22,8 @@ export function initializeGoogleSignIn(
         auto_select: false,
     });
 
-    if (buttonEl) {
+    const shouldRenderButton = options.renderButton ?? true;
+    if (buttonEl && shouldRenderButton) {
         googleApi.accounts.id.renderButton(buttonEl, {
             type: "standard",
             theme: "outline",
@@ -26,7 +33,9 @@ export function initializeGoogleSignIn(
         });
     }
 
-    googleApi.accounts.id.prompt();
+    if (options.prompt ?? true) {
+        googleApi.accounts.id.prompt();
+    }
     return true;
 }
 

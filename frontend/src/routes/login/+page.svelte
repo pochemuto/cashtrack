@@ -24,7 +24,7 @@
             if (cancelled) {
                 return;
             }
-            if (initializeGoogleSignIn(googleButtonEl, GOOGLE_CLIENT_ID, handleGoogleCredential)) {
+            if (initializeGoogleSignIn(googleButtonEl, GOOGLE_CLIENT_ID, handleGoogleCredential, {prompt: false})) {
                 return;
             }
             requestAnimationFrame(tryInit);
@@ -41,7 +41,6 @@
 
 <svelte:head>
     <title>Login</title>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-2xl">

@@ -2,12 +2,62 @@
     import favicon from '$lib/assets/favicon.svg';
     import "../app.css";
     import {user} from "../user";
+    import {onMount} from "svelte";
+    import {cancelGoogleSignIn, initializeGoogleSignIn} from "$lib/auth/google";
+    import {resolveApiUrl} from "$lib/url";
 
     let {children} = $props();
+
+    const GOOGLE_CLIENT_ID = "1010772966942-khflv7f816n0bqebf7mll7hb0eu589r0.apps.googleusercontent.com";
+
+    declare global {
+        interface Window {
+            google?: typeof google;
+        }
+    }
+
+    function handleGoogleCredential(response: google.accounts.id.CredentialResponse) {
+        console.info("Google credential received", response);
+        window.location.href = resolveApiUrl("auth");
+    }
+
+    onMount(() => {
+        let destroyed = false;
+        let promptRequested = false;
+
+        const tryInit = () => {
+            if (destroyed || !promptRequested) {
+                return;
+            }
+            if (initializeGoogleSignIn(null, GOOGLE_CLIENT_ID, handleGoogleCredential, {renderButton: false})) {
+                return;
+            }
+            requestAnimationFrame(tryInit);
+        };
+
+        const unsubscribe = user.subscribe((value) => {
+            if (value === undefined) {
+                if (!promptRequested) {
+                    promptRequested = true;
+                    tryInit();
+                }
+                return;
+            }
+            promptRequested = false;
+            cancelGoogleSignIn();
+        });
+
+        return () => {
+            destroyed = true;
+            cancelGoogleSignIn();
+            unsubscribe();
+        };
+    });
 </script>
 
 <svelte:head>
     <link rel="icon" href={favicon}/>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </svelte:head>
 
 
