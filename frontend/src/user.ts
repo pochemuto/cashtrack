@@ -6,7 +6,7 @@ export type User = {
     username: string;
 };
 
-export const user = writable<User | undefined>(undefined);
+export const user = writable<User | undefined | null>(null);
 
 export async function loadUser() {
     try {

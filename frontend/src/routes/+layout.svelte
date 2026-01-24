@@ -82,7 +82,7 @@
                 </li>
             </ul>
         </div>
-    {:else}
+    {:else if $user === undefined}
         <div class="flex-none">
             <a class="btn btn-outline" href="/login">Login</a>
         </div>
