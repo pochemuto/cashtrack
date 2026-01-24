@@ -7,7 +7,8 @@ CREATE TABLE public.sessions (
 );
 CREATE TABLE public.todo (
     id integer NOT NULL,
-    title character varying(255) NOT NULL
+    title character varying(255) NOT NULL,
+    user_id integer NOT NULL
 );
 CREATE SEQUENCE public.todo_id_seq
     AS integer
@@ -39,6 +40,9 @@ ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_username_key UNIQUE (username);
+CREATE INDEX todo_user_id_idx ON public.todo USING btree (user_id);
 CREATE UNIQUE INDEX users_username_idx ON public.users USING btree (username);
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.todo
+    ADD CONSTRAINT todo_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;

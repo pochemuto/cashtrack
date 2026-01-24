@@ -3,7 +3,9 @@ package cashtrack
 import (
 	apiv1 "cashtrack/backend/gen/api/v1"
 	"cashtrack/backend/gen/api/v1/apiv1connect"
+	"cashtrack/backend/gen/db"
 	"context"
+	"errors"
 	"math/rand"
 
 	"connectrpc.com/connect"
@@ -131,13 +133,21 @@ func NewTodoHandler(db *Db) *TodoHandler {
 	path, handler := apiv1connect.NewTodoServiceHandler(
 		todo,
 		// Validation via Protovalidate is almost always recommended
-		connect.WithInterceptors(validate.NewInterceptor()),
+		connect.WithInterceptors(validate.NewInterceptor(), NewAuthInterceptor(db)),
 	)
 	return &TodoHandler{Path: path, Handler: handler}
 }
 
-func (s *TodoService) listTodos(ctx context.Context) ([]*apiv1.ListItem, error) {
-	todos, err := s.db.Queries.ListTodos(ctx)
+func requireUser(ctx context.Context) (AuthUser, error) {
+	user, ok := userFromContext(ctx)
+	if !ok {
+		return AuthUser{}, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	return user, nil
+}
+
+func (s *TodoService) listTodos(ctx context.Context, userID int32) ([]*apiv1.ListItem, error) {
+	todos, err := s.db.Queries.ListTodosByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +164,11 @@ func (s *TodoService) List(
 ) (*apiv1.ListResponse, error) {
 
 	res := &apiv1.ListResponse{}
-	items, err := s.listTodos(ctx)
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.listTodos(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -164,16 +178,23 @@ func (s *TodoService) List(
 }
 
 func (s *TodoService) AddRandom(ctx context.Context, req *apiv1.AddRandomRequest) (*apiv1.AddRandomResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
 	indices := rand.Perm(len(todos))[:10]
 	randomTodos := make([]string, len(indices))
 	for i, idx := range indices {
 		randomTodos[i] = todos[idx]
 	}
-	if err := s.db.Queries.AddTodosBatch(ctx, randomTodos); err != nil {
+	if err := s.db.Queries.AddTodosBatch(ctx, db.AddTodosBatchParams{
+		Titles: randomTodos,
+		UserID: user.ID,
+	}); err != nil {
 		return nil, err
 	}
 	res := &apiv1.AddRandomResponse{}
-	items, err := s.listTodos(ctx)
+	items, err := s.listTodos(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -183,14 +204,21 @@ func (s *TodoService) AddRandom(ctx context.Context, req *apiv1.AddRandomRequest
 }
 
 func (s *TodoService) Add(ctx context.Context, req *apiv1.AddRequest) (*apiv1.AddResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
 	for _, item := range req.Items {
-		err := s.db.Queries.AddTodo(ctx, item.Title)
+		err := s.db.Queries.AddTodo(ctx, db.AddTodoParams{
+			Title:  item.Title,
+			UserID: user.ID,
+		})
 		if err != nil {
 			return nil, err
 		}
 	}
 	res := &apiv1.AddResponse{}
-	items, err := s.listTodos(ctx)
+	items, err := s.listTodos(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -203,12 +231,19 @@ func (s *TodoService) Remove(
 	req *apiv1.RemoveRequest,
 ) (*apiv1.RemoveResponse, error) {
 
-	err := s.db.Queries.RemoveTodo(ctx, req.Id)
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = s.db.Queries.RemoveTodo(ctx, db.RemoveTodoParams{
+		ID:     req.Id,
+		UserID: user.ID,
+	})
 	if err != nil {
 		return nil, err
 	}
 	res := &apiv1.RemoveResponse{}
-	items, err := s.listTodos(ctx)
+	items, err := s.listTodos(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}

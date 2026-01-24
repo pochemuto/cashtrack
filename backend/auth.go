@@ -25,11 +25,6 @@ type idTokenClaims struct {
 	Name  string `json:"name"`
 }
 
-type authUser struct {
-	ID       int32  `json:"id"`
-	Username string `json:"username"`
-}
-
 func NewAuthHandler(db *Db) *AuthHandler {
 	return &AuthHandler{
 		Path: "/auth",
@@ -165,21 +160,21 @@ func parseIDToken(credential string) (idTokenClaims, error) {
 	return claims, nil
 }
 
-func ensureUser(ctx context.Context, db *Db, username string) (authUser, error) {
-	var user authUser
+func ensureUser(ctx context.Context, db *Db, username string) (AuthUser, error) {
+	var user AuthUser
 	err := db.conn.QueryRow(ctx, `SELECT id, username FROM users WHERE username = $1`, username).
 		Scan(&user.ID, &user.Username)
 	if err == nil {
 		return user, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return authUser{}, err
+		return AuthUser{}, err
 	}
 
 	err = db.conn.QueryRow(ctx, `INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username`, username, "oauth").
 		Scan(&user.ID, &user.Username)
 	if err != nil {
-		return authUser{}, err
+		return AuthUser{}, err
 	}
 	return user, nil
 }
@@ -195,8 +190,8 @@ func createSession(ctx context.Context, db *Db, userID int32) (string, time.Time
 	return sessionID, expiresAt, nil
 }
 
-func getUserBySession(ctx context.Context, db *Db, sessionID string) (authUser, time.Time, error) {
-	var user authUser
+func getUserBySession(ctx context.Context, db *Db, sessionID string) (AuthUser, time.Time, error) {
+	var user AuthUser
 	var expiresAt time.Time
 	err := db.conn.QueryRow(ctx, `
 		SELECT u.id, u.username, s.expires
@@ -205,7 +200,7 @@ func getUserBySession(ctx context.Context, db *Db, sessionID string) (authUser, 
 		WHERE s.id = $1
 	`, sessionID).Scan(&user.ID, &user.Username, &expiresAt)
 	if err != nil {
-		return authUser{}, time.Time{}, err
+		return AuthUser{}, time.Time{}, err
 	}
 	return user, expiresAt, nil
 }

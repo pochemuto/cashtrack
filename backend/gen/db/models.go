@@ -15,8 +15,9 @@ type Session struct {
 }
 
 type Todo struct {
-	ID    int32
-	Title string
+	ID     int32
+	Title  string
+	UserID int32
 }
 
 type User struct {

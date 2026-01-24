@@ -2,6 +2,8 @@
     import {Todo} from "$lib/api";
     import type {ListItem} from "$lib/gen/api/v1/todo_pb"
     import {onMount} from "svelte";
+    import type {User} from "../user";
+    import {user} from "../user";
 
     type Item = {
         id: number,
@@ -22,9 +24,31 @@
     let loading = $state(false);
     let newItem = $state("");
     let opLoading = $state(false);
-    let input: HTMLInputElement;
+    let input = $state<HTMLInputElement | null>(null);
+    let currentUser = $state<User | undefined | null>(null);
 
-    onMount(load);
+    onMount(() => {
+        let requested = false;
+        const unsubscribe = user.subscribe((value) => {
+            currentUser = value;
+            if (value) {
+                if (!requested) {
+                    requested = true;
+                    void load();
+                }
+                return;
+            }
+            if (value === undefined) {
+                requested = false;
+                items = null;
+                loading = false;
+            }
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    });
 
     async function load() {
         loading = true;
@@ -51,7 +75,7 @@
             const response = await Todo.add({items: [{title: newItem}]});
             applyServer(response.items);
             newItem = "";
-            input.focus();
+            input?.focus();
         } finally {
             opLoading = false;
         }
@@ -62,7 +86,7 @@
         try {
             const response = await Todo.addRandom({});
             applyServer(response.items);
-            input.focus();
+            input?.focus();
         } finally {
             opLoading = false;
         }
@@ -77,69 +101,76 @@
 <section class="mx-auto w-full max-w-2xl">
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body gap-4">
-
-            {#if loading}
+            {#if currentUser === null}
                 <p>Loading...</p>
-            {/if}
+            {:else if currentUser === undefined}
+                <p>Please log in to see your todo list.</p>
+                <div>
+                    <a class="btn btn-outline" href="/login">Login</a>
+                </div>
+            {:else}
+                {#if loading}
+                    <p>Loading...</p>
+                {/if}
 
-            {#if items}
-                <ul>
-                    {#each items as item}
-                        <li class="item" class:removing={item.removing}>
-                            <button class="btn btn-xs btn-secondary btn-ghost btn-circle"
-                                    class:btn-disabled={item.removing}
-                                    onclick={() => remove(item)}
-                                    title="Remove">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                     stroke-width="1.5" stroke="currentColor" class="size-3">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
-                                </svg>
+                {#if items}
+                    <ul>
+                        {#each items as item}
+                            <li class="item" class:removing={item.removing}>
+                                <button class="btn btn-xs btn-secondary btn-ghost btn-circle"
+                                        class:btn-disabled={item.removing}
+                                        onclick={() => remove(item)}
+                                        title="Remove">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                         stroke-width="1.5" stroke="currentColor" class="size-3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                                {item.title}
+                            </li>
+                        {/each}
+                    </ul>
+                {/if}
+
+                <form onsubmit="{add}">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div class="join">
+                            <input
+                                    type="text"
+                                    bind:value={newItem}
+                                    bind:this={input}
+                                    placeholder="new item "
+                                    class="input input-bordered join-item"
+                                    disabled={opLoading}
+                            />
+
+                            <button class="btn join-item" disabled={opLoading}>
+                                {#if opLoading}
+                                    <span class="loading loading-spinner"></span>
+                                {:else}
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                         stroke-width="1.5" stroke="currentColor" class="size-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                                    </svg>
+                                {/if}
                             </button>
-                            {item.title}
-                        </li>
-                    {/each}
-                </ul>
-            {/if}
+                        </div>
 
-            <form onsubmit="{add}">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
-                    <div class="join">
-                        <input
-                                type="text"
-                                bind:value={newItem}
-                                bind:this={input}
-                                placeholder="new item "
-                                class="input input-bordered join-item"
+                        <button
+                                type="button"
+                                class="btn"
                                 disabled={opLoading}
-                        />
-
-                        <button class="btn join-item" disabled={opLoading}>
+                                onclick={() => random()}
+                        >
                             {#if opLoading}
                                 <span class="loading loading-spinner"></span>
-                            {:else}
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                     stroke-width="1.5" stroke="currentColor" class="size-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                                </svg>
                             {/if}
+                            Add items
                         </button>
                     </div>
 
-                    <button
-                            type="button"
-                            class="btn"
-                            disabled={opLoading}
-                            onclick={() => random()}
-                    >
-                        {#if opLoading}
-                            <span class="loading loading-spinner"></span>
-                        {/if}
-                        Add items
-                    </button>
-                </div>
-
-            </form>
-
+                </form>
+            {/if}
         </div>
     </div>
 </section>

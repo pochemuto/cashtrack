@@ -10,37 +10,52 @@ import (
 )
 
 const addTodo = `-- name: AddTodo :exec
-INSERT INTO todo (title) VALUES ($1)
+INSERT INTO todo (title, user_id) VALUES ($1, $2)
 `
 
-func (q *Queries) AddTodo(ctx context.Context, title string) error {
-	_, err := q.db.Exec(ctx, addTodo, title)
+type AddTodoParams struct {
+	Title  string
+	UserID int32
+}
+
+func (q *Queries) AddTodo(ctx context.Context, arg AddTodoParams) error {
+	_, err := q.db.Exec(ctx, addTodo, arg.Title, arg.UserID)
 	return err
 }
 
 const addTodosBatch = `-- name: AddTodosBatch :exec
-INSERT INTO todo (title)
-SELECT unnest($1::text[])
+INSERT INTO todo (title, user_id)
+SELECT unnest($1::text[]) AS title, $2 AS user_id
 `
 
-func (q *Queries) AddTodosBatch(ctx context.Context, dollar_1 []string) error {
-	_, err := q.db.Exec(ctx, addTodosBatch, dollar_1)
+type AddTodosBatchParams struct {
+	Titles []string
+	UserID int32
+}
+
+func (q *Queries) AddTodosBatch(ctx context.Context, arg AddTodosBatchParams) error {
+	_, err := q.db.Exec(ctx, addTodosBatch, arg.Titles, arg.UserID)
 	return err
 }
 
-const listTodos = `-- name: ListTodos :many
-SELECT id, title FROM todo ORDER BY id
+const listTodosByUser = `-- name: ListTodosByUser :many
+SELECT id, title FROM todo WHERE user_id = $1 ORDER BY id
 `
 
-func (q *Queries) ListTodos(ctx context.Context) ([]Todo, error) {
-	rows, err := q.db.Query(ctx, listTodos)
+type ListTodosByUserRow struct {
+	ID    int32
+	Title string
+}
+
+func (q *Queries) ListTodosByUser(ctx context.Context, userID int32) ([]ListTodosByUserRow, error) {
+	rows, err := q.db.Query(ctx, listTodosByUser, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Todo
+	var items []ListTodosByUserRow
 	for rows.Next() {
-		var i Todo
+		var i ListTodosByUserRow
 		if err := rows.Scan(&i.ID, &i.Title); err != nil {
 			return nil, err
 		}
@@ -53,10 +68,15 @@ func (q *Queries) ListTodos(ctx context.Context) ([]Todo, error) {
 }
 
 const removeTodo = `-- name: RemoveTodo :exec
-DELETE FROM todo WHERE id = $1
+DELETE FROM todo WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) RemoveTodo(ctx context.Context, id int32) error {
-	_, err := q.db.Exec(ctx, removeTodo, id)
+type RemoveTodoParams struct {
+	ID     int32
+	UserID int32
+}
+
+func (q *Queries) RemoveTodo(ctx context.Context, arg RemoveTodoParams) error {
+	_, err := q.db.Exec(ctx, removeTodo, arg.ID, arg.UserID)
 	return err
 }

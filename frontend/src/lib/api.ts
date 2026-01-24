@@ -8,6 +8,7 @@ const API_BASE_URL = getApiBaseUrl();
 
 const transport = createConnectTransport({
     baseUrl: API_BASE_URL,
+    fetch: (input, init) => fetch(input, {...init, credentials: "include"}),
 });
 
 export const Greet = createClient(GreetService, transport);
