@@ -2,6 +2,7 @@ package cashtrack
 
 import (
 	"net/http"
+	"path/filepath"
 )
 
 type Handler struct {
@@ -41,7 +42,7 @@ func NewHttpServer(config ServerConfig, handlers []*Handler) *http.Server {
 
 	filePatten := "/"
 	log.Info().Msgf("Serving %s as files from %s", filePatten, config.StaticPath)
-	mux.Handle(filePatten, http.FileServer(http.Dir(config.StaticPath)))
+	mux.Handle(filePatten, spaFileServer(config.StaticPath))
 	for _, handler := range handlers {
 		log.Info().Msgf("Serving %s", handler.Path)
 		mux.Handle(handler.Path, handler.Handler)
@@ -69,4 +70,34 @@ func NewHttpServer(config ServerConfig, handlers []*Handler) *http.Server {
 
 	log.Info().Msgf("Server listening on %s", s.Addr)
 	return &s
+}
+
+func spaFileServer(root string) http.Handler {
+	fileSystem := http.Dir(root)
+	fileServer := http.FileServer(fileSystem)
+	indexPath := filepath.Join(root, "index.html")
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		if r.URL.Path == "/" {
+			http.ServeFile(w, r, indexPath)
+			return
+		}
+
+		f, err := fileSystem.Open(r.URL.Path)
+		if err == nil {
+			defer f.Close()
+			info, statErr := f.Stat()
+			if statErr == nil && !info.IsDir() {
+				fileServer.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		http.ServeFile(w, r, indexPath)
+	})
 }
