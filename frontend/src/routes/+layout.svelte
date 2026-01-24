@@ -68,8 +68,11 @@
 
 
 <div class="navbar bg-base-100 shadow-sm">
-    <div class="flex-1">
-        <a class="btn btn-ghost text-xl" href="/">Cashtrack</a>
+    <div class="flex-1 flex items-center gap-2">
+        <a class="link link-hover text-xl pl-2" href="/">Cashtrack</a>
+        {#if $user}
+            <a class="link link-hover px-2" href="/todo">Todo</a>
+        {/if}
     </div>
     {#if $user}
         <div class="dropdown dropdown-end">
