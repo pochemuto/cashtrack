@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -13,6 +14,7 @@ const maxReportUploadSize = 10 << 20
 
 type ReportUploadHandler Handler
 type ReportListHandler Handler
+type ReportDownloadHandler Handler
 
 type ReportInfo struct {
 	ID         int64     `json:"id"`
@@ -139,6 +141,56 @@ func NewReportListHandler(db *Db) *ReportListHandler {
 			if err := json.NewEncoder(w).Encode(reports); err != nil {
 				http.Error(w, "failed to encode response", http.StatusInternalServerError)
 			}
+		}),
+	}
+}
+
+func NewReportDownloadHandler(db *Db) *ReportDownloadHandler {
+	return &ReportDownloadHandler{
+		Path: "/api/reports/download",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				w.Header().Set("Allow", http.MethodGet)
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+
+			user, ok := userFromRequest(r.Context(), db, r.Header)
+			if !ok {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			id := r.URL.Query().Get("id")
+			if id == "" {
+				http.Error(w, "missing id", http.StatusBadRequest)
+				return
+			}
+
+			var filename string
+			var contentType string
+			var data []byte
+			err := db.conn.QueryRow(
+				r.Context(),
+				`SELECT filename, content_type, data
+				FROM financial_reports
+				WHERE id = $1 AND user_id = $2`,
+				id,
+				user.ID,
+			).Scan(&filename, &contentType, &data)
+			if err != nil {
+				http.Error(w, "file not found", http.StatusNotFound)
+				return
+			}
+
+			if contentType == "" {
+				contentType = "application/octet-stream"
+			}
+			w.Header().Set("Content-Type", contentType)
+			w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+			w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(data)
 		}),
 	}
 }

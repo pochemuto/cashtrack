@@ -229,7 +229,14 @@
                             <tbody>
                             {#each reports as report}
                                 <tr>
-                                    <td>{report.filename}</td>
+                                    <td>
+                                        <a
+                                            class="link link-primary"
+                                            href={resolveApiUrl(`api/reports/download?id=${report.id}`)}
+                                        >
+                                            {report.filename}
+                                        </a>
+                                    </td>
                                     <td>{formatDate(report.uploaded_at)}</td>
                                     <td>{formatBytes(report.size_bytes)}</td>
                                     <td>{report.status}</td>
