@@ -18,6 +18,7 @@ type ReportInfo struct {
 	ID         int64     `json:"id"`
 	Filename   string    `json:"filename"`
 	SizeBytes  int64     `json:"size_bytes"`
+	Status     string    `json:"status"`
 	UploadedAt time.Time `json:"uploaded_at"`
 }
 
@@ -73,11 +74,12 @@ func NewReportUploadHandler(db *Db) *ReportUploadHandler {
 
 			_, err = db.conn.Exec(
 				r.Context(),
-				`INSERT INTO financial_reports (user_id, filename, content_type, data) VALUES ($1, $2, $3, $4)`,
+				`INSERT INTO financial_reports (user_id, filename, content_type, data, status) VALUES ($1, $2, $3, $4, $5)`,
 				user.ID,
 				filename,
 				contentType,
 				data,
+				"pending",
 			)
 			if err != nil {
 				http.Error(w, "failed to save file", http.StatusInternalServerError)
@@ -107,7 +109,7 @@ func NewReportListHandler(db *Db) *ReportListHandler {
 
 			rows, err := db.conn.Query(
 				r.Context(),
-				`SELECT id, filename, octet_length(data) AS size_bytes, uploaded_at
+				`SELECT id, filename, octet_length(data) AS size_bytes, status, uploaded_at
 				FROM financial_reports
 				WHERE user_id = $1
 				ORDER BY uploaded_at DESC, id DESC`,
@@ -122,7 +124,7 @@ func NewReportListHandler(db *Db) *ReportListHandler {
 			reports := make([]ReportInfo, 0)
 			for rows.Next() {
 				var report ReportInfo
-				if err := rows.Scan(&report.ID, &report.Filename, &report.SizeBytes, &report.UploadedAt); err != nil {
+				if err := rows.Scan(&report.ID, &report.Filename, &report.SizeBytes, &report.Status, &report.UploadedAt); err != nil {
 					http.Error(w, "failed to load reports", http.StatusInternalServerError)
 					return
 				}

@@ -19,6 +19,7 @@
         id: number;
         filename: string;
         size_bytes: number;
+        status: string;
         uploaded_at: string;
     };
 
@@ -222,6 +223,7 @@
                                 <th>Файл</th>
                                 <th>Дата загрузки</th>
                                 <th>Размер</th>
+                                <th>Статус</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -230,6 +232,7 @@
                                     <td>{report.filename}</td>
                                     <td>{formatDate(report.uploaded_at)}</td>
                                     <td>{formatBytes(report.size_bytes)}</td>
+                                    <td>{report.status}</td>
                                 </tr>
                             {/each}
                             </tbody>
