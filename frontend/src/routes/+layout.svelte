@@ -72,6 +72,7 @@
         <a class="link link-hover text-xl pl-2" href="/">Cashtrack</a>
         {#if $user}
             <a class="link link-hover px-2" href="/todo">Todo</a>
+            <a class="link link-hover px-2" href="/upload">Upload</a>
         {/if}
     </div>
     {#if $user}

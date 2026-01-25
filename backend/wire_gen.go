@@ -33,13 +33,14 @@ func InitializeHttpServer(ctx context.Context) (*http.Server, error) {
 	authHandler := NewAuthHandler(db)
 	authMeHandler := NewAuthMeHandler(db)
 	authLogoutHandler := NewAuthLogoutHandler(db)
-	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler)
+	financialReportUploadHandler := NewFinancialReportUploadHandler(db)
+	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler, financialReportUploadHandler)
 	server := NewHttpServer(serverConfig, v)
 	return server, nil
 }
 
 // wire.go:
 
-func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler) []*Handler {
-	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout)}
+func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *FinancialReportUploadHandler) []*Handler {
+	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload)}
 }
