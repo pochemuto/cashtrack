@@ -1,4 +1,5 @@
 <script lang="ts">
+    import {onMount} from "svelte";
     import {resolveApiUrl} from "$lib/url";
     import {user} from "../../user";
 
@@ -9,6 +10,17 @@
     let errorMessage = "";
     let uploadedName = "";
     let uploadedSize = 0;
+    let reports: ReportItem[] = [];
+    let listError = "";
+    let loadingReports = false;
+    let loadedForUserId: number | null = null;
+
+    type ReportItem = {
+        id: number;
+        filename: string;
+        size_bytes: number;
+        uploaded_at: string;
+    };
 
     function formatBytes(size: number): string {
         if (size < 1024) {
@@ -53,6 +65,7 @@
                 uploadedSize = file.size;
                 file = null;
                 status = "success";
+                await loadReports();
                 return;
             }
 
@@ -67,6 +80,69 @@
             status = "error";
             errorMessage = "Не удалось загрузить файл.";
         }
+    }
+
+    function formatDate(value: string): string {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+        return date.toLocaleString("ru-RU", {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    }
+
+    async function loadReports() {
+        if (!$user || !$user.id) {
+            reports = [];
+            listError = "";
+            loadingReports = false;
+            return;
+        }
+        loadingReports = true;
+        listError = "";
+
+        try {
+            const response = await fetch(resolveApiUrl("api/reports"), {
+                credentials: "include",
+            });
+            if (!response.ok) {
+                if (response.status === 401) {
+                    reports = [];
+                    listError = "Нужен вход для просмотра списка отчетов.";
+                    return;
+                }
+                listError = "Не удалось загрузить список отчетов.";
+                return;
+            }
+            reports = (await response.json()) as ReportItem[];
+        } catch {
+            listError = "Не удалось загрузить список отчетов.";
+        } finally {
+            loadingReports = false;
+        }
+    }
+
+    onMount(() => {
+        if ($user?.id) {
+            loadedForUserId = $user.id;
+            void loadReports();
+        }
+    });
+
+    $: if ($user?.id && $user.id !== loadedForUserId) {
+        loadedForUserId = $user.id;
+        void loadReports();
+    }
+
+    $: if ($user === undefined) {
+        reports = [];
+        listError = "";
+        loadingReports = false;
     }
 </script>
 
@@ -125,6 +201,42 @@
                     <span>{errorMessage}</span>
                 </div>
             {/if}
+
+            <div class="divider"></div>
+
+            <div class="space-y-3">
+                <h2 class="text-lg font-semibold">Загруженные файлы</h2>
+                {#if loadingReports}
+                    <div class="text-sm opacity-70">Загрузка списка...</div>
+                {:else if listError}
+                    <div class="alert alert-error">
+                        <span>{listError}</span>
+                    </div>
+                {:else if reports.length === 0}
+                    <div class="text-sm opacity-70">Пока нет загруженных отчетов.</div>
+                {:else}
+                    <div class="overflow-x-auto">
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th>Файл</th>
+                                <th>Дата загрузки</th>
+                                <th>Размер</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {#each reports as report}
+                                <tr>
+                                    <td>{report.filename}</td>
+                                    <td>{formatDate(report.uploaded_at)}</td>
+                                    <td>{formatBytes(report.size_bytes)}</td>
+                                </tr>
+                            {/each}
+                            </tbody>
+                        </table>
+                    </div>
+                {/if}
+            </div>
         </div>
     </div>
 </section>
