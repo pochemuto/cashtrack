@@ -147,16 +147,16 @@
 </script>
 
 <svelte:head>
-    <title>Upload Report</title>
+    <title>Import Report</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-2xl">
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body gap-6">
             <div class="space-y-2">
-                <h1 class="text-2xl font-semibold">Загрузка финансового отчета</h1>
+                <h1 class="text-2xl font-semibold">Импорт финансового отчета</h1>
                 <p class="text-sm opacity-70">
-                    Загрузите CSV файл, он будет сохранен в базе данных без изменений.
+                    Импортируйте CSV файл, он будет сохранен в базе данных без изменений.
                 </p>
             </div>
 
@@ -185,7 +185,7 @@
                     on:click={handleUpload}
                     disabled={status === "uploading" || !file}
                 >
-                    {status === "uploading" ? "Загрузка..." : "Загрузить"}
+                    {status === "uploading" ? "Импорт..." : "Импортировать"}
                 </button>
                 {#if file}
                     <span class="text-sm opacity-70">{file.name} · {formatBytes(file.size)}</span>

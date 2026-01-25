@@ -11,8 +11,8 @@ import (
 
 const maxReportUploadSize = 10 << 20
 
-type FinancialReportUploadHandler Handler
-type FinancialReportListHandler Handler
+type ReportUploadHandler Handler
+type ReportListHandler Handler
 
 type ReportInfo struct {
 	ID         int64     `json:"id"`
@@ -21,8 +21,8 @@ type ReportInfo struct {
 	UploadedAt time.Time `json:"uploaded_at"`
 }
 
-func NewFinancialReportUploadHandler(db *Db) *FinancialReportUploadHandler {
-	return &FinancialReportUploadHandler{
+func NewReportUploadHandler(db *Db) *ReportUploadHandler {
+	return &ReportUploadHandler{
 		Path: "/api/reports/upload",
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != http.MethodPost {
@@ -89,8 +89,8 @@ func NewFinancialReportUploadHandler(db *Db) *FinancialReportUploadHandler {
 	}
 }
 
-func NewFinancialReportListHandler(db *Db) *FinancialReportListHandler {
-	return &FinancialReportListHandler{
+func NewReportListHandler(db *Db) *ReportListHandler {
+	return &ReportListHandler{
 		Path: "/api/reports",
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != http.MethodGet {
