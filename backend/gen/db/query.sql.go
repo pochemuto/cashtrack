@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addTodo = `-- name: AddTodo :exec
@@ -38,6 +40,127 @@ func (q *Queries) AddTodosBatch(ctx context.Context, arg AddTodosBatchParams) er
 	return err
 }
 
+const createTransaction = `-- name: CreateTransaction :exec
+INSERT INTO transactions (
+    user_id,
+    source_file_id,
+    source_file_row,
+    parser_name,
+    posted_date,
+    description,
+    amount,
+    currency,
+    transaction_id,
+    entry_type,
+    source_account_number,
+    source_card_number,
+    parser_meta
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13
+)
+`
+
+type CreateTransactionParams struct {
+	UserID              int32
+	SourceFileID        int64
+	SourceFileRow       int32
+	ParserName          string
+	PostedDate          pgtype.Date
+	Description         string
+	Amount              pgtype.Numeric
+	Currency            string
+	TransactionID       pgtype.Text
+	EntryType           string
+	SourceAccountNumber pgtype.Text
+	SourceCardNumber    pgtype.Text
+	ParserMeta          []byte
+}
+
+func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) error {
+	_, err := q.db.Exec(ctx, createTransaction,
+		arg.UserID,
+		arg.SourceFileID,
+		arg.SourceFileRow,
+		arg.ParserName,
+		arg.PostedDate,
+		arg.Description,
+		arg.Amount,
+		arg.Currency,
+		arg.TransactionID,
+		arg.EntryType,
+		arg.SourceAccountNumber,
+		arg.SourceCardNumber,
+		arg.ParserMeta,
+	)
+	return err
+}
+
+const deleteTransactionsBySource = `-- name: DeleteTransactionsBySource :exec
+DELETE FROM transactions
+WHERE source_file_id = $1 AND user_id = $2
+`
+
+type DeleteTransactionsBySourceParams struct {
+	SourceFileID int64
+	UserID       int32
+}
+
+func (q *Queries) DeleteTransactionsBySource(ctx context.Context, arg DeleteTransactionsBySourceParams) error {
+	_, err := q.db.Exec(ctx, deleteTransactionsBySource, arg.SourceFileID, arg.UserID)
+	return err
+}
+
+const listPendingReports = `-- name: ListPendingReports :many
+SELECT id, user_id, filename, data
+FROM financial_reports
+WHERE status = 'pending'
+ORDER BY uploaded_at ASC, id ASC
+`
+
+type ListPendingReportsRow struct {
+	ID       int64
+	UserID   int32
+	Filename string
+	Data     []byte
+}
+
+func (q *Queries) ListPendingReports(ctx context.Context) ([]ListPendingReportsRow, error) {
+	rows, err := q.db.Query(ctx, listPendingReports)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPendingReportsRow
+	for rows.Next() {
+		var i ListPendingReportsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Filename,
+			&i.Data,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTodosByUser = `-- name: ListTodosByUser :many
 SELECT id, title FROM todo WHERE user_id = $1 ORDER BY id
 `
@@ -67,6 +190,111 @@ func (q *Queries) ListTodosByUser(ctx context.Context, userID int32) ([]ListTodo
 	return items, nil
 }
 
+const listTransactions = `-- name: ListTransactions :many
+SELECT id,
+       source_file_id,
+       source_file_row,
+       parser_name,
+       posted_date,
+       description,
+       amount,
+       currency,
+       transaction_id,
+       entry_type,
+       source_account_number,
+       source_card_number,
+       parser_meta,
+       created_at
+FROM transactions
+WHERE user_id = $1
+  AND ($2::date IS NULL OR posted_date >= $2)
+  AND ($3::date IS NULL OR posted_date <= $3)
+  AND ($4::bigint IS NULL OR source_file_id = $4)
+  AND ($5::text IS NULL OR entry_type = $5)
+  AND ($6::text IS NULL OR source_account_number = $6)
+  AND ($7::text IS NULL OR source_card_number = $7)
+  AND ($8::text IS NULL OR to_tsvector('simple', description) @@ plainto_tsquery('simple', $8))
+ORDER BY posted_date DESC, id DESC
+LIMIT $10
+OFFSET $9
+`
+
+type ListTransactionsParams struct {
+	UserID              int32
+	FromDate            pgtype.Date
+	ToDate              pgtype.Date
+	SourceFileID        pgtype.Int8
+	EntryType           pgtype.Text
+	SourceAccountNumber pgtype.Text
+	SourceCardNumber    pgtype.Text
+	SearchText          pgtype.Text
+	OffsetCount         int32
+	LimitCount          int32
+}
+
+type ListTransactionsRow struct {
+	ID                  int64
+	SourceFileID        int64
+	SourceFileRow       int32
+	ParserName          string
+	PostedDate          pgtype.Date
+	Description         string
+	Amount              pgtype.Numeric
+	Currency            string
+	TransactionID       pgtype.Text
+	EntryType           string
+	SourceAccountNumber pgtype.Text
+	SourceCardNumber    pgtype.Text
+	ParserMeta          []byte
+	CreatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsParams) ([]ListTransactionsRow, error) {
+	rows, err := q.db.Query(ctx, listTransactions,
+		arg.UserID,
+		arg.FromDate,
+		arg.ToDate,
+		arg.SourceFileID,
+		arg.EntryType,
+		arg.SourceAccountNumber,
+		arg.SourceCardNumber,
+		arg.SearchText,
+		arg.OffsetCount,
+		arg.LimitCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTransactionsRow
+	for rows.Next() {
+		var i ListTransactionsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceFileID,
+			&i.SourceFileRow,
+			&i.ParserName,
+			&i.PostedDate,
+			&i.Description,
+			&i.Amount,
+			&i.Currency,
+			&i.TransactionID,
+			&i.EntryType,
+			&i.SourceAccountNumber,
+			&i.SourceCardNumber,
+			&i.ParserMeta,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeTodo = `-- name: RemoveTodo :exec
 DELETE FROM todo WHERE id = $1 AND user_id = $2
 `
@@ -78,5 +306,22 @@ type RemoveTodoParams struct {
 
 func (q *Queries) RemoveTodo(ctx context.Context, arg RemoveTodoParams) error {
 	_, err := q.db.Exec(ctx, removeTodo, arg.ID, arg.UserID)
+	return err
+}
+
+const updateReportStatus = `-- name: UpdateReportStatus :exec
+UPDATE financial_reports
+SET status = $1
+WHERE id = $2 AND user_id = $3
+`
+
+type UpdateReportStatusParams struct {
+	Status string
+	ID     int64
+	UserID int32
+}
+
+func (q *Queries) UpdateReportStatus(ctx context.Context, arg UpdateReportStatusParams) error {
+	_, err := q.db.Exec(ctx, updateReportStatus, arg.Status, arg.ID, arg.UserID)
 	return err
 }

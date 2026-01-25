@@ -46,3 +46,37 @@ ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 ALTER TABLE ONLY public.todo
     ADD CONSTRAINT todo_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+CREATE TABLE public.financial_reports (
+    id bigserial PRIMARY KEY,
+    user_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    filename character varying(255) NOT NULL,
+    content_type character varying(255),
+    data bytea NOT NULL,
+    uploaded_at timestamp with time zone NOT NULL DEFAULT now(),
+    status character varying(32) NOT NULL DEFAULT 'pending'
+);
+CREATE INDEX financial_reports_user_id_idx ON public.financial_reports USING btree (user_id);
+CREATE TABLE public.transactions (
+    id bigserial PRIMARY KEY,
+    user_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    source_file_id bigint NOT NULL REFERENCES public.financial_reports(id) ON DELETE CASCADE,
+    source_file_row integer NOT NULL,
+    parser_name character varying(64) NOT NULL,
+    posted_date date NOT NULL,
+    description text NOT NULL,
+    amount numeric(18, 2) NOT NULL,
+    currency character varying(3) NOT NULL,
+    transaction_id text,
+    entry_type character varying(16) NOT NULL,
+    source_account_number character varying(64),
+    source_card_number character varying(64),
+    parser_meta jsonb,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX transactions_user_id_idx ON public.transactions USING btree (user_id);
+CREATE INDEX transactions_source_file_id_idx ON public.transactions USING btree (source_file_id);
+CREATE INDEX transactions_posted_date_idx ON public.transactions USING btree (posted_date);
+CREATE INDEX transactions_entry_type_idx ON public.transactions USING btree (entry_type);
+CREATE INDEX transactions_source_account_number_idx ON public.transactions USING btree (source_account_number);
+CREATE INDEX transactions_source_card_number_idx ON public.transactions USING btree (source_card_number);
+CREATE INDEX transactions_description_tsv_idx ON public.transactions USING gin (to_tsvector('simple'::regconfig, description));

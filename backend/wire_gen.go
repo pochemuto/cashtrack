@@ -13,20 +13,20 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeHttpServer(ctx context.Context) (*http.Server, error) {
+func InitializeApp(ctx context.Context) (*http.Server, *ReportProcessor, error) {
 	config, err := ProvideConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	serverConfig := config.ServerConfig
 	dbConfig := config.Db
 	pool, err := NewPgxPool(ctx, dbConfig)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	db, err := NewDB(pool)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	todoHandler := NewTodoHandler(db)
 	greetHandler := NewGreetHandler()
@@ -38,7 +38,10 @@ func InitializeHttpServer(ctx context.Context) (*http.Server, error) {
 	reportDownloadHandler := NewReportDownloadHandler(db)
 	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler, reportUploadHandler, reportListHandler, reportDownloadHandler)
 	server := NewHttpServer(serverConfig, v)
-	return server, nil
+	reportParsingService := NewReportParsingService()
+	transactionsService := NewTransactionsService(db)
+	reportProcessor := NewReportProcessor(db, reportParsingService, transactionsService)
+	return server, reportProcessor, nil
 }
 
 // wire.go:

@@ -8,6 +8,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type FinancialReport struct {
+	ID          int64
+	UserID      int32
+	Filename    string
+	ContentType pgtype.Text
+	Data        []byte
+	UploadedAt  pgtype.Timestamptz
+	Status      string
+}
+
 type Session struct {
 	ID      pgtype.UUID
 	UserID  pgtype.Int4
@@ -18,6 +28,24 @@ type Todo struct {
 	ID     int32
 	Title  string
 	UserID int32
+}
+
+type Transaction struct {
+	ID                  int64
+	UserID              int32
+	SourceFileID        int64
+	SourceFileRow       int32
+	ParserName          string
+	PostedDate          pgtype.Date
+	Description         string
+	Amount              pgtype.Numeric
+	Currency            string
+	TransactionID       pgtype.Text
+	EntryType           string
+	SourceAccountNumber pgtype.Text
+	SourceCardNumber    pgtype.Text
+	ParserMeta          []byte
+	CreatedAt           pgtype.Timestamptz
 }
 
 type User struct {
