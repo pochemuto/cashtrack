@@ -37,16 +37,17 @@ func InitializeApp(ctx context.Context) (*http.Server, *ReportProcessor, error) 
 	reportListHandler := NewReportListHandler(db)
 	reportDownloadHandler := NewReportDownloadHandler(db)
 	reportDeleteHandler := NewReportDeleteHandler(db)
-	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler, reportUploadHandler, reportListHandler, reportDownloadHandler, reportDeleteHandler)
+	transactionsService := NewTransactionsService(db)
+	transactionsListHandler := NewTransactionsListHandler(db, transactionsService)
+	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler, reportUploadHandler, reportListHandler, reportDownloadHandler, reportDeleteHandler, transactionsListHandler)
 	server := NewHttpServer(serverConfig, v)
 	reportParsingService := NewReportParsingService()
-	transactionsService := NewTransactionsService(db)
 	reportProcessor := NewReportProcessor(db, reportParsingService, transactionsService)
 	return server, reportProcessor, nil
 }
 
 // wire.go:
 
-func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *ReportUploadHandler, reportList *ReportListHandler, reportDownload *ReportDownloadHandler, reportDelete *ReportDeleteHandler) []*Handler {
-	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload), (*Handler)(reportList), (*Handler)(reportDownload), (*Handler)(reportDelete)}
+func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *ReportUploadHandler, reportList *ReportListHandler, reportDownload *ReportDownloadHandler, reportDelete *ReportDeleteHandler, transactionsList *TransactionsListHandler) []*Handler {
+	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload), (*Handler)(reportList), (*Handler)(reportDownload), (*Handler)(reportDelete), (*Handler)(transactionsList)}
 }

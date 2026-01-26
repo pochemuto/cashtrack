@@ -73,6 +73,7 @@
         {#if $user}
             <a class="link link-hover px-2" href="/todo">Todo</a>
             <a class="link link-hover px-2" href="/import">Import</a>
+            <a class="link link-hover px-2" href="/transactions">Transactions</a>
         {/if}
     </div>
     {#if $user}
@@ -93,6 +94,6 @@
     {/if}
 </div>
 
-<main class="mx-auto w-full max-w-6xl px-4 py-8">
+<main class="w-full px-4 py-8">
     {@render children()}
 </main>
