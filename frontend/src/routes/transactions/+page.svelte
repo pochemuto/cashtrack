@@ -278,7 +278,7 @@
                                 </td>
                                 <td class="whitespace-nowrap">
                                     <select
-                                        class="select select-bordered select-sm w-full max-w-xs"
+                                        class="select select-bordered select-sm w-full max-w-md min-w-[220px]"
                                         value={tx.category_id ?? ""}
                                         disabled={categoriesLoading || !categories.length || categoryUpdates[tx.id]}
                                         on:change={(event) => {
