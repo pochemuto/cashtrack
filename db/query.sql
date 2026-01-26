@@ -50,6 +50,7 @@ INSERT INTO transactions (
     entry_type,
     source_account_number,
     source_card_number,
+    category_id,
     parser_meta
 ) VALUES (
     $1,
@@ -64,7 +65,8 @@ INSERT INTO transactions (
     $10,
     $11,
     $12,
-    $13
+    $13,
+    $14
 );
 
 -- name: ListTransactions :many
@@ -80,6 +82,7 @@ SELECT id,
        entry_type,
        source_account_number,
        source_card_number,
+       category_id,
        parser_meta,
        created_at
 FROM transactions

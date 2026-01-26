@@ -72,6 +72,12 @@ func (s *TransactionsService) ReplaceForSourceTx(ctx context.Context, tx pgx.Tx,
 		return nil
 	}
 
+	rules, err := s.listCategoryRules(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("load category rules: %w", err)
+	}
+	normalizedRules := normalizeRules(rules)
+
 	for _, entry := range entries {
 		var meta json.RawMessage
 		if entry.ParserMeta != nil {
@@ -87,6 +93,8 @@ func (s *TransactionsService) ReplaceForSourceTx(ctx context.Context, tx pgx.Tx,
 			return fmt.Errorf("parse amount %q: %w", entry.Amount, err)
 		}
 
+		categoryID := categoryIDFromDescription(entry.Description, normalizedRules)
+
 		err = txQueries.CreateTransaction(ctx, db.CreateTransactionParams{
 			UserID:              userID,
 			SourceFileID:        sourceFileID,
@@ -100,6 +108,7 @@ func (s *TransactionsService) ReplaceForSourceTx(ctx context.Context, tx pgx.Tx,
 			EntryType:           entry.EntryType,
 			SourceAccountNumber: nullableText(entry.SourceAccountNumber),
 			SourceCardNumber:    nullableText(entry.SourceCardNumber),
+			CategoryID:          categoryID,
 			ParserMeta:          meta,
 		})
 		if err != nil {
@@ -132,6 +141,11 @@ func (s *TransactionsService) List(ctx context.Context, userID int32, filters Tr
 
 	entries := make([]TransactionEntry, 0)
 	for _, row := range rows {
+		var categoryID *int64
+		if row.CategoryID.Valid {
+			value := row.CategoryID.Int64
+			categoryID = &value
+		}
 		entry := TransactionEntry{
 			ID:                  row.ID,
 			SourceFileID:        row.SourceFileID,
@@ -147,6 +161,7 @@ func (s *TransactionsService) List(ctx context.Context, userID int32, filters Tr
 			SourceCardNumber:    row.SourceCardNumber.String,
 			ParserMeta:          row.ParserMeta,
 			CreatedAt:           row.CreatedAt.Time,
+			CategoryID:          categoryID,
 		}
 		entries = append(entries, entry)
 	}
@@ -208,72 +223,7 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 }
 
 func (s *TransactionsService) ListWithCategories(ctx context.Context, userID int32, filters TransactionFilters) ([]TransactionEntry, error) {
-	entries, err := s.List(ctx, userID, filters)
-	if err != nil {
-		return nil, err
-	}
-	if len(entries) == 0 {
-		return entries, nil
-	}
-
-	categoryIDs, err := s.fetchTransactionCategoryIDs(ctx, userID, entries)
-	if err != nil {
-		return nil, err
-	}
-
-	rules, err := s.listCategoryRules(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	normalizedRules := normalizeRules(rules)
-
-	for i := range entries {
-		entry := &entries[i]
-		if categoryID, ok := categoryIDs[entry.ID]; ok {
-			entry.CategoryID = categoryID
-			continue
-		}
-		if entry.Description == "" {
-			continue
-		}
-		if derivedID := matchCategoryRule(entry.Description, normalizedRules); derivedID != nil {
-			entry.CategoryID = derivedID
-		}
-	}
-
-	return entries, nil
-}
-
-func (s *TransactionsService) fetchTransactionCategoryIDs(ctx context.Context, userID int32, entries []TransactionEntry) (map[int64]*int64, error) {
-	ids := make([]int64, 0, len(entries))
-	for _, entry := range entries {
-		ids = append(ids, entry.ID)
-	}
-
-	rows, err := s.db.conn.Query(ctx, "SELECT id, category_id FROM transactions WHERE user_id = $1 AND id = ANY($2)", userID, pgtype.FlatArray[int64](ids))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	result := make(map[int64]*int64, len(entries))
-	for rows.Next() {
-		var id int64
-		var categoryID pgtype.Int8
-		if err := rows.Scan(&id, &categoryID); err != nil {
-			return nil, err
-		}
-		if categoryID.Valid {
-			value := categoryID.Int64
-			result[id] = &value
-		}
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return s.List(ctx, userID, filters)
 }
 
 func (s *TransactionsService) listCategoryRules(ctx context.Context, userID int32) ([]CategoryRuleEntry, error) {
@@ -323,6 +273,16 @@ func matchCategoryRule(description string, rules []normalizedRule) *int64 {
 		}
 	}
 	return nil
+}
+
+func categoryIDFromDescription(description string, rules []normalizedRule) pgtype.Int8 {
+	if description == "" {
+		return pgtype.Int8{}
+	}
+	if derivedID := matchCategoryRule(description, rules); derivedID != nil {
+		return pgtype.Int8{Int64: *derivedID, Valid: true}
+	}
+	return pgtype.Int8{}
 }
 
 func nullableText(value string) pgtype.Text {
