@@ -107,6 +107,21 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 	return err
 }
 
+const deleteReportByID = `-- name: DeleteReportByID :exec
+DELETE FROM financial_reports
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteReportByIDParams struct {
+	ID     int64
+	UserID int32
+}
+
+func (q *Queries) DeleteReportByID(ctx context.Context, arg DeleteReportByIDParams) error {
+	_, err := q.db.Exec(ctx, deleteReportByID, arg.ID, arg.UserID)
+	return err
+}
+
 const deleteTransactionsBySource = `-- name: DeleteTransactionsBySource :exec
 DELETE FROM transactions
 WHERE source_file_id = $1 AND user_id = $2

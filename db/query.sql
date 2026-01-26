@@ -28,6 +28,10 @@ SET status = $1,
     status_description = $2
 WHERE id = $3 AND user_id = $4;
 
+-- name: DeleteReportByID :exec
+DELETE FROM financial_reports
+WHERE id = $1 AND user_id = $2;
+
 -- name: DeleteTransactionsBySource :exec
 DELETE FROM transactions
 WHERE source_file_id = $1 AND user_id = $2;

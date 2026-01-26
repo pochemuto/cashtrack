@@ -14,6 +14,9 @@
     let listError = "";
     let loadingReports = false;
     let loadedForUserId: number | null = null;
+    let deletingReportId: number | null = null;
+    let toastMessage = "";
+    let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
     type ReportItem = {
         id: number;
@@ -67,6 +70,7 @@
                 uploadedSize = file.size;
                 file = null;
                 status = "success";
+                showToast("Файл загружен.");
                 await loadReports();
                 return;
             }
@@ -129,6 +133,49 @@
         }
     }
 
+    async function handleDeleteReport(report: ReportItem) {
+        const confirmed = confirm(
+            `Удалить файл "${report.filename}"? Все транзакции, загруженные из этого файла, будут удалены.`,
+        );
+        if (!confirmed) {
+            return;
+        }
+
+        deletingReportId = report.id;
+        listError = "";
+        try {
+            const response = await fetch(resolveApiUrl(`api/reports/delete?id=${report.id}`), {
+                method: "DELETE",
+                credentials: "include",
+            });
+            if (!response.ok) {
+                if (response.status === 401) {
+                    listError = "Нужен вход для удаления отчета.";
+                    return;
+                }
+                listError = "Не удалось удалить отчет.";
+                return;
+            }
+            await loadReports();
+            showToast("Файл удален.");
+        } catch {
+            listError = "Не удалось удалить отчет.";
+        } finally {
+            deletingReportId = null;
+        }
+    }
+
+    function showToast(message: string) {
+        toastMessage = message;
+        if (toastTimeout) {
+            clearTimeout(toastTimeout);
+        }
+        toastTimeout = setTimeout(() => {
+            toastMessage = "";
+            toastTimeout = null;
+        }, 3000);
+    }
+
     onMount(() => {
         if ($user?.id) {
             loadedForUserId = $user.id;
@@ -153,6 +200,13 @@
 </svelte:head>
 
 <section class="mx-auto w-full max-w-2xl">
+    {#if toastMessage}
+        <div class="toast toast-top toast-end z-50">
+            <div class="alert alert-success">
+                <span>{toastMessage}</span>
+            </div>
+        </div>
+    {/if}
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body gap-6">
             <div class="space-y-2">
@@ -194,11 +248,7 @@
                 {/if}
             </div>
 
-            {#if status === "success"}
-                <div class="alert alert-success">
-                    <span>Файл {uploadedName} ({formatBytes(uploadedSize)}) успешно сохранен.</span>
-                </div>
-            {:else if status === "error"}
+            {#if status === "error"}
                 <div class="alert alert-error">
                     <span>{errorMessage}</span>
                 </div>
@@ -225,6 +275,7 @@
                                 <th>Дата загрузки</th>
                                 <th>Размер</th>
                                 <th>Статус</th>
+                                <th></th>
                             </tr>
                             </thead>
                             <tbody>
@@ -253,6 +304,24 @@
                                         {:else}
                                             <span class:font-medium={report.status === "processed"}>{report.status}</span>
                                         {/if}
+                                    </td>
+                                    <td class="text-right">
+                                        <div class="dropdown dropdown-left">
+                                            <button
+                                                class="btn btn-ghost btn-xs"
+                                                type="button"
+                                                disabled={deletingReportId === report.id}
+                                            >
+                                                ⋮
+                                            </button>
+                                            <ul class="menu dropdown-content rounded-box bg-base-100 p-2 shadow">
+                                                <li>
+                                                    <button type="button" on:click={() => handleDeleteReport(report)}>
+                                                        Удалить
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </td>
                                 </tr>
                             {/each}

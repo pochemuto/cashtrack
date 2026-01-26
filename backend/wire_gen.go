@@ -36,7 +36,8 @@ func InitializeApp(ctx context.Context) (*http.Server, *ReportProcessor, error) 
 	reportUploadHandler := NewReportUploadHandler(db)
 	reportListHandler := NewReportListHandler(db)
 	reportDownloadHandler := NewReportDownloadHandler(db)
-	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler, reportUploadHandler, reportListHandler, reportDownloadHandler)
+	reportDeleteHandler := NewReportDeleteHandler(db)
+	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler, reportUploadHandler, reportListHandler, reportDownloadHandler, reportDeleteHandler)
 	server := NewHttpServer(serverConfig, v)
 	reportParsingService := NewReportParsingService()
 	transactionsService := NewTransactionsService(db)
@@ -46,6 +47,6 @@ func InitializeApp(ctx context.Context) (*http.Server, *ReportProcessor, error) 
 
 // wire.go:
 
-func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *ReportUploadHandler, reportList *ReportListHandler, reportDownload *ReportDownloadHandler) []*Handler {
-	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload), (*Handler)(reportList), (*Handler)(reportDownload)}
+func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *ReportUploadHandler, reportList *ReportListHandler, reportDownload *ReportDownloadHandler, reportDelete *ReportDeleteHandler) []*Handler {
+	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload), (*Handler)(reportList), (*Handler)(reportDownload), (*Handler)(reportDelete)}
 }

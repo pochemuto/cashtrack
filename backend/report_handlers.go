@@ -1,6 +1,7 @@
 package cashtrack
 
 import (
+	dbgen "cashtrack/backend/gen/db"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -16,6 +17,7 @@ const maxReportUploadSize = 10 << 20
 type ReportUploadHandler Handler
 type ReportListHandler Handler
 type ReportDownloadHandler Handler
+type ReportDeleteHandler Handler
 
 type ReportInfo struct {
 	ID         int64     `json:"id"`
@@ -197,6 +199,47 @@ func NewReportDownloadHandler(db *Db) *ReportDownloadHandler {
 			w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(data)
+		}),
+	}
+}
+
+func NewReportDeleteHandler(db *Db) *ReportDeleteHandler {
+	return &ReportDeleteHandler{
+		Path: "/api/reports/delete",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodDelete {
+				w.Header().Set("Allow", http.MethodDelete)
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+
+			user, ok := userFromRequest(r.Context(), db, r.Header)
+			if !ok {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			idParam := r.URL.Query().Get("id")
+			if idParam == "" {
+				http.Error(w, "missing id", http.StatusBadRequest)
+				return
+			}
+
+			id, err := strconv.ParseInt(idParam, 10, 64)
+			if err != nil {
+				http.Error(w, "invalid id", http.StatusBadRequest)
+				return
+			}
+
+			if err := db.Queries.DeleteReportByID(r.Context(), dbgen.DeleteReportByIDParams{
+				ID:     id,
+				UserID: user.ID,
+			}); err != nil {
+				http.Error(w, "failed to delete report", http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusNoContent)
 		}),
 	}
 }
