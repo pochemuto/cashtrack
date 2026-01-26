@@ -461,23 +461,33 @@
                                     <div class="text-xs opacity-70">ID: {tx.transaction_id || "—"}</div>
                                 </td>
                                 <td class="whitespace-nowrap">
-                                    <select
-                                        class="select select-bordered select-sm w-full max-w-md min-w-[220px]"
-                                        value={tx.category_id ?? ""}
-                                        disabled={categoriesLoading || !categories.length || categoryUpdates[tx.id]}
-                                        on:change={(event) => {
-                                            const value = (event.target as HTMLSelectElement).value;
-                                            const categoryId = value ? Number(value) : null;
-                                            void updateTransactionCategory(tx.id, categoryId);
-                                        }}
-                                    >
-                                        <option value="" disabled>
-                                            Без категории
-                                        </option>
-                                        {#each categories as category}
-                                            <option value={category.id}>{category.name}</option>
-                                        {/each}
-                                    </select>
+                                    <div class="dropdown dropdown-start">
+                                        <button
+                                            class={`badge badge-ghost ${tx.category_id ? "badge-primary" : ""}`}
+                                            type="button"
+                                            disabled={categoriesLoading || !categories.length || categoryUpdates[tx.id]}
+                                        >
+                                            {#if tx.category_id}
+                                                {categories.find((category) => category.id === tx.category_id)?.name || "Категория"}
+                                            {:else}
+                                                Без категории
+                                            {/if}
+                                        </button>
+                                        <ul class="menu dropdown-content z-20 mt-2 w-56 rounded-box bg-base-100 p-2 shadow">
+                                            <li>
+                                                <button type="button" on:click={() => updateTransactionCategory(tx.id, null)}>
+                                                    Без категории
+                                                </button>
+                                            </li>
+                                            {#each categories as category}
+                                                <li>
+                                                    <button type="button" on:click={() => updateTransactionCategory(tx.id, category.id)}>
+                                                        {category.name}
+                                                    </button>
+                                                </li>
+                                            {/each}
+                                        </ul>
+                                    </div>
                                 </td>
                                 <td class="text-right font-medium">{amountWithSign(tx.amount, tx.entry_type)}</td>
                                 <td>{tx.currency}</td>
