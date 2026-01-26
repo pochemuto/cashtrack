@@ -568,6 +568,72 @@ func (q *Queries) SummaryTransactions(ctx context.Context, arg SummaryTransactio
 	return i, err
 }
 
+const listTransactionsSummaryRows = `-- name: ListTransactionsSummaryRows :many
+SELECT posted_date, amount, currency
+FROM transactions
+WHERE user_id = $1
+  AND ($2::date IS NULL OR posted_date >= $2)
+  AND ($3::date IS NULL OR posted_date <= $3)
+  AND ($4::bigint IS NULL OR source_file_id = $4)
+  AND ($5::text IS NULL OR entry_type = $5)
+  AND ($6::text IS NULL OR source_account_number = $6)
+  AND ($7::text IS NULL OR source_card_number = $7)
+  AND ($8::text IS NULL OR to_tsvector('simple', description) @@ plainto_tsquery('simple', $8))
+  AND ($9::bigint IS NULL OR category_id = $9)
+`
+
+type ListTransactionsSummaryRowsParams struct {
+	UserID              int32
+	FromDate            pgtype.Date
+	ToDate              pgtype.Date
+	SourceFileID        pgtype.Int8
+	EntryType           pgtype.Text
+	SourceAccountNumber pgtype.Text
+	SourceCardNumber    pgtype.Text
+	SearchText          pgtype.Text
+	CategoryID          pgtype.Int8
+}
+
+type ListTransactionsSummaryRowsRow struct {
+	PostedDate pgtype.Date
+	Amount     pgtype.Numeric
+	Currency   string
+}
+
+func (q *Queries) ListTransactionsSummaryRows(ctx context.Context, arg ListTransactionsSummaryRowsParams) ([]ListTransactionsSummaryRowsRow, error) {
+	rows, err := q.db.Query(ctx, listTransactionsSummaryRows,
+		arg.UserID,
+		arg.FromDate,
+		arg.ToDate,
+		arg.SourceFileID,
+		arg.EntryType,
+		arg.SourceAccountNumber,
+		arg.SourceCardNumber,
+		arg.SearchText,
+		arg.CategoryID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTransactionsSummaryRowsRow
+	for rows.Next() {
+		var i ListTransactionsSummaryRowsRow
+		if err := rows.Scan(
+			&i.PostedDate,
+			&i.Amount,
+			&i.Currency,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteReportByID = `-- name: DeleteReportByID :exec
 DELETE FROM financial_reports
 WHERE id = $1 AND user_id = $2

@@ -25,6 +25,7 @@
         total: string;
         average: string;
         median: string;
+        currency: string;
     };
 
     type TransactionListResponse = {
@@ -422,15 +423,21 @@
                         </div>
                         <div class="stat">
                             <div class="stat-title">Общая сумма</div>
-                            <div class="stat-value text-lg">{formatSummaryAmount(summary.total)}</div>
+                            <div class="stat-value text-lg">
+                                {formatSummaryAmount(summary.total)} {summary.currency}
+                            </div>
                         </div>
                         <div class="stat">
                             <div class="stat-title">Средняя сумма</div>
-                            <div class="stat-value text-lg">{formatSummaryAmount(summary.average)}</div>
+                            <div class="stat-value text-lg">
+                                {formatSummaryAmount(summary.average)} {summary.currency}
+                            </div>
                         </div>
                         <div class="stat">
                             <div class="stat-title">Медианная сумма</div>
-                            <div class="stat-value text-lg">{formatSummaryAmount(summary.median)}</div>
+                            <div class="stat-value text-lg">
+                                {formatSummaryAmount(summary.median)} {summary.currency}
+                            </div>
                         </div>
                     </div>
                 {/if}

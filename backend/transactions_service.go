@@ -5,7 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,7 +17,10 @@ import (
 )
 
 type TransactionsService struct {
-	db *Db
+	db            *Db
+	httpClient    *http.Client
+	rateCache     map[string]float64
+	rateCacheLock sync.Mutex
 }
 
 type TransactionEntry struct {
@@ -35,10 +42,11 @@ type TransactionEntry struct {
 }
 
 type TransactionSummary struct {
-	Count   int64  `json:"count"`
-	Total   string `json:"total"`
-	Average string `json:"average"`
-	Median  string `json:"median"`
+	Count    int64  `json:"count"`
+	Total    string `json:"total"`
+	Average  string `json:"average"`
+	Median   string `json:"median"`
+	Currency string `json:"currency"`
 }
 
 type TransactionFilters struct {
@@ -55,7 +63,11 @@ type TransactionFilters struct {
 }
 
 func NewTransactionsService(db *Db) *TransactionsService {
-	return &TransactionsService{db: db}
+	return &TransactionsService{
+		db:         db,
+		httpClient: &http.Client{Timeout: 10 * time.Second},
+		rateCache:  make(map[string]float64),
+	}
 }
 
 func (s *TransactionsService) ReplaceForSourceTx(ctx context.Context, tx pgx.Tx, userID int32, sourceFileID int64, entries []ParsedTransaction) error {
@@ -175,7 +187,7 @@ type CategoryRuleEntry struct {
 }
 
 func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters TransactionFilters) (TransactionSummary, error) {
-	row, err := s.db.Queries.SummaryTransactions(ctx, db.SummaryTransactionsParams{
+	rows, err := s.db.Queries.ListTransactionsSummaryRows(ctx, db.ListTransactionsSummaryRowsParams{
 		UserID:              userID,
 		FromDate:            dateOrNull(filters.FromDate),
 		ToDate:              dateOrNull(filters.ToDate),
@@ -191,22 +203,61 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 		return TransactionSummary{}, err
 	}
 
-	summary := TransactionSummary{
-		Count:   row.Count,
-		Total:   row.TotalAmount,
-		Average: row.AverageAmount,
-		Median:  row.MedianAmount,
+	if len(rows) == 0 {
+		return TransactionSummary{
+			Count:    0,
+			Total:    "0",
+			Average:  "0",
+			Median:   "0",
+			Currency: "CHF",
+		}, nil
 	}
-	if summary.Total == "" {
-		summary.Total = "0"
+
+	amounts := make([]float64, 0, len(rows))
+	var total float64
+	for _, row := range rows {
+		value, err := numericToFloat(row.Amount)
+		if err != nil {
+			return TransactionSummary{}, fmt.Errorf("parse amount: %w", err)
+		}
+		currency := strings.ToUpper(strings.TrimSpace(row.Currency))
+		if currency == "" {
+			currency = "CHF"
+		}
+		if currency != "CHF" {
+			rate, err := s.getRateToCHF(ctx, currency, row.PostedDate.Time)
+			if err != nil {
+				log.Error().Err(err).Str("currency", currency).Time("date", row.PostedDate.Time).Msg("failed to convert currency")
+				return TransactionSummary{}, err
+			}
+			value = value * rate
+		}
+		total += value
+		amounts = append(amounts, value)
 	}
-	if summary.Average == "" {
-		summary.Average = "0"
+
+	sort.Float64s(amounts)
+	median := 0.0
+	if len(amounts) > 0 {
+		middle := len(amounts) / 2
+		if len(amounts)%2 == 0 {
+			median = (amounts[middle-1] + amounts[middle]) / 2
+		} else {
+			median = amounts[middle]
+		}
 	}
-	if summary.Median == "" {
-		summary.Median = "0"
+	average := 0.0
+	if len(amounts) > 0 {
+		average = total / float64(len(amounts))
 	}
-	return summary, nil
+
+	return TransactionSummary{
+		Count:    int64(len(amounts)),
+		Total:    formatFloat(total),
+		Average:  formatFloat(average),
+		Median:   formatFloat(median),
+		Currency: "CHF",
+	}, nil
 }
 
 func (s *TransactionsService) ListWithCategories(ctx context.Context, userID int32, filters TransactionFilters) ([]TransactionEntry, error) {
@@ -326,4 +377,67 @@ func numericToString(value pgtype.Numeric) string {
 		return ""
 	}
 	return string(buf)
+}
+
+func numericToFloat(value pgtype.Numeric) (float64, error) {
+	if !value.Valid {
+		return 0, nil
+	}
+	raw := numericToString(value)
+	if raw == "" {
+		return 0, nil
+	}
+	parsed, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0, err
+	}
+	return parsed, nil
+}
+
+func formatFloat(value float64) string {
+	return strconv.FormatFloat(value, 'f', -1, 64)
+}
+
+func (s *TransactionsService) getRateToCHF(ctx context.Context, currency string, date time.Time) (float64, error) {
+	if currency == "CHF" {
+		return 1, nil
+	}
+	dateKey := date.Format("2006-01-02")
+	cacheKey := currency + "|" + dateKey
+
+	s.rateCacheLock.Lock()
+	if rate, ok := s.rateCache[cacheKey]; ok {
+		s.rateCacheLock.Unlock()
+		return rate, nil
+	}
+	s.rateCacheLock.Unlock()
+
+	url := fmt.Sprintf("https://api.exchangerate.host/%s?base=%s&symbols=CHF", dateKey, currency)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return 0, fmt.Errorf("rate request failed: %s", resp.Status)
+	}
+	var payload struct {
+		Rates map[string]float64 `json:"rates"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return 0, err
+	}
+	rate, ok := payload.Rates["CHF"]
+	if !ok || rate == 0 {
+		return 0, fmt.Errorf("missing CHF rate for %s on %s", currency, dateKey)
+	}
+
+	s.rateCacheLock.Lock()
+	s.rateCache[cacheKey] = rate
+	s.rateCacheLock.Unlock()
+	return rate, nil
 }

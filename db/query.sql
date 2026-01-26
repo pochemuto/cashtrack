@@ -184,6 +184,19 @@ WHERE user_id = sqlc.arg(user_id)
   AND (sqlc.narg(search_text)::text IS NULL OR to_tsvector('simple', description) @@ plainto_tsquery('simple', sqlc.narg(search_text)))
   AND (sqlc.narg(category_id)::bigint IS NULL OR category_id = sqlc.narg(category_id));
 
+-- name: ListTransactionsSummaryRows :many
+SELECT posted_date, amount, currency
+FROM transactions
+WHERE user_id = sqlc.arg(user_id)
+  AND (sqlc.narg(from_date)::date IS NULL OR posted_date >= sqlc.narg(from_date))
+  AND (sqlc.narg(to_date)::date IS NULL OR posted_date <= sqlc.narg(to_date))
+  AND (sqlc.narg(source_file_id)::bigint IS NULL OR source_file_id = sqlc.narg(source_file_id))
+  AND (sqlc.narg(entry_type)::text IS NULL OR entry_type = sqlc.narg(entry_type))
+  AND (sqlc.narg(source_account_number)::text IS NULL OR source_account_number = sqlc.narg(source_account_number))
+  AND (sqlc.narg(source_card_number)::text IS NULL OR source_card_number = sqlc.narg(source_card_number))
+  AND (sqlc.narg(search_text)::text IS NULL OR to_tsvector('simple', description) @@ plainto_tsquery('simple', sqlc.narg(search_text)))
+  AND (sqlc.narg(category_id)::bigint IS NULL OR category_id = sqlc.narg(category_id));
+
 -- name: ListTransactions :many
 SELECT id,
        source_file_id,
