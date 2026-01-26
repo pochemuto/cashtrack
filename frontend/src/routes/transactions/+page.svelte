@@ -216,7 +216,6 @@
                                 <td class="text-right font-medium">{amountWithSign(tx.amount, tx.entry_type)}</td>
                                 <td>{tx.currency}</td>
                                 <td class="text-xs">
-                                    <div>Файл: {tx.source_file_id}</div>
                                     {#if tx.source_account_number}
                                         <div>Счет: {tx.source_account_number}</div>
                                     {/if}
