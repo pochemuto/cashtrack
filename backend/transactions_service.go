@@ -31,6 +31,7 @@ type TransactionEntry struct {
 	SourceCardNumber    string
 	ParserMeta          json.RawMessage
 	CreatedAt           time.Time
+	CategoryID          *int64
 }
 
 type TransactionFilters struct {
@@ -142,6 +143,129 @@ func (s *TransactionsService) List(ctx context.Context, userID int32, filters Tr
 	}
 
 	return entries, nil
+}
+
+type CategoryRuleEntry struct {
+	CategoryID          int64
+	DescriptionContains string
+}
+
+func (s *TransactionsService) ListWithCategories(ctx context.Context, userID int32, filters TransactionFilters) ([]TransactionEntry, error) {
+	entries, err := s.List(ctx, userID, filters)
+	if err != nil {
+		return nil, err
+	}
+	if len(entries) == 0 {
+		return entries, nil
+	}
+
+	categoryIDs, err := s.fetchTransactionCategoryIDs(ctx, userID, entries)
+	if err != nil {
+		return nil, err
+	}
+
+	rules, err := s.listCategoryRules(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	normalizedRules := normalizeRules(rules)
+
+	for i := range entries {
+		entry := &entries[i]
+		if categoryID, ok := categoryIDs[entry.ID]; ok {
+			entry.CategoryID = categoryID
+			continue
+		}
+		if entry.Description == "" {
+			continue
+		}
+		if derivedID := matchCategoryRule(entry.Description, normalizedRules); derivedID != nil {
+			entry.CategoryID = derivedID
+		}
+	}
+
+	return entries, nil
+}
+
+func (s *TransactionsService) fetchTransactionCategoryIDs(ctx context.Context, userID int32, entries []TransactionEntry) (map[int64]*int64, error) {
+	ids := make([]int64, 0, len(entries))
+	for _, entry := range entries {
+		ids = append(ids, entry.ID)
+	}
+
+	rows, err := s.db.conn.Query(ctx, "SELECT id, category_id FROM transactions WHERE user_id = $1 AND id = ANY($2)", userID, pgtype.FlatArray[int64](ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int64]*int64, len(entries))
+	for rows.Next() {
+		var id int64
+		var categoryID pgtype.Int8
+		if err := rows.Scan(&id, &categoryID); err != nil {
+			return nil, err
+		}
+		if categoryID.Valid {
+			value := categoryID.Int64
+			result[id] = &value
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *TransactionsService) listCategoryRules(ctx context.Context, userID int32) ([]CategoryRuleEntry, error) {
+	rows, err := s.db.conn.Query(ctx, "SELECT category_id, description_contains FROM category_rules WHERE user_id = $1 ORDER BY id", userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rules []CategoryRuleEntry
+	for rows.Next() {
+		var rule CategoryRuleEntry
+		if err := rows.Scan(&rule.CategoryID, &rule.DescriptionContains); err != nil {
+			return nil, err
+		}
+		rules = append(rules, rule)
+	}
+	return rules, rows.Err()
+}
+
+type normalizedRule struct {
+	CategoryID int64
+	Needle     string
+}
+
+func normalizeRules(rules []CategoryRuleEntry) []normalizedRule {
+	normalized := make([]normalizedRule, 0, len(rules))
+	for _, rule := range rules {
+		needle := strings.ToLower(strings.TrimSpace(rule.DescriptionContains))
+		if needle == "" {
+			continue
+		}
+		normalized = append(normalized, normalizedRule{CategoryID: rule.CategoryID, Needle: needle})
+	}
+	return normalized
+}
+
+func matchCategoryRule(description string, rules []normalizedRule) *int64 {
+	if len(rules) == 0 {
+		return nil
+	}
+	haystack := strings.ToLower(description)
+	for _, rule := range rules {
+		if strings.Contains(haystack, rule.Needle) {
+			value := rule.CategoryID
+			return &value
+		}
+	}
+	return nil
 }
 
 func nullableText(value string) pgtype.Text {

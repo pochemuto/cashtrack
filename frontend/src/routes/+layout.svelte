@@ -74,6 +74,7 @@
             <a class="link link-hover px-2" href="/todo">Todo</a>
             <a class="link link-hover px-2" href="/import">Import</a>
             <a class="link link-hover px-2" href="/transactions">Transactions</a>
+            <a class="link link-hover px-2" href="/categories">Categories</a>
         {/if}
     </div>
     {#if $user}

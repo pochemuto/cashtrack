@@ -23,6 +23,7 @@ type TransactionItem struct {
 	SourceAccountNumber string    `json:"source_account_number"`
 	SourceCardNumber    string    `json:"source_card_number"`
 	CreatedAt           time.Time `json:"created_at"`
+	CategoryID          *int64    `json:"category_id"`
 }
 
 func NewTransactionsListHandler(db *Db, service *TransactionsService) *TransactionsListHandler {
@@ -47,7 +48,7 @@ func NewTransactionsListHandler(db *Db, service *TransactionsService) *Transacti
 				return
 			}
 
-			items, err := service.List(r.Context(), user.ID, filters)
+			items, err := service.ListWithCategories(r.Context(), user.ID, filters)
 			if err != nil {
 				http.Error(w, "failed to load transactions", http.StatusInternalServerError)
 				return
@@ -69,6 +70,7 @@ func NewTransactionsListHandler(db *Db, service *TransactionsService) *Transacti
 					SourceAccountNumber: entry.SourceAccountNumber,
 					SourceCardNumber:    entry.SourceCardNumber,
 					CreatedAt:           entry.CreatedAt,
+					CategoryID:          entry.CategoryID,
 				})
 			}
 

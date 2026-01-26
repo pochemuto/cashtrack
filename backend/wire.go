@@ -9,14 +9,14 @@ import (
 )
 import "github.com/google/wire"
 
-func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *ReportUploadHandler, reportList *ReportListHandler, reportDownload *ReportDownloadHandler, reportDelete *ReportDeleteHandler, transactionsList *TransactionsListHandler) []*Handler {
-	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload), (*Handler)(reportList), (*Handler)(reportDownload), (*Handler)(reportDelete), (*Handler)(transactionsList)}
+func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *ReportUploadHandler, reportList *ReportListHandler, reportDownload *ReportDownloadHandler, reportDelete *ReportDeleteHandler, transactionsList *TransactionsListHandler, categories *CategoriesHandler, category *CategoryHandler, categoryRules *CategoryRulesHandler, categoryRule *CategoryRuleHandler, transactionCategory *TransactionCategoryHandler) []*Handler {
+	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload), (*Handler)(reportList), (*Handler)(reportDownload), (*Handler)(reportDelete), (*Handler)(transactionsList), (*Handler)(categories), (*Handler)(category), (*Handler)(categoryRules), (*Handler)(categoryRule), (*Handler)(transactionCategory)}
 }
 
 func InitializeApp(ctx context.Context) (*http.Server, *ReportProcessor, error) {
 	wire.Build(
 		handlers,
-		NewGreetHandler, NewTodoHandler, NewAuthHandler, NewAuthMeHandler, NewAuthLogoutHandler, NewReportUploadHandler, NewReportListHandler, NewReportDownloadHandler, NewReportDeleteHandler, NewTransactionsListHandler,
+		NewGreetHandler, NewTodoHandler, NewAuthHandler, NewAuthMeHandler, NewAuthLogoutHandler, NewReportUploadHandler, NewReportListHandler, NewReportDownloadHandler, NewReportDeleteHandler, NewTransactionsListHandler, NewCategoriesHandler, NewCategoryHandler, NewCategoryRulesHandler, NewCategoryRuleHandler, NewTransactionCategoryHandler,
 		NewReportParsingService, NewTransactionsService, NewReportProcessor,
 		ProvideConfig,
 		wire.FieldsOf(new(Config), "ServerConfig", "db"),

@@ -57,6 +57,22 @@ CREATE TABLE public.financial_reports (
     status_description text
 );
 CREATE INDEX financial_reports_user_id_idx ON public.financial_reports USING btree (user_id);
+CREATE TABLE public.categories (
+    id bigserial PRIMARY KEY,
+    user_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    name character varying(255) NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX categories_user_id_idx ON public.categories USING btree (user_id);
+CREATE TABLE public.category_rules (
+    id bigserial PRIMARY KEY,
+    user_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    category_id bigint NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,
+    description_contains text NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX category_rules_user_id_idx ON public.category_rules USING btree (user_id);
+CREATE INDEX category_rules_category_id_idx ON public.category_rules USING btree (category_id);
 CREATE TABLE public.transactions (
     id bigserial PRIMARY KEY,
     user_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -71,6 +87,7 @@ CREATE TABLE public.transactions (
     entry_type character varying(16) NOT NULL,
     source_account_number character varying(64),
     source_card_number character varying(64),
+    category_id bigint REFERENCES public.categories(id) ON DELETE SET NULL,
     parser_meta jsonb,
     created_at timestamp with time zone NOT NULL DEFAULT now()
 );
@@ -81,3 +98,4 @@ CREATE INDEX transactions_entry_type_idx ON public.transactions USING btree (ent
 CREATE INDEX transactions_source_account_number_idx ON public.transactions USING btree (source_account_number);
 CREATE INDEX transactions_source_card_number_idx ON public.transactions USING btree (source_card_number);
 CREATE INDEX transactions_description_tsv_idx ON public.transactions USING gin (to_tsvector('simple'::regconfig, description));
+CREATE INDEX transactions_category_id_idx ON public.transactions USING btree (category_id);

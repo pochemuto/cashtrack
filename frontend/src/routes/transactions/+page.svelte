@@ -17,11 +17,22 @@
         source_account_number: string;
         source_card_number: string;
         created_at: string;
+        category_id: number | null;
+    };
+
+    type CategoryItem = {
+        id: number;
+        name: string;
+        created_at: string;
     };
 
     let transactions: TransactionItem[] = [];
+    let categories: CategoryItem[] = [];
     let loading = false;
+    let categoriesLoading = false;
     let listError = "";
+    let updateError = "";
+    let categoryUpdates: Record<number, boolean> = {};
 
     let fromDate = "";
     let toDate = "";
@@ -93,6 +104,51 @@
         }
     }
 
+    async function loadCategories() {
+        if (!$user || !$user.id) {
+            categories = [];
+            categoriesLoading = false;
+            return;
+        }
+
+        categoriesLoading = true;
+        try {
+            const response = await fetch(resolveApiUrl("api/categories"), {credentials: "include"});
+            if (!response.ok) {
+                categories = [];
+                return;
+            }
+            categories = (await response.json()) as CategoryItem[];
+        } finally {
+            categoriesLoading = false;
+        }
+    }
+
+    async function updateTransactionCategory(transactionId: number, categoryId: number | null) {
+        updateError = "";
+        categoryUpdates = {...categoryUpdates, [transactionId]: true};
+        try {
+            const response = await fetch(resolveApiUrl(`api/transactions/${transactionId}/category`), {
+                method: "PATCH",
+                headers: {"Content-Type": "application/json"},
+                credentials: "include",
+                body: JSON.stringify({category_id: categoryId}),
+            });
+            if (!response.ok) {
+                updateError = "Не удалось сохранить категорию.";
+                return;
+            }
+            transactions = transactions.map((tx) =>
+                tx.id === transactionId ? {...tx, category_id: categoryId} : tx
+            );
+        } catch {
+            updateError = "Не удалось сохранить категорию.";
+        } finally {
+            const {[transactionId]: _removed, ...rest} = categoryUpdates;
+            categoryUpdates = rest;
+        }
+    }
+
     function resetFilters() {
         fromDate = "";
         toDate = "";
@@ -107,6 +163,7 @@
     onMount(() => {
         if ($user?.id) {
             void loadTransactions();
+            void loadCategories();
         }
     });
 </script>
@@ -188,6 +245,11 @@
                     <span>{listError}</span>
                 </div>
             {/if}
+            {#if updateError}
+                <div class="alert alert-error">
+                    <span>{updateError}</span>
+                </div>
+            {/if}
 
             {#if loading}
                 <div class="text-sm opacity-70">Загрузка транзакций...</div>
@@ -200,6 +262,7 @@
                         <tr>
                             <th>Дата</th>
                             <th>Описание</th>
+                            <th>Категория</th>
                             <th class="text-right">Сумма</th>
                             <th>Валюта</th>
                             <th>Источник</th>
@@ -212,6 +275,25 @@
                                 <td>
                                     <div class="font-medium">{tx.description}</div>
                                     <div class="text-xs opacity-70">ID: {tx.transaction_id || "—"}</div>
+                                </td>
+                                <td class="whitespace-nowrap">
+                                    <select
+                                        class="select select-bordered select-sm w-full max-w-xs"
+                                        value={tx.category_id ?? ""}
+                                        disabled={categoriesLoading || !categories.length || categoryUpdates[tx.id]}
+                                        on:change={(event) => {
+                                            const value = (event.target as HTMLSelectElement).value;
+                                            const categoryId = value ? Number(value) : null;
+                                            void updateTransactionCategory(tx.id, categoryId);
+                                        }}
+                                    >
+                                        <option value="" disabled>
+                                            Без категории
+                                        </option>
+                                        {#each categories as category}
+                                            <option value={category.id}>{category.name}</option>
+                                        {/each}
+                                    </select>
                                 </td>
                                 <td class="text-right font-medium">{amountWithSign(tx.amount, tx.entry_type)}</td>
                                 <td>{tx.currency}</td>
