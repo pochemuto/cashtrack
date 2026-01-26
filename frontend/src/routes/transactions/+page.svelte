@@ -33,6 +33,7 @@
     let listError = "";
     let updateError = "";
     let categoryUpdates: Record<number, boolean> = {};
+    let lastUserId: number | null = null;
 
     let fromDate = "";
     let toDate = "";
@@ -165,10 +166,17 @@
 
     onMount(() => {
         if ($user?.id) {
+            lastUserId = $user.id;
             void loadTransactions();
             void loadCategories();
         }
     });
+
+    $: if ($user?.id && $user.id !== lastUserId) {
+        lastUserId = $user.id;
+        void loadTransactions();
+        void loadCategories();
+    }
 </script>
 
 <svelte:head>

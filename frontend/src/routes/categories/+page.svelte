@@ -37,6 +37,7 @@
         | null = null;
     let menuElement: HTMLUListElement | null = null;
     let menuAnchor: HTMLElement | null = null;
+    let lastUserId: number | null = null;
 
     $: categoryMap = new Map(categories.map((category) => [category.id, category.name]));
 
@@ -286,6 +287,7 @@
 
     onMount(() => {
         if ($user?.id) {
+            lastUserId = $user.id;
             void loadData();
         }
 
@@ -317,6 +319,11 @@
             window.removeEventListener("keydown", handleKeyDown);
         };
     });
+
+    $: if ($user?.id && $user.id !== lastUserId) {
+        lastUserId = $user.id;
+        void loadData();
+    }
 </script>
 
 <svelte:head>
