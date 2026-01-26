@@ -42,6 +42,8 @@
     let applyRulesToAll = false;
     let applyingRules = false;
     let rulesReordering = false;
+    let draggingRuleIndex: number | null = null;
+    let dragOverIndex: number | null = null;
     let menuOpen:
         | {type: "category"; id: number; x: number; y: number}
         | {type: "rule"; id: number; x: number; y: number}
@@ -295,20 +297,51 @@
         }
     }
 
-    function moveRule(index: number, direction: "up" | "down") {
-        if (rulesReordering) {
+    function handleRuleDragStart(event: DragEvent, index: number) {
+        if (rulesReordering || editingRuleId !== null) {
+            event.preventDefault();
             return;
         }
-        const targetIndex = direction === "up" ? index - 1 : index + 1;
-        if (targetIndex < 0 || targetIndex >= rules.length) {
+        draggingRuleIndex = index;
+        dragOverIndex = index;
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", String(rules[index]?.id ?? ""));
+        }
+    }
+
+    function handleRuleDragOver(event: DragEvent, index: number) {
+        if (draggingRuleIndex === null) {
+            return;
+        }
+        event.preventDefault();
+        dragOverIndex = index;
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = "move";
+        }
+    }
+
+    function handleRuleDrop(event: DragEvent, index: number) {
+        if (draggingRuleIndex === null) {
+            return;
+        }
+        event.preventDefault();
+        const fromIndex = draggingRuleIndex;
+        draggingRuleIndex = null;
+        dragOverIndex = null;
+        if (fromIndex === index) {
             return;
         }
         const nextRules = [...rules];
-        const temp = nextRules[index];
-        nextRules[index] = nextRules[targetIndex];
-        nextRules[targetIndex] = temp;
+        const [moved] = nextRules.splice(fromIndex, 1);
+        nextRules.splice(index, 0, moved);
         rules = nextRules;
         void persistRuleOrder(nextRules);
+    }
+
+    function handleRuleDragEnd() {
+        draggingRuleIndex = null;
+        dragOverIndex = null;
     }
 
     async function persistRuleOrder(nextRules: RuleItem[]) {
@@ -591,7 +624,11 @@
                         </thead>
                         <tbody>
                         {#each rules as rule, index}
-                            <tr>
+                            <tr
+                                class:bg-base-200={dragOverIndex === index && draggingRuleIndex !== null}
+                                on:dragover={(event) => handleRuleDragOver(event, index)}
+                                on:drop={(event) => handleRuleDrop(event, index)}
+                            >
                                 <td>
                                     {#if editingRuleId === rule.id}
                                         <select class="select select-bordered select-sm" bind:value={editingRuleCategoryId}>
@@ -600,7 +637,20 @@
                                             {/each}
                                         </select>
                                     {:else}
-                                        <div class="font-medium">{categoryMap.get(rule.category_id) || "—"}</div>
+                                        <div class="flex items-center gap-2">
+                                            <button
+                                                class="btn btn-ghost btn-xs cursor-grab"
+                                                type="button"
+                                                draggable={!(rulesReordering || editingRuleId !== null)}
+                                                on:dragstart={(event) => handleRuleDragStart(event, index)}
+                                                on:dragend={handleRuleDragEnd}
+                                                title="Перетащить правило"
+                                                aria-label="Перетащить правило"
+                                            >
+                                                ⋮⋮
+                                            </button>
+                                            <div class="font-medium">{categoryMap.get(rule.category_id) || "—"}</div>
+                                        </div>
                                     {/if}
                                 </td>
                                 <td>
@@ -625,33 +675,13 @@
                                             </button>
                                         </div>
                                     {:else}
-                                        <div class="flex justify-end gap-1">
-                                            <button
-                                                class="btn btn-ghost btn-sm"
-                                                type="button"
-                                                disabled={rulesReordering || index === 0}
-                                                on:click={() => moveRule(index, "up")}
-                                                title="Переместить вверх"
-                                            >
-                                                ↑
-                                            </button>
-                                            <button
-                                                class="btn btn-ghost btn-sm"
-                                                type="button"
-                                                disabled={rulesReordering || index === rules.length - 1}
-                                                on:click={() => moveRule(index, "down")}
-                                                title="Переместить вниз"
-                                            >
-                                                ↓
-                                            </button>
-                                            <button
-                                                class="btn btn-ghost btn-sm"
-                                                type="button"
-                                                on:click={(event) => openMenu(event, "rule", rule.id)}
-                                            >
-                                                ⋮
-                                            </button>
-                                        </div>
+                                        <button
+                                            class="btn btn-ghost btn-sm"
+                                            type="button"
+                                            on:click={(event) => openMenu(event, "rule", rule.id)}
+                                        >
+                                            ⋮
+                                        </button>
                                     {/if}
                                 </td>
                             </tr>
