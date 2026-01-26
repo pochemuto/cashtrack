@@ -92,7 +92,8 @@ func createReportTables(t *testing.T, db *Db) {
 			content_type varchar(255),
 			data bytea NOT NULL,
 			uploaded_at timestamptz NOT NULL DEFAULT now(),
-			status varchar(32) NOT NULL DEFAULT 'pending'
+			status varchar(32) NOT NULL DEFAULT 'pending',
+			status_description text
 		);
 		CREATE TABLE transactions (
 			id bigserial PRIMARY KEY,

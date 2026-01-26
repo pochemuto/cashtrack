@@ -21,6 +21,7 @@
         size_bytes: number;
         status: string;
         uploaded_at: string;
+        status_description?: string | null;
     };
 
     function formatBytes(size: number): string {
@@ -239,7 +240,20 @@
                                     </td>
                                     <td>{formatDate(report.uploaded_at)}</td>
                                     <td>{formatBytes(report.size_bytes)}</td>
-                                    <td>{report.status}</td>
+                                    <td>
+                                        {#if report.status_description}
+                                            <span class="tooltip tooltip-left" data-tip={report.status_description}>
+                                                <span
+                                                    class:text-error={report.status === "failed"}
+                                                    class:font-medium={report.status === "processed"}
+                                                >
+                                                    {report.status}
+                                                </span>
+                                            </span>
+                                        {:else}
+                                            <span class:font-medium={report.status === "processed"}>{report.status}</span>
+                                        {/if}
+                                    </td>
                                 </tr>
                             {/each}
                             </tbody>

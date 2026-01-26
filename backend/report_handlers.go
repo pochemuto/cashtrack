@@ -1,6 +1,7 @@
 package cashtrack
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -22,6 +23,7 @@ type ReportInfo struct {
 	SizeBytes  int64     `json:"size_bytes"`
 	Status     string    `json:"status"`
 	UploadedAt time.Time `json:"uploaded_at"`
+	ErrorText  string    `json:"status_description,omitempty"`
 }
 
 func NewReportUploadHandler(db *Db) *ReportUploadHandler {
@@ -111,7 +113,7 @@ func NewReportListHandler(db *Db) *ReportListHandler {
 
 			rows, err := db.conn.Query(
 				r.Context(),
-				`SELECT id, filename, octet_length(data) AS size_bytes, status, uploaded_at
+				`SELECT id, filename, octet_length(data) AS size_bytes, status, uploaded_at, status_description
 				FROM financial_reports
 				WHERE user_id = $1
 				ORDER BY uploaded_at DESC, id DESC`,
@@ -126,9 +128,13 @@ func NewReportListHandler(db *Db) *ReportListHandler {
 			reports := make([]ReportInfo, 0)
 			for rows.Next() {
 				var report ReportInfo
-				if err := rows.Scan(&report.ID, &report.Filename, &report.SizeBytes, &report.Status, &report.UploadedAt); err != nil {
+				var errorText sql.NullString
+				if err := rows.Scan(&report.ID, &report.Filename, &report.SizeBytes, &report.Status, &report.UploadedAt, &errorText); err != nil {
 					http.Error(w, "failed to load reports", http.StatusInternalServerError)
 					return
+				}
+				if errorText.Valid {
+					report.ErrorText = errorText.String
 				}
 				reports = append(reports, report)
 			}

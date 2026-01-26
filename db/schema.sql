@@ -53,7 +53,8 @@ CREATE TABLE public.financial_reports (
     content_type character varying(255),
     data bytea NOT NULL,
     uploaded_at timestamp with time zone NOT NULL DEFAULT now(),
-    status character varying(32) NOT NULL DEFAULT 'pending'
+    status character varying(32) NOT NULL DEFAULT 'pending',
+    status_description text
 );
 CREATE INDEX financial_reports_user_id_idx ON public.financial_reports USING btree (user_id);
 CREATE TABLE public.transactions (

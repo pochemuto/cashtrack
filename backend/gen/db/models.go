@@ -9,13 +9,14 @@ import (
 )
 
 type FinancialReport struct {
-	ID          int64
-	UserID      int32
-	Filename    string
-	ContentType pgtype.Text
-	Data        []byte
-	UploadedAt  pgtype.Timestamptz
-	Status      string
+	ID                int64
+	UserID            int32
+	Filename          string
+	ContentType       pgtype.Text
+	Data              []byte
+	UploadedAt        pgtype.Timestamptz
+	Status            string
+	StatusDescription pgtype.Text
 }
 
 type Session struct {

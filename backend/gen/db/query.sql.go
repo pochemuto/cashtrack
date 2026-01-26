@@ -325,3 +325,27 @@ func (q *Queries) UpdateReportStatus(ctx context.Context, arg UpdateReportStatus
 	_, err := q.db.Exec(ctx, updateReportStatus, arg.Status, arg.ID, arg.UserID)
 	return err
 }
+
+const updateReportStatusWithError = `-- name: UpdateReportStatusWithError :exec
+UPDATE financial_reports
+SET status = $1,
+    status_description = $2
+WHERE id = $3 AND user_id = $4
+`
+
+type UpdateReportStatusWithErrorParams struct {
+	Status            string
+	StatusDescription pgtype.Text
+	ID                int64
+	UserID            int32
+}
+
+func (q *Queries) UpdateReportStatusWithError(ctx context.Context, arg UpdateReportStatusWithErrorParams) error {
+	_, err := q.db.Exec(ctx, updateReportStatusWithError,
+		arg.Status,
+		arg.StatusDescription,
+		arg.ID,
+		arg.UserID,
+	)
+	return err
+}

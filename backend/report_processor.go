@@ -4,7 +4,10 @@ import (
 	db "cashtrack/backend/gen/db"
 	"context"
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ReportProcessor struct {
@@ -31,7 +34,7 @@ func (p *ReportProcessor) ProcessPendingReports(ctx context.Context) error {
 		parsed, err := p.parsing.Parse(report.Data, report.Filename)
 		if err != nil {
 			log.Error().Err(err).Int64("report_id", report.ID).Msg("failed to parse report")
-			if updateErr := p.updateReportStatus(ctx, report.ID, report.UserID, "failed"); updateErr != nil {
+			if updateErr := p.updateReportStatus(ctx, report.ID, report.UserID, "failed", err.Error()); updateErr != nil {
 				return updateErr
 			}
 			continue
@@ -39,7 +42,7 @@ func (p *ReportProcessor) ProcessPendingReports(ctx context.Context) error {
 
 		if err := p.replaceTransactionsForReport(ctx, report.ID, report.UserID, parsed.Transactions); err != nil {
 			log.Error().Err(err).Int64("report_id", report.ID).Msg("failed to store transactions")
-			if updateErr := p.updateReportStatus(ctx, report.ID, report.UserID, "failed"); updateErr != nil {
+			if updateErr := p.updateReportStatus(ctx, report.ID, report.UserID, "failed", err.Error()); updateErr != nil {
 				return updateErr
 			}
 			continue
@@ -77,10 +80,11 @@ func (p *ReportProcessor) replaceTransactionsForReport(ctx context.Context, repo
 		return err
 	}
 	txQueries := p.db.Queries.WithTx(tx)
-	if err := txQueries.UpdateReportStatus(ctx, db.UpdateReportStatusParams{
-		Status: "processed",
-		ID:     reportID,
-		UserID: userID,
+	if err := txQueries.UpdateReportStatusWithError(ctx, db.UpdateReportStatusWithErrorParams{
+		Status:            "processed",
+		StatusDescription: errorTextOrNull(fmt.Sprintf("transactions: %d", len(entries))),
+		ID:                reportID,
+		UserID:            userID,
 	}); err != nil {
 		return fmt.Errorf("update report status: %w", err)
 	}
@@ -91,14 +95,22 @@ func (p *ReportProcessor) replaceTransactionsForReport(ctx context.Context, repo
 	return nil
 }
 
-func (p *ReportProcessor) updateReportStatus(ctx context.Context, reportID int64, userID int32, status string) error {
-	err := p.db.Queries.UpdateReportStatus(ctx, db.UpdateReportStatusParams{
-		Status: status,
-		ID:     reportID,
-		UserID: userID,
+func (p *ReportProcessor) updateReportStatus(ctx context.Context, reportID int64, userID int32, status string, errorText string) error {
+	err := p.db.Queries.UpdateReportStatusWithError(ctx, db.UpdateReportStatusWithErrorParams{
+		Status:            status,
+		StatusDescription: errorTextOrNull(errorText),
+		ID:                reportID,
+		UserID:            userID,
 	})
 	if err != nil {
 		return fmt.Errorf("update report status: %w", err)
 	}
 	return nil
+}
+
+func errorTextOrNull(value string) pgtype.Text {
+	if strings.TrimSpace(value) == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: value, Valid: true}
 }

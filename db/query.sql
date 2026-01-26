@@ -22,6 +22,12 @@ UPDATE financial_reports
 SET status = $1
 WHERE id = $2 AND user_id = $3;
 
+-- name: UpdateReportStatusWithError :exec
+UPDATE financial_reports
+SET status = $1,
+    status_description = $2
+WHERE id = $3 AND user_id = $4;
+
 -- name: DeleteTransactionsBySource :exec
 DELETE FROM transactions
 WHERE source_file_id = $1 AND user_id = $2;
