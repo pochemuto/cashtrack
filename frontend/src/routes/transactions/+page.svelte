@@ -64,6 +64,14 @@
     let calendarOpen = false;
     let calendarPopover: HTMLElement | null = null;
     let calendarInput: HTMLInputElement | null = null;
+    let calendarUpdating = false;
+
+    function formatYmd(date: Date): string {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
 
     function formatDate(value: string): string {
         const date = new Date(value);
@@ -87,6 +95,9 @@
     }
 
     function handleCalendarRangeChange(event: Event) {
+        if (calendarUpdating) {
+            return;
+        }
         const target = event.currentTarget as HTMLInputElement;
         const value = target.value || "";
         if (!value) {
@@ -109,6 +120,65 @@
 
     function closeCalendar() {
         calendarOpen = false;
+    }
+
+    function applyPresetRange(label: string) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        let start: Date;
+        let end: Date;
+
+        switch (label) {
+            case "current-month": {
+                const year = today.getFullYear();
+                const month = today.getMonth();
+                start = new Date(year, month, 1);
+                end = new Date(year, month + 1, 0);
+                break;
+            }
+            case "previous-month": {
+                const year = today.getFullYear();
+                const month = today.getMonth() - 1;
+                start = new Date(year, month, 1);
+                end = new Date(year, month + 1, 0);
+                break;
+            }
+            case "current-year": {
+                const year = today.getFullYear();
+                start = new Date(year, 0, 1);
+                end = new Date(year, 11, 31);
+                break;
+            }
+            case "previous-year": {
+                const year = today.getFullYear() - 1;
+                start = new Date(year, 0, 1);
+                end = new Date(year, 11, 31);
+                break;
+            }
+            case "last-30-days": {
+                end = new Date(today);
+                start = new Date(today);
+                start.setDate(start.getDate() - 29);
+                break;
+            }
+            case "last-90-days": {
+                end = new Date(today);
+                start = new Date(today);
+                start.setDate(start.getDate() - 89);
+                break;
+            }
+            default:
+                return;
+        }
+
+        calendarUpdating = true;
+        fromDate = formatYmd(start);
+        toDate = formatYmd(end);
+        calendarOpen = false;
+        queueMicrotask(() => {
+            calendarUpdating = false;
+        });
     }
 
     function formatSummaryAmount(value: string): string {
@@ -268,7 +338,7 @@
         calendarRange = "";
     }
 
-    $: if (calendarElement && calendarElement.value !== calendarRange) {
+    $: if (!calendarUpdating && calendarElement && calendarElement.value !== calendarRange) {
         calendarElement.value = calendarRange;
     }
 
@@ -343,6 +413,26 @@
                                 class="absolute z-20 mt-2 rounded-box border border-base-200 bg-base-100 p-2 shadow"
                                 bind:this={calendarPopover}
                             >
+                                <div class="mb-2 grid gap-2 sm:grid-cols-2">
+                                    <button class="btn btn-ghost btn-xs justify-start" type="button" on:click={() => applyPresetRange("current-month")}>
+                                        Текущий месяц
+                                    </button>
+                                    <button class="btn btn-ghost btn-xs justify-start" type="button" on:click={() => applyPresetRange("previous-month")}>
+                                        Предыдущий месяц
+                                    </button>
+                                    <button class="btn btn-ghost btn-xs justify-start" type="button" on:click={() => applyPresetRange("current-year")}>
+                                        Текущий год
+                                    </button>
+                                    <button class="btn btn-ghost btn-xs justify-start" type="button" on:click={() => applyPresetRange("previous-year")}>
+                                        Предыдущий год
+                                    </button>
+                                    <button class="btn btn-ghost btn-xs justify-start" type="button" on:click={() => applyPresetRange("last-30-days")}>
+                                        Последние 30 дней
+                                    </button>
+                                    <button class="btn btn-ghost btn-xs justify-start" type="button" on:click={() => applyPresetRange("last-90-days")}>
+                                        Последние 90 дней
+                                    </button>
+                                </div>
                                 <calendar-range
                                     class="cally"
                                     bind:this={calendarElement}
