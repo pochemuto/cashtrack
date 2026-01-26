@@ -175,40 +175,27 @@ type CategoryRuleEntry struct {
 }
 
 func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters TransactionFilters) (TransactionSummary, error) {
-	params := []any{
-		userID,
-		dateOrNull(filters.FromDate),
-		dateOrNull(filters.ToDate),
-		int64OrNull(filters.SourceFileID),
-		textOrNull(filters.EntryType),
-		textOrNull(filters.SourceAccountNumber),
-		textOrNull(filters.SourceCardNumber),
-		textOrNull(filters.SearchText),
-		int64OrNull(filters.CategoryID),
+	row, err := s.db.Queries.SummaryTransactions(ctx, db.SummaryTransactionsParams{
+		UserID:              userID,
+		FromDate:            dateOrNull(filters.FromDate),
+		ToDate:              dateOrNull(filters.ToDate),
+		SourceFileID:        int64OrNull(filters.SourceFileID),
+		EntryType:           textOrNull(filters.EntryType),
+		SourceAccountNumber: textOrNull(filters.SourceAccountNumber),
+		SourceCardNumber:    textOrNull(filters.SourceCardNumber),
+		SearchText:          textOrNull(filters.SearchText),
+		CategoryID:          int64OrNull(filters.CategoryID),
+	})
+	if err != nil {
+		log.Error().Err(err).Interface("filters", filters).Msg("failed to query transactions summary")
+		return TransactionSummary{}, err
 	}
 
-	query := `
-		SELECT
-			COUNT(*),
-			COALESCE(SUM(amount), 0::numeric)::text,
-			COALESCE(AVG(amount), 0::numeric)::text,
-			COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY amount), 0::numeric)::text
-		FROM transactions
-		WHERE user_id = $1
-		  AND ($2::date IS NULL OR posted_date >= $2)
-		  AND ($3::date IS NULL OR posted_date <= $3)
-		  AND ($4::bigint IS NULL OR source_file_id = $4)
-		  AND ($5::text IS NULL OR entry_type = $5)
-		  AND ($6::text IS NULL OR source_account_number = $6)
-		  AND ($7::text IS NULL OR source_card_number = $7)
-		  AND ($8::text IS NULL OR to_tsvector('simple', description) @@ plainto_tsquery('simple', $8))
-		  AND ($9::bigint IS NULL OR category_id = $9)
-	`
-
-	var summary TransactionSummary
-	if err := s.db.conn.QueryRow(ctx, query, params...).Scan(&summary.Count, &summary.Total, &summary.Average, &summary.Median); err != nil {
-		log.Error().Err(err).Interface("filters", filters).Msg("failed to query transactions summary")
-		return summary, err
+	summary := TransactionSummary{
+		Count:   row.Count,
+		Total:   numericToString(row.TotalAmount),
+		Average: numericToString(row.AverageAmount),
+		Median:  numericToString(row.MedianAmount),
 	}
 	if summary.Total == "" {
 		summary.Total = "0"
@@ -227,21 +214,19 @@ func (s *TransactionsService) ListWithCategories(ctx context.Context, userID int
 }
 
 func (s *TransactionsService) listCategoryRules(ctx context.Context, userID int32) ([]CategoryRuleEntry, error) {
-	rows, err := s.db.conn.Query(ctx, "SELECT category_id, description_contains FROM category_rules WHERE user_id = $1 ORDER BY id", userID)
+	rows, err := s.db.Queries.ListCategoryRulesByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var rules []CategoryRuleEntry
-	for rows.Next() {
-		var rule CategoryRuleEntry
-		if err := rows.Scan(&rule.CategoryID, &rule.DescriptionContains); err != nil {
-			return nil, err
-		}
-		rules = append(rules, rule)
+	rules := make([]CategoryRuleEntry, 0, len(rows))
+	for _, row := range rows {
+		rules = append(rules, CategoryRuleEntry{
+			CategoryID:          row.CategoryID,
+			DescriptionContains: row.DescriptionContains,
+		})
 	}
-	return rules, rows.Err()
+	return rules, nil
 }
 
 type normalizedRule struct {

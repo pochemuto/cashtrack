@@ -40,6 +40,409 @@ func (q *Queries) AddTodosBatch(ctx context.Context, arg AddTodosBatchParams) er
 	return err
 }
 
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, username
+FROM users
+WHERE username = $1
+`
+
+type GetUserByUsernameRow struct {
+	ID       int32
+	Username string
+}
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
+	var i GetUserByUsernameRow
+	err := row.Scan(&i.ID, &i.Username)
+	return i, err
+}
+
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (username, password)
+VALUES ($1, $2)
+RETURNING id, username
+`
+
+type CreateUserParams struct {
+	Username string
+	Password string
+}
+
+type CreateUserRow struct {
+	ID       int32
+	Username string
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.Password)
+	var i CreateUserRow
+	err := row.Scan(&i.ID, &i.Username)
+	return i, err
+}
+
+const createSession = `-- name: CreateSession :one
+INSERT INTO sessions (user_id, expires)
+VALUES ($1, $2)
+RETURNING id::text
+`
+
+type CreateSessionParams struct {
+	UserID  int32
+	Expires pgtype.Timestamptz
+}
+
+type CreateSessionRow struct {
+	ID string
+}
+
+func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (CreateSessionRow, error) {
+	row := q.db.QueryRow(ctx, createSession, arg.UserID, arg.Expires)
+	var i CreateSessionRow
+	err := row.Scan(&i.ID)
+	return i, err
+}
+
+const deleteSession = `-- name: DeleteSession :execrows
+DELETE FROM sessions
+WHERE id = $1
+`
+
+func (q *Queries) DeleteSession(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSession, id)
+	return result.RowsAffected(), err
+}
+
+const getUserBySession = `-- name: GetUserBySession :one
+SELECT u.id, u.username, s.expires
+FROM sessions s
+JOIN users u ON u.id = s.user_id
+WHERE s.id = $1
+`
+
+type GetUserBySessionRow struct {
+	ID       int32
+	Username string
+	Expires  pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserBySession(ctx context.Context, id string) (GetUserBySessionRow, error) {
+	row := q.db.QueryRow(ctx, getUserBySession, id)
+	var i GetUserBySessionRow
+	err := row.Scan(&i.ID, &i.Username, &i.Expires)
+	return i, err
+}
+
+const createReport = `-- name: CreateReport :exec
+INSERT INTO financial_reports (user_id, filename, content_type, data, status)
+VALUES ($1, $2, $3, $4, $5)
+`
+
+type CreateReportParams struct {
+	UserID      int32
+	Filename    string
+	ContentType string
+	Data        []byte
+	Status      string
+}
+
+func (q *Queries) CreateReport(ctx context.Context, arg CreateReportParams) error {
+	_, err := q.db.Exec(ctx, createReport, arg.UserID, arg.Filename, arg.ContentType, arg.Data, arg.Status)
+	return err
+}
+
+const listReportsByUser = `-- name: ListReportsByUser :many
+SELECT id,
+       filename,
+       octet_length(data) AS size_bytes,
+       status,
+       uploaded_at,
+       status_description
+FROM financial_reports
+WHERE user_id = $1
+ORDER BY uploaded_at DESC, id DESC
+`
+
+type ListReportsByUserRow struct {
+	ID                int64
+	Filename          string
+	SizeBytes         int64
+	Status            string
+	UploadedAt        pgtype.Timestamptz
+	StatusDescription pgtype.Text
+}
+
+func (q *Queries) ListReportsByUser(ctx context.Context, userID int32) ([]ListReportsByUserRow, error) {
+	rows, err := q.db.Query(ctx, listReportsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReportsByUserRow
+	for rows.Next() {
+		var i ListReportsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Filename,
+			&i.SizeBytes,
+			&i.Status,
+			&i.UploadedAt,
+			&i.StatusDescription,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getReportByID = `-- name: GetReportByID :one
+SELECT filename, content_type, data
+FROM financial_reports
+WHERE id = $1 AND user_id = $2
+`
+
+type GetReportByIDParams struct {
+	ID     int64
+	UserID int32
+}
+
+type GetReportByIDRow struct {
+	Filename    string
+	ContentType string
+	Data        []byte
+}
+
+func (q *Queries) GetReportByID(ctx context.Context, arg GetReportByIDParams) (GetReportByIDRow, error) {
+	row := q.db.QueryRow(ctx, getReportByID, arg.ID, arg.UserID)
+	var i GetReportByIDRow
+	err := row.Scan(&i.Filename, &i.ContentType, &i.Data)
+	return i, err
+}
+
+const listCategoriesByUser = `-- name: ListCategoriesByUser :many
+SELECT id, name, created_at
+FROM categories
+WHERE user_id = $1
+ORDER BY name
+`
+
+type ListCategoriesByUserRow struct {
+	ID        int64
+	Name      string
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListCategoriesByUser(ctx context.Context, userID int32) ([]ListCategoriesByUserRow, error) {
+	rows, err := q.db.Query(ctx, listCategoriesByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCategoriesByUserRow
+	for rows.Next() {
+		var i ListCategoriesByUserRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const createCategory = `-- name: CreateCategory :one
+INSERT INTO categories (user_id, name)
+VALUES ($1, $2)
+RETURNING id, name, created_at
+`
+
+type CreateCategoryParams struct {
+	UserID int32
+	Name   string
+}
+
+type CreateCategoryRow struct {
+	ID        int64
+	Name      string
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (CreateCategoryRow, error) {
+	row := q.db.QueryRow(ctx, createCategory, arg.UserID, arg.Name)
+	var i CreateCategoryRow
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
+const updateCategory = `-- name: UpdateCategory :execrows
+UPDATE categories
+SET name = $1
+WHERE id = $2 AND user_id = $3
+`
+
+type UpdateCategoryParams struct {
+	Name   string
+	ID     int64
+	UserID int32
+}
+
+func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateCategory, arg.Name, arg.ID, arg.UserID)
+	return result.RowsAffected(), err
+}
+
+const deleteCategory = `-- name: DeleteCategory :execrows
+DELETE FROM categories
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteCategoryParams struct {
+	ID     int64
+	UserID int32
+}
+
+func (q *Queries) DeleteCategory(ctx context.Context, arg DeleteCategoryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCategory, arg.ID, arg.UserID)
+	return result.RowsAffected(), err
+}
+
+const categoryExists = `-- name: CategoryExists :one
+SELECT EXISTS(
+    SELECT 1
+    FROM categories
+    WHERE id = $1 AND user_id = $2
+)
+`
+
+type CategoryExistsParams struct {
+	ID     int64
+	UserID int32
+}
+
+func (q *Queries) CategoryExists(ctx context.Context, arg CategoryExistsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, categoryExists, arg.ID, arg.UserID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const listCategoryRulesByUser = `-- name: ListCategoryRulesByUser :many
+SELECT id, category_id, description_contains, created_at
+FROM category_rules
+WHERE user_id = $1
+ORDER BY id
+`
+
+type ListCategoryRulesByUserRow struct {
+	ID                  int64
+	CategoryID          int64
+	DescriptionContains string
+	CreatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) ListCategoryRulesByUser(ctx context.Context, userID int32) ([]ListCategoryRulesByUserRow, error) {
+	rows, err := q.db.Query(ctx, listCategoryRulesByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCategoryRulesByUserRow
+	for rows.Next() {
+		var i ListCategoryRulesByUserRow
+		if err := rows.Scan(&i.ID, &i.CategoryID, &i.DescriptionContains, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const createCategoryRule = `-- name: CreateCategoryRule :one
+INSERT INTO category_rules (user_id, category_id, description_contains)
+VALUES ($1, $2, $3)
+RETURNING id, category_id, description_contains, created_at
+`
+
+type CreateCategoryRuleParams struct {
+	UserID              int32
+	CategoryID          int64
+	DescriptionContains string
+}
+
+type CreateCategoryRuleRow struct {
+	ID                  int64
+	CategoryID          int64
+	DescriptionContains string
+	CreatedAt           pgtype.Timestamptz
+}
+
+func (q *Queries) CreateCategoryRule(ctx context.Context, arg CreateCategoryRuleParams) (CreateCategoryRuleRow, error) {
+	row := q.db.QueryRow(ctx, createCategoryRule, arg.UserID, arg.CategoryID, arg.DescriptionContains)
+	var i CreateCategoryRuleRow
+	err := row.Scan(&i.ID, &i.CategoryID, &i.DescriptionContains, &i.CreatedAt)
+	return i, err
+}
+
+const updateCategoryRule = `-- name: UpdateCategoryRule :execrows
+UPDATE category_rules
+SET category_id = $1,
+    description_contains = $2
+WHERE id = $3 AND user_id = $4
+`
+
+type UpdateCategoryRuleParams struct {
+	CategoryID          int64
+	DescriptionContains string
+	ID                  int64
+	UserID              int32
+}
+
+func (q *Queries) UpdateCategoryRule(ctx context.Context, arg UpdateCategoryRuleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateCategoryRule, arg.CategoryID, arg.DescriptionContains, arg.ID, arg.UserID)
+	return result.RowsAffected(), err
+}
+
+const deleteCategoryRule = `-- name: DeleteCategoryRule :execrows
+DELETE FROM category_rules
+WHERE id = $1 AND user_id = $2
+`
+
+type DeleteCategoryRuleParams struct {
+	ID     int64
+	UserID int32
+}
+
+func (q *Queries) DeleteCategoryRule(ctx context.Context, arg DeleteCategoryRuleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCategoryRule, arg.ID, arg.UserID)
+	return result.RowsAffected(), err
+}
+
+const updateTransactionCategory = `-- name: UpdateTransactionCategory :execrows
+UPDATE transactions
+SET category_id = $1
+WHERE id = $2 AND user_id = $3
+`
+
+type UpdateTransactionCategoryParams struct {
+	CategoryID pgtype.Int8
+	ID         int64
+	UserID     int32
+}
+
+func (q *Queries) UpdateTransactionCategory(ctx context.Context, arg UpdateTransactionCategoryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateTransactionCategory, arg.CategoryID, arg.ID, arg.UserID)
+	return result.RowsAffected(), err
+}
+
 const createTransaction = `-- name: CreateTransaction :exec
 INSERT INTO transactions (
     user_id,
@@ -109,6 +512,60 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		arg.ParserMeta,
 	)
 	return err
+}
+
+const summaryTransactions = `-- name: SummaryTransactions :one
+SELECT
+    COUNT(*) AS count,
+    COALESCE(SUM(amount), 0::numeric) AS total_amount,
+    COALESCE(AVG(amount), 0::numeric) AS average_amount,
+    COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY amount), 0::numeric) AS median_amount
+FROM transactions
+WHERE user_id = $1
+  AND ($2::date IS NULL OR posted_date >= $2)
+  AND ($3::date IS NULL OR posted_date <= $3)
+  AND ($4::bigint IS NULL OR source_file_id = $4)
+  AND ($5::text IS NULL OR entry_type = $5)
+  AND ($6::text IS NULL OR source_account_number = $6)
+  AND ($7::text IS NULL OR source_card_number = $7)
+  AND ($8::text IS NULL OR to_tsvector('simple', description) @@ plainto_tsquery('simple', $8))
+  AND ($9::bigint IS NULL OR category_id = $9)
+`
+
+type SummaryTransactionsParams struct {
+	UserID              int32
+	FromDate            pgtype.Date
+	ToDate              pgtype.Date
+	SourceFileID        pgtype.Int8
+	EntryType           pgtype.Text
+	SourceAccountNumber pgtype.Text
+	SourceCardNumber    pgtype.Text
+	SearchText          pgtype.Text
+	CategoryID          pgtype.Int8
+}
+
+type SummaryTransactionsRow struct {
+	Count         int64
+	TotalAmount   pgtype.Numeric
+	AverageAmount pgtype.Numeric
+	MedianAmount  pgtype.Numeric
+}
+
+func (q *Queries) SummaryTransactions(ctx context.Context, arg SummaryTransactionsParams) (SummaryTransactionsRow, error) {
+	row := q.db.QueryRow(ctx, summaryTransactions,
+		arg.UserID,
+		arg.FromDate,
+		arg.ToDate,
+		arg.SourceFileID,
+		arg.EntryType,
+		arg.SourceAccountNumber,
+		arg.SourceCardNumber,
+		arg.SearchText,
+		arg.CategoryID,
+	)
+	var i SummaryTransactionsRow
+	err := row.Scan(&i.Count, &i.TotalAmount, &i.AverageAmount, &i.MedianAmount)
+	return i, err
 }
 
 const deleteReportByID = `-- name: DeleteReportByID :exec

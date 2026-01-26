@@ -1,6 +1,7 @@
 package cashtrack
 
 import (
+	dbgen "cashtrack/backend/gen/db"
 	"context"
 	"encoding/json"
 	"errors"
@@ -304,104 +305,137 @@ func NewTransactionCategoryHandler(db *Db) *TransactionCategoryHandler {
 var errNotFound = errors.New("not found")
 
 func listCategories(ctx context.Context, db *Db, userID int32) ([]Category, error) {
-	rows, err := db.conn.Query(ctx, "SELECT id, name, created_at FROM categories WHERE user_id = $1 ORDER BY name", userID)
+	rows, err := db.Queries.ListCategoriesByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var categories []Category
-	for rows.Next() {
-		var item Category
-		if err := rows.Scan(&item.ID, &item.Name, &item.CreatedAt); err != nil {
-			return nil, err
-		}
-		categories = append(categories, item)
+	categories := make([]Category, 0, len(rows))
+	for _, row := range rows {
+		categories = append(categories, Category{
+			ID:        row.ID,
+			Name:      row.Name,
+			CreatedAt: row.CreatedAt.Time,
+		})
 	}
-	return categories, rows.Err()
+	return categories, nil
 }
 
 func createCategory(ctx context.Context, db *Db, userID int32, name string) (Category, error) {
-	var item Category
-	err := db.conn.QueryRow(ctx, "INSERT INTO categories (user_id, name) VALUES ($1, $2) RETURNING id, name, created_at", userID, name).Scan(&item.ID, &item.Name, &item.CreatedAt)
-	return item, err
+	row, err := db.Queries.CreateCategory(ctx, dbgen.CreateCategoryParams{
+		UserID: userID,
+		Name:   name,
+	})
+	if err != nil {
+		return Category{}, err
+	}
+	return Category{
+		ID:        row.ID,
+		Name:      row.Name,
+		CreatedAt: row.CreatedAt.Time,
+	}, nil
 }
 
 func updateCategory(ctx context.Context, db *Db, userID int32, id int64, name string) error {
-	cmd, err := db.conn.Exec(ctx, "UPDATE categories SET name = $1 WHERE id = $2 AND user_id = $3", name, id, userID)
+	affected, err := db.Queries.UpdateCategory(ctx, dbgen.UpdateCategoryParams{
+		Name:   name,
+		ID:     id,
+		UserID: userID,
+	})
 	if err != nil {
 		return err
 	}
-	if cmd.RowsAffected() == 0 {
+	if affected == 0 {
 		return errNotFound
 	}
 	return nil
 }
 
 func deleteCategory(ctx context.Context, db *Db, userID int32, id int64) error {
-	cmd, err := db.conn.Exec(ctx, "DELETE FROM categories WHERE id = $1 AND user_id = $2", id, userID)
+	affected, err := db.Queries.DeleteCategory(ctx, dbgen.DeleteCategoryParams{
+		ID:     id,
+		UserID: userID,
+	})
 	if err != nil {
 		return err
 	}
-	if cmd.RowsAffected() == 0 {
+	if affected == 0 {
 		return errNotFound
 	}
 	return nil
 }
 
 func listCategoryRules(ctx context.Context, db *Db, userID int32) ([]CategoryRule, error) {
-	rows, err := db.conn.Query(ctx, "SELECT id, category_id, description_contains, created_at FROM category_rules WHERE user_id = $1 ORDER BY id", userID)
+	rows, err := db.Queries.ListCategoryRulesByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var rules []CategoryRule
-	for rows.Next() {
-		var item CategoryRule
-		if err := rows.Scan(&item.ID, &item.CategoryID, &item.DescriptionContains, &item.CreatedAt); err != nil {
-			return nil, err
-		}
-		rules = append(rules, item)
+	rules := make([]CategoryRule, 0, len(rows))
+	for _, row := range rows {
+		rules = append(rules, CategoryRule{
+			ID:                  row.ID,
+			CategoryID:          row.CategoryID,
+			DescriptionContains: row.DescriptionContains,
+			CreatedAt:           row.CreatedAt.Time,
+		})
 	}
-	return rules, rows.Err()
+	return rules, nil
 }
 
 func createCategoryRule(ctx context.Context, db *Db, userID int32, payload categoryRulePayload) (CategoryRule, error) {
-	var item CategoryRule
-	err := db.conn.QueryRow(ctx, "INSERT INTO category_rules (user_id, category_id, description_contains) VALUES ($1, $2, $3) RETURNING id, category_id, description_contains, created_at", userID, payload.CategoryID, payload.DescriptionContains).Scan(&item.ID, &item.CategoryID, &item.DescriptionContains, &item.CreatedAt)
-	return item, err
+	row, err := db.Queries.CreateCategoryRule(ctx, dbgen.CreateCategoryRuleParams{
+		UserID:              userID,
+		CategoryID:          payload.CategoryID,
+		DescriptionContains: payload.DescriptionContains,
+	})
+	if err != nil {
+		return CategoryRule{}, err
+	}
+	return CategoryRule{
+		ID:                  row.ID,
+		CategoryID:          row.CategoryID,
+		DescriptionContains: row.DescriptionContains,
+		CreatedAt:           row.CreatedAt.Time,
+	}, nil
 }
 
 func updateCategoryRule(ctx context.Context, db *Db, userID int32, id int64, payload categoryRulePayload) error {
-	cmd, err := db.conn.Exec(ctx, "UPDATE category_rules SET category_id = $1, description_contains = $2 WHERE id = $3 AND user_id = $4", payload.CategoryID, payload.DescriptionContains, id, userID)
+	affected, err := db.Queries.UpdateCategoryRule(ctx, dbgen.UpdateCategoryRuleParams{
+		CategoryID:          payload.CategoryID,
+		DescriptionContains: payload.DescriptionContains,
+		ID:                  id,
+		UserID:              userID,
+	})
 	if err != nil {
 		return err
 	}
-	if cmd.RowsAffected() == 0 {
+	if affected == 0 {
 		return errNotFound
 	}
 	return nil
 }
 
 func deleteCategoryRule(ctx context.Context, db *Db, userID int32, id int64) error {
-	cmd, err := db.conn.Exec(ctx, "DELETE FROM category_rules WHERE id = $1 AND user_id = $2", id, userID)
+	affected, err := db.Queries.DeleteCategoryRule(ctx, dbgen.DeleteCategoryRuleParams{
+		ID:     id,
+		UserID: userID,
+	})
 	if err != nil {
 		return err
 	}
-	if cmd.RowsAffected() == 0 {
+	if affected == 0 {
 		return errNotFound
 	}
 	return nil
 }
 
 func categoryExists(ctx context.Context, db *Db, userID int32, id int64) bool {
-	var exists bool
-	err := db.conn.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM categories WHERE id = $1 AND user_id = $2)", id, userID).Scan(&exists)
-	if err != nil {
-		return false
-	}
-	return exists
+	exists, err := db.Queries.CategoryExists(ctx, dbgen.CategoryExistsParams{
+		ID:     id,
+		UserID: userID,
+	})
+	return err == nil && exists
 }
 
 func updateTransactionCategory(ctx context.Context, db *Db, userID int32, transactionID int64, categoryID *int64) error {
@@ -409,12 +443,15 @@ func updateTransactionCategory(ctx context.Context, db *Db, userID int32, transa
 	if categoryID != nil {
 		category = pgtype.Int8{Int64: *categoryID, Valid: true}
 	}
-
-	cmd, err := db.conn.Exec(ctx, "UPDATE transactions SET category_id = $1 WHERE id = $2 AND user_id = $3", category, transactionID, userID)
+	affected, err := db.Queries.UpdateTransactionCategory(ctx, dbgen.UpdateTransactionCategoryParams{
+		CategoryID: category,
+		ID:         transactionID,
+		UserID:     userID,
+	})
 	if err != nil {
 		return err
 	}
-	if cmd.RowsAffected() == 0 {
+	if affected == 0 {
 		return errNotFound
 	}
 	return nil

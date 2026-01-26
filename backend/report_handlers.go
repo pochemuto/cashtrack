@@ -2,7 +2,6 @@ package cashtrack
 
 import (
 	dbgen "cashtrack/backend/gen/db"
-	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -78,15 +77,13 @@ func NewReportUploadHandler(db *Db) *ReportUploadHandler {
 				contentType = "application/octet-stream"
 			}
 
-			_, err = db.conn.Exec(
-				r.Context(),
-				`INSERT INTO financial_reports (user_id, filename, content_type, data, status) VALUES ($1, $2, $3, $4, $5)`,
-				user.ID,
-				filename,
-				contentType,
-				data,
-				"pending",
-			)
+			err = db.Queries.CreateReport(r.Context(), dbgen.CreateReportParams{
+				UserID:      user.ID,
+				Filename:    filename,
+				ContentType: contentType,
+				Data:        data,
+				Status:      "pending",
+			})
 			if err != nil {
 				http.Error(w, "failed to save file", http.StatusInternalServerError)
 				return
@@ -113,36 +110,25 @@ func NewReportListHandler(db *Db) *ReportListHandler {
 				return
 			}
 
-			rows, err := db.conn.Query(
-				r.Context(),
-				`SELECT id, filename, octet_length(data) AS size_bytes, status, uploaded_at, status_description
-				FROM financial_reports
-				WHERE user_id = $1
-				ORDER BY uploaded_at DESC, id DESC`,
-				user.ID,
-			)
+			rows, err := db.Queries.ListReportsByUser(r.Context(), user.ID)
 			if err != nil {
 				http.Error(w, "failed to load reports", http.StatusInternalServerError)
 				return
 			}
-			defer rows.Close()
 
-			reports := make([]ReportInfo, 0)
-			for rows.Next() {
-				var report ReportInfo
-				var errorText sql.NullString
-				if err := rows.Scan(&report.ID, &report.Filename, &report.SizeBytes, &report.Status, &report.UploadedAt, &errorText); err != nil {
-					http.Error(w, "failed to load reports", http.StatusInternalServerError)
-					return
+			reports := make([]ReportInfo, 0, len(rows))
+			for _, row := range rows {
+				report := ReportInfo{
+					ID:         row.ID,
+					Filename:   row.Filename,
+					SizeBytes:  row.SizeBytes,
+					Status:     row.Status,
+					UploadedAt: row.UploadedAt.Time,
 				}
-				if errorText.Valid {
-					report.ErrorText = errorText.String
+				if row.StatusDescription.Valid {
+					report.ErrorText = row.StatusDescription.String
 				}
 				reports = append(reports, report)
-			}
-			if err := rows.Err(); err != nil {
-				http.Error(w, "failed to load reports", http.StatusInternalServerError)
-				return
 			}
 
 			w.Header().Set("Content-Type", "application/json")
@@ -175,30 +161,24 @@ func NewReportDownloadHandler(db *Db) *ReportDownloadHandler {
 				return
 			}
 
-			var filename string
-			var contentType string
-			var data []byte
-			err := db.conn.QueryRow(
-				r.Context(),
-				`SELECT filename, content_type, data
-				FROM financial_reports
-				WHERE id = $1 AND user_id = $2`,
-				id,
-				user.ID,
-			).Scan(&filename, &contentType, &data)
+			report, err := db.Queries.GetReportByID(r.Context(), dbgen.GetReportByIDParams{
+				ID:     id,
+				UserID: user.ID,
+			})
 			if err != nil {
 				http.Error(w, "file not found", http.StatusNotFound)
 				return
 			}
 
+			contentType := report.ContentType
 			if contentType == "" {
 				contentType = "application/octet-stream"
 			}
 			w.Header().Set("Content-Type", contentType)
-			w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
-			w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+			w.Header().Set("Content-Disposition", `attachment; filename="`+report.Filename+`"`)
+			w.Header().Set("Content-Length", strconv.Itoa(len(report.Data)))
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(data)
+			_, _ = w.Write(report.Data)
 		}),
 	}
 }

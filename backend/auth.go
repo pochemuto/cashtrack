@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	db "cashtrack/backend/gen/db"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuthHandler Handler
@@ -125,7 +127,7 @@ func NewAuthLogoutHandler(db *Db) *AuthLogoutHandler {
 
 			cookie, err := r.Cookie(sessionCookieName)
 			if err == nil && cookie.Value != "" {
-				_, _ = db.conn.Exec(r.Context(), `DELETE FROM sessions WHERE id = $1`, cookie.Value)
+				_, _ = db.Queries.DeleteSession(r.Context(), cookie.Value)
 			}
 
 			http.SetCookie(w, &http.Cookie{
@@ -161,46 +163,40 @@ func parseIDToken(credential string) (idTokenClaims, error) {
 }
 
 func ensureUser(ctx context.Context, db *Db, username string) (AuthUser, error) {
-	var user AuthUser
-	err := db.conn.QueryRow(ctx, `SELECT id, username FROM users WHERE username = $1`, username).
-		Scan(&user.ID, &user.Username)
+	row, err := db.Queries.GetUserByUsername(ctx, username)
 	if err == nil {
-		return user, nil
+		return AuthUser{ID: row.ID, Username: row.Username}, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return AuthUser{}, err
 	}
 
-	err = db.conn.QueryRow(ctx, `INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username`, username, "oauth").
-		Scan(&user.ID, &user.Username)
+	created, err := db.Queries.CreateUser(ctx, db.CreateUserParams{
+		Username: username,
+		Password: "oauth",
+	})
 	if err != nil {
 		return AuthUser{}, err
 	}
-	return user, nil
+	return AuthUser{ID: created.ID, Username: created.Username}, nil
 }
 
 func createSession(ctx context.Context, db *Db, userID int32) (string, time.Time, error) {
 	expiresAt := time.Now().Add(sessionDuration)
-	var sessionID string
-	err := db.conn.QueryRow(ctx, `INSERT INTO sessions (user_id, expires) VALUES ($1, $2) RETURNING id`, userID, expiresAt).
-		Scan(&sessionID)
+	row, err := db.Queries.CreateSession(ctx, db.CreateSessionParams{
+		UserID:  userID,
+		Expires: pgtype.Timestamptz{Time: expiresAt, Valid: true},
+	})
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	return sessionID, expiresAt, nil
+	return row.ID, expiresAt, nil
 }
 
 func getUserBySession(ctx context.Context, db *Db, sessionID string) (AuthUser, time.Time, error) {
-	var user AuthUser
-	var expiresAt time.Time
-	err := db.conn.QueryRow(ctx, `
-		SELECT u.id, u.username, s.expires
-		FROM sessions s
-		JOIN users u ON u.id = s.user_id
-		WHERE s.id = $1
-	`, sessionID).Scan(&user.ID, &user.Username, &expiresAt)
+	row, err := db.Queries.GetUserBySession(ctx, sessionID)
 	if err != nil {
 		return AuthUser{}, time.Time{}, err
 	}
-	return user, expiresAt, nil
+	return AuthUser{ID: row.ID, Username: row.Username}, row.Expires.Time, nil
 }
