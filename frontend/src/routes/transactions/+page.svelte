@@ -213,6 +213,26 @@
         }
     }
 
+    function closeCategoryMenu(event: MouseEvent) {
+        const target = event.currentTarget as HTMLElement | null;
+        if (!target) {
+            return;
+        }
+        requestAnimationFrame(() => {
+            target.blur();
+            const dropdown = target.closest(".dropdown");
+            const toggle = dropdown?.querySelector("button");
+            if (toggle instanceof HTMLElement) {
+                toggle.blur();
+            }
+        });
+    }
+
+    function handleCategorySelect(event: MouseEvent, transactionId: number, categoryId: number | null) {
+        closeCategoryMenu(event);
+        void updateTransactionCategory(transactionId, categoryId);
+    }
+
     function resetFilters() {
         fromDate = "";
         toDate = "";
@@ -482,13 +502,13 @@
                                         </button>
                                         <ul class="menu dropdown-content z-20 mt-2 w-56 rounded-box bg-base-100 p-2 shadow">
                                             <li>
-                                                <button type="button" on:click={() => updateTransactionCategory(tx.id, null)}>
+                                                <button type="button" on:click={(event) => handleCategorySelect(event, tx.id, null)}>
                                                     <CategoryBadge name="Без категории" />
                                                 </button>
                                             </li>
                                             {#each categories as category}
                                                 <li>
-                                                    <button type="button" on:click={() => updateTransactionCategory(tx.id, category.id)}>
+                                                    <button type="button" on:click={(event) => handleCategorySelect(event, tx.id, category.id)}>
                                                         <CategoryBadge name={category.name} color={category.color} primaryWhenNoColor={true} />
                                                     </button>
                                                 </li>
