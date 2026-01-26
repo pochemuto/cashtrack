@@ -25,6 +25,7 @@ type CategoryRule struct {
 	ID                  int64     `json:"id"`
 	CategoryID          int64     `json:"category_id"`
 	DescriptionContains string    `json:"description_contains"`
+	Position            int32     `json:"position"`
 	CreatedAt           time.Time `json:"created_at"`
 }
 
@@ -37,6 +38,8 @@ type CategoryRulesHandler Handler
 type CategoryRuleHandler Handler
 
 type CategoryRulesApplyHandler Handler
+
+type CategoryRulesReorderHandler Handler
 
 type TransactionCategoryHandler Handler
 
@@ -56,6 +59,10 @@ type transactionCategoryPayload struct {
 
 type applyCategoryRulesPayload struct {
 	ApplyToAll bool `json:"apply_to_all"`
+}
+
+type categoryRulesReorderPayload struct {
+	RuleIDs []int64 `json:"rule_ids"`
 }
 
 func NewCategoriesHandler(db *Db) *CategoriesHandler {
@@ -298,6 +305,97 @@ func NewCategoryRulesApplyHandler(db *Db, transactions *TransactionsService) *Ca
 	}
 }
 
+func NewCategoryRulesReorderHandler(db *Db) *CategoryRulesReorderHandler {
+	return &CategoryRulesReorderHandler{
+		Path: "/api/category-rules/reorder",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				w.Header().Set("Allow", http.MethodPost)
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+
+			user, ok := userFromRequest(r.Context(), db, r.Header)
+			if !ok {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			payload := categoryRulesReorderPayload{}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				http.Error(w, "invalid payload", http.StatusBadRequest)
+				return
+			}
+			if len(payload.RuleIDs) == 0 {
+				http.Error(w, "rule_ids is required", http.StatusBadRequest)
+				return
+			}
+
+			rules, err := listCategoryRules(r.Context(), db, user.ID)
+			if err != nil {
+				http.Error(w, "failed to load rules", http.StatusInternalServerError)
+				return
+			}
+
+			if len(payload.RuleIDs) != len(rules) {
+				http.Error(w, "rule_ids must include all rules", http.StatusBadRequest)
+				return
+			}
+
+			ruleMap := make(map[int64]struct{}, len(rules))
+			for _, rule := range rules {
+				ruleMap[rule.ID] = struct{}{}
+			}
+
+			seen := make(map[int64]struct{}, len(payload.RuleIDs))
+			for _, id := range payload.RuleIDs {
+				if _, ok := ruleMap[id]; !ok {
+					http.Error(w, "unknown rule id", http.StatusBadRequest)
+					return
+				}
+				if _, ok := seen[id]; ok {
+					http.Error(w, "duplicate rule id", http.StatusBadRequest)
+					return
+				}
+				seen[id] = struct{}{}
+			}
+
+			tx, err := db.conn.Begin(r.Context())
+			if err != nil {
+				http.Error(w, "failed to start transaction", http.StatusInternalServerError)
+				return
+			}
+			defer func() {
+				_ = tx.Rollback(r.Context())
+			}()
+
+			txQueries := db.Queries.WithTx(tx)
+			for index, id := range payload.RuleIDs {
+				affected, err := txQueries.UpdateCategoryRulePosition(r.Context(), dbgen.UpdateCategoryRulePositionParams{
+					Position: int32(index + 1),
+					ID:       id,
+					UserID:   user.ID,
+				})
+				if err != nil {
+					http.Error(w, "failed to update rule order", http.StatusInternalServerError)
+					return
+				}
+				if affected == 0 {
+					http.Error(w, "rule not found", http.StatusBadRequest)
+					return
+				}
+			}
+
+			if err := tx.Commit(r.Context()); err != nil {
+				http.Error(w, "failed to commit order", http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusNoContent)
+		}),
+	}
+}
+
 func NewTransactionCategoryHandler(db *Db) *TransactionCategoryHandler {
 	return &TransactionCategoryHandler{
 		Path: "/api/transactions/",
@@ -442,6 +540,7 @@ func listCategoryRules(ctx context.Context, db *Db, userID int32) ([]CategoryRul
 			ID:                  row.ID,
 			CategoryID:          row.CategoryID,
 			DescriptionContains: row.DescriptionContains,
+			Position:            row.Position,
 			CreatedAt:           row.CreatedAt.Time,
 		})
 	}
@@ -461,6 +560,7 @@ func createCategoryRule(ctx context.Context, db *Db, userID int32, payload categ
 		ID:                  row.ID,
 		CategoryID:          row.CategoryID,
 		DescriptionContains: row.DescriptionContains,
+		Position:            row.Position,
 		CreatedAt:           row.CreatedAt.Time,
 	}, nil
 }

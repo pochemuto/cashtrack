@@ -44,8 +44,9 @@ func InitializeApp(ctx context.Context) (*http.Server, *ReportProcessor, error) 
 	categoryRulesHandler := NewCategoryRulesHandler(db)
 	categoryRuleHandler := NewCategoryRuleHandler(db)
 	categoryRulesApplyHandler := NewCategoryRulesApplyHandler(db, transactionsService)
+	categoryRulesReorderHandler := NewCategoryRulesReorderHandler(db)
 	transactionCategoryHandler := NewTransactionCategoryHandler(db)
-	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler, reportUploadHandler, reportListHandler, reportDownloadHandler, reportDeleteHandler, transactionsListHandler, categoriesHandler, categoryHandler, categoryRulesHandler, categoryRuleHandler, categoryRulesApplyHandler, transactionCategoryHandler)
+	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler, reportUploadHandler, reportListHandler, reportDownloadHandler, reportDeleteHandler, transactionsListHandler, categoriesHandler, categoryHandler, categoryRulesHandler, categoryRuleHandler, categoryRulesApplyHandler, categoryRulesReorderHandler, transactionCategoryHandler)
 	server := NewHttpServer(serverConfig, v)
 	reportParsingService := NewReportParsingService()
 	reportProcessor := NewReportProcessor(db, reportParsingService, transactionsService)
@@ -54,6 +55,6 @@ func InitializeApp(ctx context.Context) (*http.Server, *ReportProcessor, error) 
 
 // wire.go:
 
-func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *ReportUploadHandler, reportList *ReportListHandler, reportDownload *ReportDownloadHandler, reportDelete *ReportDeleteHandler, transactionsList *TransactionsListHandler, categories *CategoriesHandler, category *CategoryHandler, categoryRules *CategoryRulesHandler, categoryRule *CategoryRuleHandler, categoryRulesApply *CategoryRulesApplyHandler, transactionCategory *TransactionCategoryHandler) []*Handler {
-	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload), (*Handler)(reportList), (*Handler)(reportDownload), (*Handler)(reportDelete), (*Handler)(transactionsList), (*Handler)(categories), (*Handler)(category), (*Handler)(categoryRules), (*Handler)(categoryRule), (*Handler)(categoryRulesApply), (*Handler)(transactionCategory)}
+func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *ReportUploadHandler, reportList *ReportListHandler, reportDownload *ReportDownloadHandler, reportDelete *ReportDeleteHandler, transactionsList *TransactionsListHandler, categories *CategoriesHandler, category *CategoryHandler, categoryRules *CategoryRulesHandler, categoryRule *CategoryRuleHandler, categoryRulesApply *CategoryRulesApplyHandler, categoryRulesReorder *CategoryRulesReorderHandler, transactionCategory *TransactionCategoryHandler) []*Handler {
+	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload), (*Handler)(reportList), (*Handler)(reportDownload), (*Handler)(reportDelete), (*Handler)(transactionsList), (*Handler)(categories), (*Handler)(category), (*Handler)(categoryRules), (*Handler)(categoryRule), (*Handler)(categoryRulesApply), (*Handler)(categoryRulesReorder), (*Handler)(transactionCategory)}
 }

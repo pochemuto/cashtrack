@@ -70,10 +70,12 @@ CREATE TABLE public.category_rules (
     user_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     category_id bigint NOT NULL REFERENCES public.categories(id) ON DELETE CASCADE,
     description_contains text NOT NULL,
+    position integer NOT NULL,
     created_at timestamp with time zone NOT NULL DEFAULT now()
 );
 CREATE INDEX category_rules_user_id_idx ON public.category_rules USING btree (user_id);
 CREATE INDEX category_rules_category_id_idx ON public.category_rules USING btree (category_id);
+CREATE INDEX category_rules_user_position_idx ON public.category_rules USING btree (user_id, position);
 CREATE TABLE public.exchange_rates (
     id bigserial PRIMARY KEY,
     rate_date date NOT NULL,

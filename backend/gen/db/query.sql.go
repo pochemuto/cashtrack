@@ -378,16 +378,17 @@ func (q *Queries) CategoryExists(ctx context.Context, arg CategoryExistsParams) 
 }
 
 const listCategoryRulesByUser = `-- name: ListCategoryRulesByUser :many
-SELECT id, category_id, description_contains, created_at
+SELECT id, category_id, description_contains, position, created_at
 FROM category_rules
 WHERE user_id = $1
-ORDER BY id
+ORDER BY position, id
 `
 
 type ListCategoryRulesByUserRow struct {
 	ID                  int64
 	CategoryID          int64
 	DescriptionContains string
+	Position            int32
 	CreatedAt           pgtype.Timestamptz
 }
 
@@ -400,7 +401,7 @@ func (q *Queries) ListCategoryRulesByUser(ctx context.Context, userID int32) ([]
 	var items []ListCategoryRulesByUserRow
 	for rows.Next() {
 		var i ListCategoryRulesByUserRow
-		if err := rows.Scan(&i.ID, &i.CategoryID, &i.DescriptionContains, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.ID, &i.CategoryID, &i.DescriptionContains, &i.Position, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -412,9 +413,14 @@ func (q *Queries) ListCategoryRulesByUser(ctx context.Context, userID int32) ([]
 }
 
 const createCategoryRule = `-- name: CreateCategoryRule :one
-INSERT INTO category_rules (user_id, category_id, description_contains)
-VALUES ($1, $2, $3)
-RETURNING id, category_id, description_contains, created_at
+INSERT INTO category_rules (user_id, category_id, description_contains, position)
+VALUES (
+    $1,
+    $2,
+    $3,
+    COALESCE((SELECT MAX(position) FROM category_rules WHERE user_id = $1), 0) + 1
+)
+RETURNING id, category_id, description_contains, position, created_at
 `
 
 type CreateCategoryRuleParams struct {
@@ -427,13 +433,14 @@ type CreateCategoryRuleRow struct {
 	ID                  int64
 	CategoryID          int64
 	DescriptionContains string
+	Position            int32
 	CreatedAt           pgtype.Timestamptz
 }
 
 func (q *Queries) CreateCategoryRule(ctx context.Context, arg CreateCategoryRuleParams) (CreateCategoryRuleRow, error) {
 	row := q.db.QueryRow(ctx, createCategoryRule, arg.UserID, arg.CategoryID, arg.DescriptionContains)
 	var i CreateCategoryRuleRow
-	err := row.Scan(&i.ID, &i.CategoryID, &i.DescriptionContains, &i.CreatedAt)
+	err := row.Scan(&i.ID, &i.CategoryID, &i.DescriptionContains, &i.Position, &i.CreatedAt)
 	return i, err
 }
 
@@ -453,6 +460,23 @@ type UpdateCategoryRuleParams struct {
 
 func (q *Queries) UpdateCategoryRule(ctx context.Context, arg UpdateCategoryRuleParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateCategoryRule, arg.CategoryID, arg.DescriptionContains, arg.ID, arg.UserID)
+	return result.RowsAffected(), err
+}
+
+const updateCategoryRulePosition = `-- name: UpdateCategoryRulePosition :execrows
+UPDATE category_rules
+SET position = $1
+WHERE id = $2 AND user_id = $3
+`
+
+type UpdateCategoryRulePositionParams struct {
+	Position int32
+	ID       int64
+	UserID   int32
+}
+
+func (q *Queries) UpdateCategoryRulePosition(ctx context.Context, arg UpdateCategoryRulePositionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateCategoryRulePosition, arg.Position, arg.ID, arg.UserID)
 	return result.RowsAffected(), err
 }
 

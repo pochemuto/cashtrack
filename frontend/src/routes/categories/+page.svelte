@@ -16,6 +16,7 @@
         id: number;
         category_id: number;
         description_contains: string;
+        position: number;
         created_at: string;
     };
 
@@ -40,6 +41,7 @@
     let editingRuleText = "";
     let applyRulesToAll = false;
     let applyingRules = false;
+    let rulesReordering = false;
     let menuOpen:
         | {type: "category"; id: number; x: number; y: number}
         | {type: "rule"; id: number; x: number; y: number}
@@ -290,6 +292,44 @@
             rules = rules.filter((rule) => rule.id !== ruleId);
         } catch {
             actionError = "Не удалось удалить правило.";
+        }
+    }
+
+    function moveRule(index: number, direction: "up" | "down") {
+        if (rulesReordering) {
+            return;
+        }
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= rules.length) {
+            return;
+        }
+        const nextRules = [...rules];
+        const temp = nextRules[index];
+        nextRules[index] = nextRules[targetIndex];
+        nextRules[targetIndex] = temp;
+        rules = nextRules;
+        void persistRuleOrder(nextRules);
+    }
+
+    async function persistRuleOrder(nextRules: RuleItem[]) {
+        actionError = "";
+        rulesReordering = true;
+        try {
+            const response = await fetch(resolveApiUrl("api/category-rules/reorder"), {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                credentials: "include",
+                body: JSON.stringify({rule_ids: nextRules.map((rule) => rule.id)}),
+            });
+            if (!response.ok) {
+                actionError = "Не удалось изменить порядок правил.";
+                await loadData();
+            }
+        } catch {
+            actionError = "Не удалось изменить порядок правил.";
+            await loadData();
+        } finally {
+            rulesReordering = false;
         }
     }
 
@@ -550,7 +590,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                        {#each rules as rule}
+                        {#each rules as rule, index}
                             <tr>
                                 <td>
                                     {#if editingRuleId === rule.id}
@@ -585,9 +625,33 @@
                                             </button>
                                         </div>
                                     {:else}
-                                        <button class="btn btn-ghost btn-sm" type="button" on:click={(event) => openMenu(event, "rule", rule.id)}>
-                                            ⋮
-                                        </button>
+                                        <div class="flex justify-end gap-1">
+                                            <button
+                                                class="btn btn-ghost btn-sm"
+                                                type="button"
+                                                disabled={rulesReordering || index === 0}
+                                                on:click={() => moveRule(index, "up")}
+                                                title="Переместить вверх"
+                                            >
+                                                ↑
+                                            </button>
+                                            <button
+                                                class="btn btn-ghost btn-sm"
+                                                type="button"
+                                                disabled={rulesReordering || index === rules.length - 1}
+                                                on:click={() => moveRule(index, "down")}
+                                                title="Переместить вниз"
+                                            >
+                                                ↓
+                                            </button>
+                                            <button
+                                                class="btn btn-ghost btn-sm"
+                                                type="button"
+                                                on:click={(event) => openMenu(event, "rule", rule.id)}
+                                            >
+                                                ⋮
+                                            </button>
+                                        </div>
                                     {/if}
                                 </td>
                             </tr>

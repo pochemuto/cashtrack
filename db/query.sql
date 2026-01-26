@@ -98,21 +98,31 @@ SELECT EXISTS(
 );
 
 -- name: ListCategoryRulesByUser :many
-SELECT id, category_id, description_contains, created_at
+SELECT id, category_id, description_contains, position, created_at
 FROM category_rules
 WHERE user_id = $1
-ORDER BY id;
+ORDER BY position, id;
 
 -- name: CreateCategoryRule :one
-INSERT INTO category_rules (user_id, category_id, description_contains)
-VALUES ($1, $2, $3)
-RETURNING id, category_id, description_contains, created_at;
+INSERT INTO category_rules (user_id, category_id, description_contains, position)
+VALUES (
+    $1,
+    $2,
+    $3,
+    COALESCE((SELECT MAX(position) FROM category_rules WHERE user_id = $1), 0) + 1
+)
+RETURNING id, category_id, description_contains, position, created_at;
 
 -- name: UpdateCategoryRule :execrows
 UPDATE category_rules
 SET category_id = $1,
     description_contains = $2
 WHERE id = $3 AND user_id = $4;
+
+-- name: UpdateCategoryRulePosition :execrows
+UPDATE category_rules
+SET position = $1
+WHERE id = $2 AND user_id = $3;
 
 -- name: DeleteCategoryRule :execrows
 DELETE FROM category_rules
