@@ -264,7 +264,7 @@ func (q *Queries) UpsertExchangeRate(ctx context.Context, arg UpsertExchangeRate
 }
 
 const listCategoriesByUser = `-- name: ListCategoriesByUser :many
-SELECT id, name, created_at
+SELECT id, name, color, created_at
 FROM categories
 WHERE user_id = $1
 ORDER BY name
@@ -273,6 +273,7 @@ ORDER BY name
 type ListCategoriesByUserRow struct {
 	ID        int64
 	Name      string
+	Color     pgtype.Text
 	CreatedAt pgtype.Timestamptz
 }
 
@@ -285,7 +286,7 @@ func (q *Queries) ListCategoriesByUser(ctx context.Context, userID int32) ([]Lis
 	var items []ListCategoriesByUserRow
 	for rows.Next() {
 		var i ListCategoriesByUserRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name, &i.Color, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -297,43 +298,47 @@ func (q *Queries) ListCategoriesByUser(ctx context.Context, userID int32) ([]Lis
 }
 
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO categories (user_id, name)
-VALUES ($1, $2)
-RETURNING id, name, created_at
+INSERT INTO categories (user_id, name, color)
+VALUES ($1, $2, $3)
+RETURNING id, name, color, created_at
 `
 
 type CreateCategoryParams struct {
 	UserID int32
 	Name   string
+	Color  pgtype.Text
 }
 
 type CreateCategoryRow struct {
 	ID        int64
 	Name      string
+	Color     pgtype.Text
 	CreatedAt pgtype.Timestamptz
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (CreateCategoryRow, error) {
-	row := q.db.QueryRow(ctx, createCategory, arg.UserID, arg.Name)
+	row := q.db.QueryRow(ctx, createCategory, arg.UserID, arg.Name, arg.Color)
 	var i CreateCategoryRow
-	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	err := row.Scan(&i.ID, &i.Name, &i.Color, &i.CreatedAt)
 	return i, err
 }
 
 const updateCategory = `-- name: UpdateCategory :execrows
 UPDATE categories
-SET name = $1
-WHERE id = $2 AND user_id = $3
+SET name = $1,
+    color = $2
+WHERE id = $3 AND user_id = $4
 `
 
 type UpdateCategoryParams struct {
 	Name   string
+	Color  pgtype.Text
 	ID     int64
 	UserID int32
 }
 
 func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateCategory, arg.Name, arg.ID, arg.UserID)
+	result, err := q.db.Exec(ctx, updateCategory, arg.Name, arg.Color, arg.ID, arg.UserID)
 	return result.RowsAffected(), err
 }
 

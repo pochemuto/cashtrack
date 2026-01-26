@@ -36,6 +36,7 @@
     type CategoryItem = {
         id: number;
         name: string;
+        color: string;
         created_at: string;
     };
 
@@ -115,6 +116,22 @@
             return value;
         }
         return parsed.toFixed(2);
+    }
+
+    function badgeStyle(color: string): string {
+        if (!color) {
+            return "";
+        }
+        const hex = color.startsWith("#") ? color.slice(1) : color;
+        if (hex.length !== 6) {
+            return "";
+        }
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        const textColor = luminance > 0.6 ? "#000000" : "#FFFFFF";
+        return `background-color: ${color}; border-color: ${color}; color: ${textColor};`;
     }
 
     async function loadTransactions() {
@@ -463,7 +480,8 @@
                                 <td class="whitespace-nowrap">
                                     <div class="dropdown dropdown-start">
                                         <button
-                                            class={`badge badge-ghost ${tx.category_id ? "badge-primary" : ""}`}
+                                            class={`badge badge-ghost ${tx.category_id && !categories.find((category) => category.id === tx.category_id)?.color ? "badge-primary" : ""}`}
+                                            style={badgeStyle(categories.find((category) => category.id === tx.category_id)?.color || "")}
                                             type="button"
                                             disabled={categoriesLoading || !categories.length || categoryUpdates[tx.id]}
                                         >

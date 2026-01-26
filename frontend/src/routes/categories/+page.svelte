@@ -6,6 +6,7 @@
     type CategoryItem = {
         id: number;
         name: string;
+        color: string;
         created_at: string;
     };
 
@@ -23,8 +24,10 @@
     let actionError = "";
 
     let newCategoryName = "";
+    let newCategoryColor = "";
     let editingCategoryId: number | null = null;
     let editingCategoryName = "";
+    let editingCategoryColor = "";
 
     let newRuleCategoryId = "";
     let newRuleText = "";
@@ -88,13 +91,14 @@
         if (!name) {
             return;
         }
+        const color = newCategoryColor.trim();
 
         try {
             const response = await fetch(resolveApiUrl("api/categories"), {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 credentials: "include",
-                body: JSON.stringify({name}),
+                body: JSON.stringify({name, color}),
             });
             if (!response.ok) {
                 actionError = "Не удалось добавить категорию.";
@@ -103,6 +107,7 @@
             const created = (await response.json()) as CategoryItem;
             categories = [...categories, created].sort((a, b) => a.name.localeCompare(b.name));
             newCategoryName = "";
+            newCategoryColor = "";
         } catch {
             actionError = "Не удалось добавить категорию.";
         }
@@ -111,6 +116,7 @@
     function startCategoryEdit(category: CategoryItem) {
         editingCategoryId = category.id;
         editingCategoryName = category.name;
+        editingCategoryColor = category.color || "";
         menuOpen = null;
     }
 
@@ -125,6 +131,7 @@
     function cancelCategoryEdit() {
         editingCategoryId = null;
         editingCategoryName = "";
+        editingCategoryColor = "";
     }
 
     async function saveCategory(categoryId: number) {
@@ -133,20 +140,21 @@
         if (!name) {
             return;
         }
+        const color = editingCategoryColor.trim();
 
         try {
             const response = await fetch(resolveApiUrl(`api/categories/${categoryId}`), {
                 method: "PATCH",
                 headers: {"Content-Type": "application/json"},
                 credentials: "include",
-                body: JSON.stringify({name}),
+                body: JSON.stringify({name, color}),
             });
             if (!response.ok) {
                 actionError = "Не удалось обновить категорию.";
                 return;
             }
             categories = categories.map((category) =>
-                category.id === categoryId ? {...category, name} : category
+                category.id === categoryId ? {...category, name, color} : category
             );
             cancelCategoryEdit();
         } catch {
@@ -171,6 +179,22 @@
         } catch {
             actionError = "Не удалось удалить категорию.";
         }
+    }
+
+    function badgeStyle(color: string) {
+        if (!color) {
+            return "";
+        }
+        const hex = color.startsWith("#") ? color.slice(1) : color;
+        if (hex.length !== 6) {
+            return "";
+        }
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        const textColor = luminance > 0.6 ? "#000000" : "#FFFFFF";
+        return `background-color: ${color}; border-color: ${color}; color: ${textColor};`;
     }
 
     async function createRule() {
@@ -340,12 +364,18 @@
                 </p>
             </div>
 
-            <div class="flex flex-wrap gap-3">
+            <div class="grid gap-3 md:grid-cols-[minmax(240px,2fr)_minmax(160px,1fr)_auto]">
                 <input
                     class="input input-bordered flex-1 min-w-[240px]"
                     type="text"
                     placeholder="Название категории"
                     bind:value={newCategoryName}
+                />
+                <input
+                    class="input input-bordered"
+                    type="text"
+                    placeholder="#RRGGBB"
+                    bind:value={newCategoryColor}
                 />
                 <button class="btn btn-primary" type="button" on:click={createCategory}>
                     Добавить
@@ -381,13 +411,28 @@
                             <tr>
                                 <td>
                                     {#if editingCategoryId === category.id}
-                                        <input
-                                            class="input input-bordered input-sm w-full"
-                                            type="text"
-                                            bind:value={editingCategoryName}
-                                        />
+                                        <div class="grid gap-2 lg:grid-cols-[minmax(220px,2fr)_minmax(140px,1fr)]">
+                                            <input
+                                                class="input input-bordered input-sm w-full"
+                                                type="text"
+                                                bind:value={editingCategoryName}
+                                            />
+                                            <input
+                                                class="input input-bordered input-sm w-full"
+                                                type="text"
+                                                placeholder="#RRGGBB"
+                                                bind:value={editingCategoryColor}
+                                            />
+                                        </div>
                                     {:else}
-                                        <div class="font-medium">{category.name}</div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="badge badge-ghost" style={badgeStyle(category.color)}>
+                                                {category.name}
+                                            </span>
+                                            {#if category.color}
+                                                <span class="text-xs opacity-70">{category.color}</span>
+                                            {/if}
+                                        </div>
                                     {/if}
                                 </td>
                                 <td class="text-right">

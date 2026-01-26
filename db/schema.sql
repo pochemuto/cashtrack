@@ -61,6 +61,7 @@ CREATE TABLE public.categories (
     id bigserial PRIMARY KEY,
     user_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     name character varying(255) NOT NULL,
+    color character varying(7),
     created_at timestamp with time zone NOT NULL DEFAULT now()
 );
 CREATE INDEX categories_user_id_idx ON public.categories USING btree (user_id);

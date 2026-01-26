@@ -16,6 +16,7 @@ import (
 type Category struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
+	Color     string    `json:"color"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -37,7 +38,8 @@ type CategoryRuleHandler Handler
 type TransactionCategoryHandler Handler
 
 type categoryPayload struct {
-	Name string `json:"name"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
 }
 
 type categoryRulePayload struct {
@@ -80,7 +82,7 @@ func NewCategoriesHandler(db *Db) *CategoriesHandler {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
-				category, err := createCategory(r.Context(), db, user.ID, payload.Name)
+				category, err := createCategory(r.Context(), db, user.ID, payload.Name, payload.Color)
 				if err != nil {
 					http.Error(w, "failed to create category", http.StatusInternalServerError)
 					return
@@ -120,7 +122,7 @@ func NewCategoryHandler(db *Db) *CategoryHandler {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
-				if err := updateCategory(r.Context(), db, user.ID, id, payload.Name); err != nil {
+				if err := updateCategory(r.Context(), db, user.ID, id, payload.Name, payload.Color); err != nil {
 					if errors.Is(err, errNotFound) {
 						http.NotFound(w, r)
 						return
@@ -312,33 +314,53 @@ func listCategories(ctx context.Context, db *Db, userID int32) ([]Category, erro
 
 	categories := make([]Category, 0, len(rows))
 	for _, row := range rows {
+		color := ""
+		if row.Color.Valid {
+			color = row.Color.String
+		}
 		categories = append(categories, Category{
 			ID:        row.ID,
 			Name:      row.Name,
+			Color:     color,
 			CreatedAt: row.CreatedAt.Time,
 		})
 	}
 	return categories, nil
 }
 
-func createCategory(ctx context.Context, db *Db, userID int32, name string) (Category, error) {
+func createCategory(ctx context.Context, db *Db, userID int32, name string, color string) (Category, error) {
+	parsedColor, err := parseCategoryColor(color)
+	if err != nil {
+		return Category{}, err
+	}
 	row, err := db.Queries.CreateCategory(ctx, dbgen.CreateCategoryParams{
 		UserID: userID,
 		Name:   name,
+		Color:  parsedColor,
 	})
 	if err != nil {
 		return Category{}, err
 	}
+	colorValue := ""
+	if row.Color.Valid {
+		colorValue = row.Color.String
+	}
 	return Category{
 		ID:        row.ID,
 		Name:      row.Name,
+		Color:     colorValue,
 		CreatedAt: row.CreatedAt.Time,
 	}, nil
 }
 
-func updateCategory(ctx context.Context, db *Db, userID int32, id int64, name string) error {
+func updateCategory(ctx context.Context, db *Db, userID int32, id int64, name string, color string) error {
+	parsedColor, err := parseCategoryColor(color)
+	if err != nil {
+		return err
+	}
 	affected, err := db.Queries.UpdateCategory(ctx, dbgen.UpdateCategoryParams{
 		Name:   name,
+		Color:  parsedColor,
 		ID:     id,
 		UserID: userID,
 	})
@@ -500,7 +522,30 @@ func decodeCategoryPayload(r *http.Request) (categoryPayload, error) {
 	if payload.Name == "" {
 		return payload, errors.New("name is required")
 	}
+	payload.Color = strings.TrimSpace(payload.Color)
+	if _, err := parseCategoryColor(payload.Color); err != nil {
+		return payload, err
+	}
 	return payload, nil
+}
+
+func parseCategoryColor(value string) (pgtype.Text, error) {
+	if strings.TrimSpace(value) == "" {
+		return pgtype.Text{}, nil
+	}
+	color := strings.TrimSpace(value)
+	if strings.HasPrefix(color, "#") {
+		color = strings.TrimPrefix(color, "#")
+	}
+	if len(color) != 6 {
+		return pgtype.Text{}, errors.New("color must be hex like #RRGGBB")
+	}
+	for _, ch := range color {
+		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') && (ch < 'A' || ch > 'F') {
+			return pgtype.Text{}, errors.New("color must be hex like #RRGGBB")
+		}
+	}
+	return pgtype.Text{String: "#" + strings.ToUpper(color), Valid: true}, nil
 }
 
 func decodeCategoryRulePayload(r *http.Request) (categoryRulePayload, error) {
