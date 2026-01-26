@@ -3,11 +3,12 @@
     import {resolveApiUrl} from "$lib/url";
     import {user} from "../../user";
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
+    import CategoryColorPicker from "$lib/components/CategoryColorPicker.svelte";
 
     type CategoryItem = {
         id: number;
         name: string;
-        color: string;
+        color: string | null;
         created_at: string;
     };
 
@@ -25,10 +26,10 @@
     let actionError = "";
 
     let newCategoryName = "";
-    let newCategoryColor = "";
+    let newCategoryColor: string | null = null;
     let editingCategoryId: number | null = null;
     let editingCategoryName = "";
-    let editingCategoryColor = "";
+    let editingCategoryColor: string | null = null;
 
     let newRuleCategoryId = "";
     let newRuleText = "";
@@ -92,7 +93,7 @@
         if (!name) {
             return;
         }
-        const color = newCategoryColor.trim();
+        const color = (newCategoryColor ?? "").trim();
 
         try {
             const response = await fetch(resolveApiUrl("api/categories"), {
@@ -108,7 +109,7 @@
             const created = (await response.json()) as CategoryItem;
             categories = [...categories, created].sort((a, b) => a.name.localeCompare(b.name));
             newCategoryName = "";
-            newCategoryColor = "";
+        newCategoryColor = null;
         } catch {
             actionError = "Не удалось добавить категорию.";
         }
@@ -117,7 +118,7 @@
     function startCategoryEdit(category: CategoryItem) {
         editingCategoryId = category.id;
         editingCategoryName = category.name;
-        editingCategoryColor = category.color || "";
+        editingCategoryColor = category.color || null;
         menuOpen = null;
     }
 
@@ -132,7 +133,7 @@
     function cancelCategoryEdit() {
         editingCategoryId = null;
         editingCategoryName = "";
-        editingCategoryColor = "";
+        editingCategoryColor = null;
     }
 
     async function saveCategory(categoryId: number) {
@@ -141,7 +142,7 @@
         if (!name) {
             return;
         }
-        const color = editingCategoryColor.trim();
+        const color = (editingCategoryColor ?? "").trim();
 
         try {
             const response = await fetch(resolveApiUrl(`api/categories/${categoryId}`), {
@@ -350,19 +351,14 @@
                 </p>
             </div>
 
-            <div class="grid gap-3 md:grid-cols-[minmax(240px,2fr)_minmax(160px,1fr)_auto]">
+            <div class="grid gap-3 md:grid-cols-[minmax(240px,2fr)_minmax(220px,1fr)_auto]">
                 <input
                     class="input input-bordered flex-1 min-w-[240px]"
                     type="text"
                     placeholder="Название категории"
                     bind:value={newCategoryName}
                 />
-                <input
-                    class="input input-bordered"
-                    type="text"
-                    placeholder="#RRGGBB"
-                    bind:value={newCategoryColor}
-                />
+                <CategoryColorPicker bind:hex={newCategoryColor} label="Цвет" />
                 <button class="btn btn-primary" type="button" on:click={createCategory}>
                     Добавить
                 </button>
@@ -397,22 +393,20 @@
                             <tr>
                                 <td>
                                     {#if editingCategoryId === category.id}
-                                        <div class="grid gap-2 lg:grid-cols-[minmax(220px,2fr)_minmax(140px,1fr)]">
+                                        <div class="grid gap-2 lg:grid-cols-[minmax(220px,2fr)_minmax(200px,1fr)]">
                                             <input
                                                 class="input input-bordered input-sm w-full"
                                                 type="text"
                                                 bind:value={editingCategoryName}
                                             />
-                                            <input
-                                                class="input input-bordered input-sm w-full"
-                                                type="text"
-                                                placeholder="#RRGGBB"
-                                                bind:value={editingCategoryColor}
+                                            <CategoryColorPicker
+                                                bind:hex={editingCategoryColor}
+                                                label="Цвет"
                                             />
                                         </div>
                                     {:else}
                                         <div class="flex items-center gap-2">
-                                            <CategoryBadge name={category.name} color={category.color} />
+                                            <CategoryBadge name={category.name} color={category.color || ""} />
                                             {#if category.color}
                                                 <span class="text-xs opacity-70">{category.color}</span>
                                             {/if}

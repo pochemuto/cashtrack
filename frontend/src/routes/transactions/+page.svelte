@@ -37,7 +37,7 @@
     type CategoryItem = {
         id: number;
         name: string;
-        color: string;
+        color: string | null;
         created_at: string;
     };
 
