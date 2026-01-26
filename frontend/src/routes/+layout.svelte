@@ -71,10 +71,9 @@
     <div class="flex-1 flex items-center gap-2">
         <a class="link link-hover text-xl pl-2" href="/">Cashtrack</a>
         {#if $user}
-            <a class="link link-hover px-2" href="/todo">Todo</a>
-            <a class="link link-hover px-2" href="/import">Import</a>
             <a class="link link-hover px-2" href="/transactions">Transactions</a>
             <a class="link link-hover px-2" href="/categories">Categories</a>
+            <a class="link link-hover px-2" href="/import">Import</a>
         {/if}
     </div>
     {#if $user}
