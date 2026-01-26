@@ -517,9 +517,9 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 const summaryTransactions = `-- name: SummaryTransactions :one
 SELECT
     COUNT(*) AS count,
-    COALESCE(SUM(amount), 0::numeric) AS total_amount,
-    COALESCE(AVG(amount), 0::numeric) AS average_amount,
-    COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY amount), 0::numeric) AS median_amount
+    COALESCE(SUM(amount), 0::numeric)::text AS total_amount,
+    COALESCE(AVG(amount), 0::numeric)::text AS average_amount,
+    COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY amount), 0::numeric)::text AS median_amount
 FROM transactions
 WHERE user_id = $1
   AND ($2::date IS NULL OR posted_date >= $2)
@@ -546,9 +546,9 @@ type SummaryTransactionsParams struct {
 
 type SummaryTransactionsRow struct {
 	Count         int64
-	TotalAmount   pgtype.Numeric
-	AverageAmount pgtype.Numeric
-	MedianAmount  pgtype.Numeric
+	TotalAmount   string
+	AverageAmount string
+	MedianAmount  string
 }
 
 func (q *Queries) SummaryTransactions(ctx context.Context, arg SummaryTransactionsParams) (SummaryTransactionsRow, error) {

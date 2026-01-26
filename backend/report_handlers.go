@@ -161,8 +161,14 @@ func NewReportDownloadHandler(db *Db) *ReportDownloadHandler {
 				return
 			}
 
+			reportID, err := strconv.ParseInt(id, 10, 64)
+			if err != nil {
+				http.Error(w, "invalid id", http.StatusBadRequest)
+				return
+			}
+
 			report, err := db.Queries.GetReportByID(r.Context(), dbgen.GetReportByIDParams{
-				ID:     id,
+				ID:     reportID,
 				UserID: user.ID,
 			})
 			if err != nil {

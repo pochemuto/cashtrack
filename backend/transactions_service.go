@@ -193,9 +193,9 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 
 	summary := TransactionSummary{
 		Count:   row.Count,
-		Total:   numericToString(row.TotalAmount),
-		Average: numericToString(row.AverageAmount),
-		Median:  numericToString(row.MedianAmount),
+		Total:   row.TotalAmount,
+		Average: row.AverageAmount,
+		Median:  row.MedianAmount,
 	}
 	if summary.Total == "" {
 		summary.Total = "0"

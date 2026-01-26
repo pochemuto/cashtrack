@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	db "cashtrack/backend/gen/db"
+	dbgen "cashtrack/backend/gen/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -171,7 +171,7 @@ func ensureUser(ctx context.Context, db *Db, username string) (AuthUser, error) 
 		return AuthUser{}, err
 	}
 
-	created, err := db.Queries.CreateUser(ctx, db.CreateUserParams{
+	created, err := db.Queries.CreateUser(ctx, dbgen.CreateUserParams{
 		Username: username,
 		Password: "oauth",
 	})
@@ -183,7 +183,7 @@ func ensureUser(ctx context.Context, db *Db, username string) (AuthUser, error) 
 
 func createSession(ctx context.Context, db *Db, userID int32) (string, time.Time, error) {
 	expiresAt := time.Now().Add(sessionDuration)
-	row, err := db.Queries.CreateSession(ctx, db.CreateSessionParams{
+	row, err := db.Queries.CreateSession(ctx, dbgen.CreateSessionParams{
 		UserID:  userID,
 		Expires: pgtype.Timestamptz{Time: expiresAt, Valid: true},
 	})
