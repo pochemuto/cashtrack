@@ -113,6 +113,13 @@ func parseTransactionFilters(r *http.Request) (TransactionFilters, error) {
 	if search := query.Get("search"); search != "" {
 		filters.SearchText = search
 	}
+	if category := query.Get("category_id"); category != "" {
+		value, err := strconv.ParseInt(category, 10, 64)
+		if err != nil {
+			return filters, err
+		}
+		filters.CategoryID = &value
+	}
 	if account := query.Get("account_number"); account != "" {
 		filters.SourceAccountNumber = account
 	}

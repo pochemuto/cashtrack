@@ -42,6 +42,7 @@ type TransactionFilters struct {
 	SearchText          string
 	SourceAccountNumber string
 	SourceCardNumber    string
+	CategoryID          *int64
 	Limit               int
 	Offset              int
 }
@@ -112,6 +113,7 @@ func (s *TransactionsService) List(ctx context.Context, userID int32, filters Tr
 		SourceAccountNumber: textOrNull(filters.SourceAccountNumber),
 		SourceCardNumber:    textOrNull(filters.SourceCardNumber),
 		SearchText:          textOrNull(filters.SearchText),
+		CategoryID:          int64OrNull(filters.CategoryID),
 		LimitCount:          int32OrDefault(filters.Limit, 500),
 		OffsetCount:         int32OrDefault(filters.Offset, 0),
 	}

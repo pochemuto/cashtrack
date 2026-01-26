@@ -229,9 +229,10 @@ WHERE user_id = $1
   AND ($6::text IS NULL OR source_account_number = $6)
   AND ($7::text IS NULL OR source_card_number = $7)
   AND ($8::text IS NULL OR to_tsvector('simple', description) @@ plainto_tsquery('simple', $8))
+  AND ($9::bigint IS NULL OR category_id = $9)
 ORDER BY posted_date DESC, id DESC
-LIMIT $10
-OFFSET $9
+LIMIT $11
+OFFSET $10
 `
 
 type ListTransactionsParams struct {
@@ -243,6 +244,7 @@ type ListTransactionsParams struct {
 	SourceAccountNumber pgtype.Text
 	SourceCardNumber    pgtype.Text
 	SearchText          pgtype.Text
+	CategoryID          pgtype.Int8
 	OffsetCount         int32
 	LimitCount          int32
 }
@@ -274,6 +276,7 @@ func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsPara
 		arg.SourceAccountNumber,
 		arg.SourceCardNumber,
 		arg.SearchText,
+		arg.CategoryID,
 		arg.OffsetCount,
 		arg.LimitCount,
 	)

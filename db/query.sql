@@ -91,6 +91,7 @@ WHERE user_id = $1
   AND (sqlc.narg(source_account_number)::text IS NULL OR source_account_number = sqlc.narg(source_account_number))
   AND (sqlc.narg(source_card_number)::text IS NULL OR source_card_number = sqlc.narg(source_card_number))
   AND (sqlc.narg(search_text)::text IS NULL OR to_tsvector('simple', description) @@ plainto_tsquery('simple', sqlc.narg(search_text)))
+  AND (sqlc.narg(category_id)::bigint IS NULL OR category_id = sqlc.narg(category_id))
 ORDER BY posted_date DESC, id DESC
 LIMIT sqlc.arg(limit_count)
 OFFSET sqlc.arg(offset_count);

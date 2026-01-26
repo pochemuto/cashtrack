@@ -41,6 +41,7 @@
     let searchText = "";
     let accountNumber = "";
     let cardNumber = "";
+    let categoryFilter = "";
 
     function formatDate(value: string): string {
         const date = new Date(value);
@@ -80,6 +81,7 @@
         if (sourceFileId) params.set("source_file_id", sourceFileId);
         if (entryType) params.set("entry_type", entryType);
         if (searchText) params.set("search", searchText);
+        if (categoryFilter) params.set("category_id", categoryFilter);
         if (accountNumber) params.set("account_number", accountNumber);
         if (cardNumber) params.set("card_number", cardNumber);
 
@@ -155,6 +157,7 @@
         sourceFileId = "";
         entryType = "";
         searchText = "";
+        categoryFilter = "";
         accountNumber = "";
         cardNumber = "";
         void loadTransactions();
@@ -216,6 +219,17 @@
                         <span class="label-text">Поиск по описанию</span>
                     </label>
                     <input class="input input-bordered" type="text" bind:value={searchText} placeholder="например Uber" />
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Категория</span>
+                    </label>
+                    <select class="select select-bordered" bind:value={categoryFilter} disabled={categoriesLoading}>
+                        <option value="">Все</option>
+                        {#each categories as category}
+                            <option value={String(category.id)}>{category.name}</option>
+                        {/each}
+                    </select>
                 </div>
                 <div class="form-control">
                     <label class="label">
