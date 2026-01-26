@@ -20,6 +20,18 @@
         category_id: number | null;
     };
 
+    type TransactionSummary = {
+        count: number;
+        total: string;
+        average: string;
+        median: string;
+    };
+
+    type TransactionListResponse = {
+        items: TransactionItem[];
+        summary: TransactionSummary;
+    };
+
     type CategoryItem = {
         id: number;
         name: string;
@@ -28,6 +40,7 @@
 
     let transactions: TransactionItem[] = [];
     let categories: CategoryItem[] = [];
+    let summary: TransactionSummary | null = null;
     let loading = false;
     let categoriesLoading = false;
     let listError = "";
@@ -65,9 +78,18 @@
         return value;
     }
 
+    function formatSummaryAmount(value: string): string {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) {
+            return value;
+        }
+        return parsed.toFixed(2);
+    }
+
     async function loadTransactions() {
         if (!$user || !$user.id) {
             transactions = [];
+            summary = null;
             listError = "";
             loading = false;
             return;
@@ -94,14 +116,19 @@
                 if (response.status === 401) {
                     listError = "Нужен вход для просмотра транзакций.";
                     transactions = [];
+                    summary = null;
                     return;
                 }
                 listError = "Не удалось загрузить транзакции.";
+                summary = null;
                 return;
             }
-            transactions = (await response.json()) as TransactionItem[];
+            const payload = (await response.json()) as TransactionListResponse;
+            transactions = payload.items ?? [];
+            summary = payload.summary ?? null;
         } catch {
             listError = "Не удалось загрузить транзакции.";
+            summary = null;
         } finally {
             loading = false;
         }
@@ -278,6 +305,26 @@
             {:else if transactions.length === 0}
                 <div class="text-sm opacity-70">Нет транзакций по выбранным фильтрам.</div>
             {:else}
+                {#if summary}
+                    <div class="stats stats-vertical lg:stats-horizontal bg-base-100 shadow">
+                        <div class="stat">
+                            <div class="stat-title">Количество</div>
+                            <div class="stat-value text-lg">{summary.count}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-title">Общая сумма</div>
+                            <div class="stat-value text-lg">{formatSummaryAmount(summary.total)}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-title">Средняя сумма</div>
+                            <div class="stat-value text-lg">{formatSummaryAmount(summary.average)}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-title">Медианная сумма</div>
+                            <div class="stat-value text-lg">{formatSummaryAmount(summary.median)}</div>
+                        </div>
+                    </div>
+                {/if}
                 <div class="overflow-x-auto">
                     <table class="table">
                         <thead>

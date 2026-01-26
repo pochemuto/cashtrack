@@ -34,6 +34,13 @@ type TransactionEntry struct {
 	CategoryID          *int64
 }
 
+type TransactionSummary struct {
+	Count   int64  `json:"count"`
+	Total   string `json:"total"`
+	Average string `json:"average"`
+	Median  string `json:"median"`
+}
+
 type TransactionFilters struct {
 	FromDate            *time.Time
 	ToDate              *time.Time
@@ -150,6 +157,54 @@ func (s *TransactionsService) List(ctx context.Context, userID int32, filters Tr
 type CategoryRuleEntry struct {
 	CategoryID          int64
 	DescriptionContains string
+}
+
+func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters TransactionFilters) (TransactionSummary, error) {
+	params := []any{
+		userID,
+		dateOrNull(filters.FromDate),
+		dateOrNull(filters.ToDate),
+		int64OrNull(filters.SourceFileID),
+		textOrNull(filters.EntryType),
+		textOrNull(filters.SourceAccountNumber),
+		textOrNull(filters.SourceCardNumber),
+		textOrNull(filters.SearchText),
+		int64OrNull(filters.CategoryID),
+	}
+
+	query := `
+		SELECT
+			COUNT(*),
+			COALESCE(SUM(amount), 0::numeric)::text,
+			COALESCE(AVG(amount), 0::numeric)::text,
+			COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY amount), 0::numeric)::text
+		FROM transactions
+		WHERE user_id = $1
+		  AND ($2::date IS NULL OR posted_date >= $2)
+		  AND ($3::date IS NULL OR posted_date <= $3)
+		  AND ($4::bigint IS NULL OR source_file_id = $4)
+		  AND ($5::text IS NULL OR entry_type = $5)
+		  AND ($6::text IS NULL OR source_account_number = $6)
+		  AND ($7::text IS NULL OR source_card_number = $7)
+		  AND ($8::text IS NULL OR to_tsvector('simple', description) @@ plainto_tsquery('simple', $8))
+		  AND ($9::bigint IS NULL OR category_id = $9)
+	`
+
+	var summary TransactionSummary
+	if err := s.db.conn.QueryRow(ctx, query, params...).Scan(&summary.Count, &summary.Total, &summary.Average, &summary.Median); err != nil {
+		log.Error().Err(err).Interface("filters", filters).Msg("failed to query transactions summary")
+		return summary, err
+	}
+	if summary.Total == "" {
+		summary.Total = "0"
+	}
+	if summary.Average == "" {
+		summary.Average = "0"
+	}
+	if summary.Median == "" {
+		summary.Median = "0"
+	}
+	return summary, nil
 }
 
 func (s *TransactionsService) ListWithCategories(ctx context.Context, userID int32, filters TransactionFilters) ([]TransactionEntry, error) {

@@ -26,6 +26,11 @@ type TransactionItem struct {
 	CategoryID          *int64    `json:"category_id"`
 }
 
+type TransactionsResponse struct {
+	Items   []TransactionItem  `json:"items"`
+	Summary TransactionSummary `json:"summary"`
+}
+
 func NewTransactionsListHandler(db *Db, service *TransactionsService) *TransactionsListHandler {
 	return &TransactionsListHandler{
 		Path: "/api/transactions",
@@ -54,6 +59,12 @@ func NewTransactionsListHandler(db *Db, service *TransactionsService) *Transacti
 				return
 			}
 
+			summary, err := service.Summary(r.Context(), user.ID, filters)
+			if err != nil {
+				http.Error(w, "failed to load summary", http.StatusInternalServerError)
+				return
+			}
+
 			response := make([]TransactionItem, 0, len(items))
 			for _, entry := range items {
 				response = append(response, TransactionItem{
@@ -75,7 +86,7 @@ func NewTransactionsListHandler(db *Db, service *TransactionsService) *Transacti
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(response); err != nil {
+			if err := json.NewEncoder(w).Encode(TransactionsResponse{Items: response, Summary: summary}); err != nil {
 				http.Error(w, "failed to encode response", http.StatusInternalServerError)
 			}
 		}),
