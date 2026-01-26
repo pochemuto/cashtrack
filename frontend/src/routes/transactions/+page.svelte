@@ -1,6 +1,7 @@
 <script lang="ts">
     import {onMount} from "svelte";
     import {resolveApiUrl} from "$lib/url";
+    import CategoryBadge from "$lib/components/CategoryBadge.svelte";
     import {user} from "../../user";
 
     type TransactionItem = {
@@ -118,21 +119,6 @@
         return parsed.toFixed(2);
     }
 
-    function badgeStyle(color: string): string {
-        if (!color) {
-            return "";
-        }
-        const hex = color.startsWith("#") ? color.slice(1) : color;
-        if (hex.length !== 6) {
-            return "";
-        }
-        const r = parseInt(hex.slice(0, 2), 16);
-        const g = parseInt(hex.slice(2, 4), 16);
-        const b = parseInt(hex.slice(4, 6), 16);
-        const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-        const textColor = luminance > 0.6 ? "#000000" : "#FFFFFF";
-        return `background-color: ${color}; border-color: ${color}; color: ${textColor};`;
-    }
 
     async function loadTransactions() {
         if (!$user || !$user.id) {
@@ -480,27 +466,30 @@
                                 <td class="whitespace-nowrap">
                                     <div class="dropdown dropdown-start">
                                         <button
-                                            class={`badge badge-ghost ${tx.category_id && !categories.find((category) => category.id === tx.category_id)?.color ? "badge-primary" : ""}`}
-                                            style={badgeStyle(categories.find((category) => category.id === tx.category_id)?.color || "")}
+                                            class="p-0"
                                             type="button"
                                             disabled={categoriesLoading || !categories.length || categoryUpdates[tx.id]}
                                         >
                                             {#if tx.category_id}
-                                                {categories.find((category) => category.id === tx.category_id)?.name || "Категория"}
+                                                <CategoryBadge
+                                                    name={categories.find((category) => category.id === tx.category_id)?.name || "Категория"}
+                                                    color={categories.find((category) => category.id === tx.category_id)?.color || ""}
+                                                    primaryWhenNoColor={true}
+                                                />
                                             {:else}
-                                                Без категории
+                                                <CategoryBadge name="Без категории" />
                                             {/if}
                                         </button>
                                         <ul class="menu dropdown-content z-20 mt-2 w-56 rounded-box bg-base-100 p-2 shadow">
                                             <li>
                                                 <button type="button" on:click={() => updateTransactionCategory(tx.id, null)}>
-                                                    Без категории
+                                                    <CategoryBadge name="Без категории" />
                                                 </button>
                                             </li>
                                             {#each categories as category}
                                                 <li>
                                                     <button type="button" on:click={() => updateTransactionCategory(tx.id, category.id)}>
-                                                        {category.name}
+                                                        <CategoryBadge name={category.name} color={category.color} primaryWhenNoColor={true} />
                                                     </button>
                                                 </li>
                                             {/each}

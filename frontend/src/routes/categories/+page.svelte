@@ -2,6 +2,7 @@
     import {onMount} from "svelte";
     import {resolveApiUrl} from "$lib/url";
     import {user} from "../../user";
+    import CategoryBadge from "$lib/components/CategoryBadge.svelte";
 
     type CategoryItem = {
         id: number;
@@ -181,21 +182,6 @@
         }
     }
 
-    function badgeStyle(color: string) {
-        if (!color) {
-            return "";
-        }
-        const hex = color.startsWith("#") ? color.slice(1) : color;
-        if (hex.length !== 6) {
-            return "";
-        }
-        const r = parseInt(hex.slice(0, 2), 16);
-        const g = parseInt(hex.slice(2, 4), 16);
-        const b = parseInt(hex.slice(4, 6), 16);
-        const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-        const textColor = luminance > 0.6 ? "#000000" : "#FFFFFF";
-        return `background-color: ${color}; border-color: ${color}; color: ${textColor};`;
-    }
 
     async function createRule() {
         actionError = "";
@@ -426,9 +412,7 @@
                                         </div>
                                     {:else}
                                         <div class="flex items-center gap-2">
-                                            <span class="badge badge-ghost" style={badgeStyle(category.color)}>
-                                                {category.name}
-                                            </span>
+                                            <CategoryBadge name={category.name} color={category.color} />
                                             {#if category.color}
                                                 <span class="text-xs opacity-70">{category.color}</span>
                                             {/if}
