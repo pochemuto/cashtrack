@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -35,6 +36,8 @@ type CategoryRulesHandler Handler
 
 type CategoryRuleHandler Handler
 
+type CategoryRulesApplyHandler Handler
+
 type TransactionCategoryHandler Handler
 
 type categoryPayload struct {
@@ -49,6 +52,10 @@ type categoryRulePayload struct {
 
 type transactionCategoryPayload struct {
 	CategoryID *int64 `json:"category_id"`
+}
+
+type applyCategoryRulesPayload struct {
+	ApplyToAll bool `json:"apply_to_all"`
 }
 
 func NewCategoriesHandler(db *Db) *CategoriesHandler {
@@ -250,6 +257,42 @@ func NewCategoryRuleHandler(db *Db) *CategoryRuleHandler {
 			default:
 				w.Header().Set("Allow", strings.Join([]string{http.MethodPatch, http.MethodDelete}, ", "))
 				w.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		}),
+	}
+}
+
+func NewCategoryRulesApplyHandler(db *Db, transactions *TransactionsService) *CategoryRulesApplyHandler {
+	return &CategoryRulesApplyHandler{
+		Path: "/api/category-rules/apply",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				w.Header().Set("Allow", http.MethodPost)
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				return
+			}
+
+			user, ok := userFromRequest(r.Context(), db, r.Header)
+			if !ok {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			payload := applyCategoryRulesPayload{}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil && !errors.Is(err, io.EOF) {
+				http.Error(w, "invalid payload", http.StatusBadRequest)
+				return
+			}
+
+			updated, err := transactions.ApplyCategoryRules(r.Context(), user.ID, payload.ApplyToAll)
+			if err != nil {
+				http.Error(w, "failed to apply rules", http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(map[string]int64{"updated_count": updated}); err != nil {
+				http.Error(w, "failed to encode response", http.StatusInternalServerError)
 			}
 		}),
 	}
@@ -462,13 +505,16 @@ func categoryExists(ctx context.Context, db *Db, userID int32, id int64) bool {
 
 func updateTransactionCategory(ctx context.Context, db *Db, userID int32, transactionID int64, categoryID *int64) error {
 	var category pgtype.Int8
+	var categorySource pgtype.Text
 	if categoryID != nil {
 		category = pgtype.Int8{Int64: *categoryID, Valid: true}
+		categorySource = pgtype.Text{String: categorySourceManual, Valid: true}
 	}
 	affected, err := db.Queries.UpdateTransactionCategory(ctx, dbgen.UpdateTransactionCategoryParams{
-		CategoryID: category,
-		ID:         transactionID,
-		UserID:     userID,
+		CategoryID:     category,
+		CategorySource: categorySource,
+		ID:             transactionID,
+		UserID:         userID,
 	})
 	if err != nil {
 		return err

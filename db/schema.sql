@@ -98,6 +98,7 @@ CREATE TABLE public.transactions (
     source_account_number character varying(64),
     source_card_number character varying(64),
     category_id bigint REFERENCES public.categories(id) ON DELETE SET NULL,
+    category_source text,
     parser_meta jsonb,
     created_at timestamp with time zone NOT NULL DEFAULT now()
 );
@@ -109,3 +110,4 @@ CREATE INDEX transactions_source_account_number_idx ON public.transactions USING
 CREATE INDEX transactions_source_card_number_idx ON public.transactions USING btree (source_card_number);
 CREATE INDEX transactions_description_tsv_idx ON public.transactions USING gin (to_tsvector('simple'::regconfig, description));
 CREATE INDEX transactions_category_id_idx ON public.transactions USING btree (category_id);
+ALTER TABLE public.transactions ADD CONSTRAINT transactions_category_source_check CHECK ((category_source = ANY (ARRAY['manual'::text, 'rule'::text])) OR (category_source IS NULL));

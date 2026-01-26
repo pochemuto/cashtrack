@@ -24,6 +24,8 @@
     let loading = false;
     let listError = "";
     let actionError = "";
+    let toastMessage = "";
+    let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
     let newCategoryName = "";
     let newCategoryColor: string | null = null;
@@ -36,6 +38,8 @@
     let editingRuleId: number | null = null;
     let editingRuleCategoryId = "";
     let editingRuleText = "";
+    let applyRulesToAll = false;
+    let applyingRules = false;
     let menuOpen:
         | {type: "category"; id: number; x: number; y: number}
         | {type: "rule"; id: number; x: number; y: number}
@@ -289,6 +293,45 @@
         }
     }
 
+    async function applyRules() {
+        if (applyingRules) {
+            return;
+        }
+        actionError = "";
+        applyingRules = true;
+        try {
+            const response = await fetch(resolveApiUrl("api/category-rules/apply"), {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                credentials: "include",
+                body: JSON.stringify({apply_to_all: applyRulesToAll}),
+            });
+            if (!response.ok) {
+                actionError = "Не удалось применить правила.";
+                return;
+            }
+            const payload = (await response.json()) as {updated_count?: number} | null;
+            const updatedCount =
+                payload && typeof payload.updated_count === "number" ? payload.updated_count : 0;
+            showToast(`Правила применены. Обновлено транзакций: ${updatedCount}.`);
+        } catch {
+            actionError = "Не удалось применить правила.";
+        } finally {
+            applyingRules = false;
+        }
+    }
+
+    function showToast(message: string) {
+        toastMessage = message;
+        if (toastTimeout) {
+            clearTimeout(toastTimeout);
+        }
+        toastTimeout = setTimeout(() => {
+            toastMessage = "";
+            toastTimeout = null;
+        }, 3000);
+    }
+
     function openMenu(event: MouseEvent, type: "category" | "rule", id: number) {
         const target = event.currentTarget as HTMLElement;
         const rect = target.getBoundingClientRect();
@@ -342,6 +385,13 @@
 </svelte:head>
 
 <section class="mx-auto w-full max-w-6xl space-y-6">
+    {#if toastMessage}
+        <div class="toast toast-top toast-end z-50">
+            <div class="alert alert-success">
+                <span>{toastMessage}</span>
+            </div>
+        </div>
+    {/if}
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body gap-6">
             <div class="space-y-2">
@@ -445,6 +495,21 @@
                 <p class="text-sm opacity-70">
                     Пока поддерживается правило "описание содержит".
                 </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+                <label class="label cursor-pointer gap-2 p-0">
+                    <input class="checkbox checkbox-sm" type="checkbox" bind:checked={applyRulesToAll} />
+                    <span class="label-text">Применить ко всем транзакциям</span>
+                </label>
+                <button
+                    class="btn btn-outline btn-sm"
+                    type="button"
+                    on:click={applyRules}
+                    disabled={applyingRules || rules.length === 0}
+                >
+                    {applyingRules ? "Применение..." : "Применить правила"}
+                </button>
             </div>
 
             <div class="grid gap-3 lg:grid-cols-[minmax(200px,1fr)_minmax(240px,2fr)_auto]">

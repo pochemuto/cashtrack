@@ -473,18 +473,20 @@ func (q *Queries) DeleteCategoryRule(ctx context.Context, arg DeleteCategoryRule
 
 const updateTransactionCategory = `-- name: UpdateTransactionCategory :execrows
 UPDATE transactions
-SET category_id = $1
-WHERE id = $2 AND user_id = $3
+SET category_id = $1,
+    category_source = $2
+WHERE id = $3 AND user_id = $4
 `
 
 type UpdateTransactionCategoryParams struct {
-	CategoryID pgtype.Int8
-	ID         int64
-	UserID     int32
+	CategoryID     pgtype.Int8
+	CategorySource pgtype.Text
+	ID             int64
+	UserID         int32
 }
 
 func (q *Queries) UpdateTransactionCategory(ctx context.Context, arg UpdateTransactionCategoryParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateTransactionCategory, arg.CategoryID, arg.ID, arg.UserID)
+	result, err := q.db.Exec(ctx, updateTransactionCategory, arg.CategoryID, arg.CategorySource, arg.ID, arg.UserID)
 	return result.RowsAffected(), err
 }
 
@@ -503,6 +505,7 @@ INSERT INTO transactions (
     source_account_number,
     source_card_number,
     category_id,
+    category_source,
     parser_meta
 ) VALUES (
     $1,
@@ -518,7 +521,8 @@ INSERT INTO transactions (
     $11,
     $12,
     $13,
-    $14
+    $14,
+    $15
 )
 `
 
@@ -536,6 +540,7 @@ type CreateTransactionParams struct {
 	SourceAccountNumber pgtype.Text
 	SourceCardNumber    pgtype.Text
 	CategoryID          pgtype.Int8
+	CategorySource      pgtype.Text
 	ParserMeta          []byte
 }
 
@@ -554,9 +559,52 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		arg.SourceAccountNumber,
 		arg.SourceCardNumber,
 		arg.CategoryID,
+		arg.CategorySource,
 		arg.ParserMeta,
 	)
 	return err
+}
+
+const listTransactionsForRuleApply = `-- name: ListTransactionsForRuleApply :many
+SELECT id,
+       description,
+       category_id,
+       category_source
+FROM transactions
+WHERE user_id = $1
+  AND ($2::boolean OR category_source IS DISTINCT FROM 'manual')
+`
+
+type ListTransactionsForRuleApplyParams struct {
+	UserID     int32
+	ApplyToAll bool
+}
+
+type ListTransactionsForRuleApplyRow struct {
+	ID             int64
+	Description    string
+	CategoryID     pgtype.Int8
+	CategorySource pgtype.Text
+}
+
+func (q *Queries) ListTransactionsForRuleApply(ctx context.Context, arg ListTransactionsForRuleApplyParams) ([]ListTransactionsForRuleApplyRow, error) {
+	rows, err := q.db.Query(ctx, listTransactionsForRuleApply, arg.UserID, arg.ApplyToAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTransactionsForRuleApplyRow
+	for rows.Next() {
+		var i ListTransactionsForRuleApplyRow
+		if err := rows.Scan(&i.ID, &i.Description, &i.CategoryID, &i.CategorySource); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const summaryTransactions = `-- name: SummaryTransactions :one

@@ -101,6 +101,10 @@ func (s *TransactionsService) ReplaceForSourceTx(ctx context.Context, tx pgx.Tx,
 		}
 
 		categoryID := categoryIDFromDescription(entry.Description, normalizedRules)
+		categorySource := pgtype.Text{}
+		if categoryID.Valid {
+			categorySource = pgtype.Text{String: categorySourceRule, Valid: true}
+		}
 
 		err = txQueries.CreateTransaction(ctx, db.CreateTransactionParams{
 			UserID:              userID,
@@ -116,6 +120,7 @@ func (s *TransactionsService) ReplaceForSourceTx(ctx context.Context, tx pgx.Tx,
 			SourceAccountNumber: nullableText(entry.SourceAccountNumber),
 			SourceCardNumber:    nullableText(entry.SourceCardNumber),
 			CategoryID:          categoryID,
+			CategorySource:      categorySource,
 			ParserMeta:          meta,
 		})
 		if err != nil {
@@ -275,6 +280,49 @@ func (s *TransactionsService) listCategoryRules(ctx context.Context, userID int3
 	return rules, nil
 }
 
+func (s *TransactionsService) ApplyCategoryRules(ctx context.Context, userID int32, applyToAll bool) (int64, error) {
+	rules, err := s.listCategoryRules(ctx, userID)
+	if err != nil {
+		return 0, fmt.Errorf("load category rules: %w", err)
+	}
+	normalizedRules := normalizeRules(rules)
+
+	rows, err := s.db.Queries.ListTransactionsForRuleApply(ctx, db.ListTransactionsForRuleApplyParams{
+		UserID:     userID,
+		ApplyToAll: applyToAll,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("load transactions: %w", err)
+	}
+
+	var updated int64
+	for _, row := range rows {
+		var nextCategoryID pgtype.Int8
+		var nextCategorySource pgtype.Text
+		if derivedID := matchCategoryRule(row.Description, normalizedRules); derivedID != nil {
+			nextCategoryID = pgtype.Int8{Int64: *derivedID, Valid: true}
+			nextCategorySource = pgtype.Text{String: categorySourceRule, Valid: true}
+		}
+
+		if sameInt8(row.CategoryID, nextCategoryID) && sameText(row.CategorySource, nextCategorySource) {
+			continue
+		}
+
+		affected, err := s.db.Queries.UpdateTransactionCategory(ctx, db.UpdateTransactionCategoryParams{
+			CategoryID:     nextCategoryID,
+			CategorySource: nextCategorySource,
+			ID:             row.ID,
+			UserID:         userID,
+		})
+		if err != nil {
+			return updated, fmt.Errorf("update transaction %d: %w", row.ID, err)
+		}
+		updated += affected
+	}
+
+	return updated, nil
+}
+
 type normalizedRule struct {
 	CategoryID int64
 	Needle     string
@@ -332,6 +380,26 @@ func int64OrNull(value *int64) pgtype.Int8 {
 		return pgtype.Int8{}
 	}
 	return pgtype.Int8{Int64: *value, Valid: true}
+}
+
+func sameInt8(left, right pgtype.Int8) bool {
+	if left.Valid != right.Valid {
+		return false
+	}
+	if !left.Valid {
+		return true
+	}
+	return left.Int64 == right.Int64
+}
+
+func sameText(left, right pgtype.Text) bool {
+	if left.Valid != right.Valid {
+		return false
+	}
+	if !left.Valid {
+		return true
+	}
+	return left.String == right.String
 }
 
 func dateOrNull(value *time.Time) pgtype.Date {

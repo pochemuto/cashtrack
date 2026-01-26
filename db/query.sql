@@ -120,8 +120,9 @@ WHERE id = $1 AND user_id = $2;
 
 -- name: UpdateTransactionCategory :execrows
 UPDATE transactions
-SET category_id = $1
-WHERE id = $2 AND user_id = $3;
+SET category_id = $1,
+    category_source = $2
+WHERE id = $3 AND user_id = $4;
 
 -- name: ListPendingReports :many
 SELECT id, user_id, filename, data
@@ -163,6 +164,7 @@ INSERT INTO transactions (
     source_account_number,
     source_card_number,
     category_id,
+    category_source,
     parser_meta
 ) VALUES (
     $1,
@@ -178,8 +180,18 @@ INSERT INTO transactions (
     $11,
     $12,
     $13,
-    $14
+    $14,
+    $15
 );
+
+-- name: ListTransactionsForRuleApply :many
+SELECT id,
+       description,
+       category_id,
+       category_source
+FROM transactions
+WHERE user_id = $1
+  AND ($2::boolean OR category_source IS DISTINCT FROM 'manual');
 
 -- name: SummaryTransactions :one
 SELECT
