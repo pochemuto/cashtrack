@@ -57,4 +57,8 @@ migrate-local:
 	docker compose -f $(COMPOSE_GEN) -p cashtrack-gen run --build --rm generator \
 	  sh -c 'GOOSE_DRIVER=postgres GOOSE_DBSTRING="postgresql://cashtrack:cashtrack@localhost:25432/cashtrack?sslmode=disable" GOOSE_MIGRATION_DIR=./db/migrations goose up'
 
-.PHONY: backend frontend generate development development-local development-local-deps push deploy new-migration generate-fresh migrate-local
+test:
+	go test ./backend/...
+	npm --prefix frontend run check
+
+.PHONY: backend frontend generate development development-local development-local-deps push deploy new-migration generate-fresh migrate-local test

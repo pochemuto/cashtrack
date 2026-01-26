@@ -95,6 +95,19 @@ func createReportTables(t *testing.T, db *Db) {
 			status varchar(32) NOT NULL DEFAULT 'pending',
 			status_description text
 		);
+		CREATE TABLE categories (
+			id bigserial PRIMARY KEY,
+			user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			name varchar(255) NOT NULL,
+			created_at timestamptz NOT NULL DEFAULT now()
+		);
+		CREATE TABLE category_rules (
+			id bigserial PRIMARY KEY,
+			user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			category_id bigint,
+			description_contains text NOT NULL,
+			created_at timestamptz NOT NULL DEFAULT now()
+		);
 		CREATE TABLE transactions (
 			id bigserial PRIMARY KEY,
 			user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -109,6 +122,7 @@ func createReportTables(t *testing.T, db *Db) {
 			entry_type varchar(16) NOT NULL,
 			source_account_number varchar(64),
 			source_card_number varchar(64),
+			category_id bigint,
 			parser_meta jsonb,
 			created_at timestamptz NOT NULL DEFAULT now()
 		);
