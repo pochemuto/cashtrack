@@ -56,6 +56,11 @@
     let accountNumber = "";
     let cardNumber = "";
     let categoryFilter = "";
+    let calendarRange = "";
+    let calendarElement: HTMLElement & {value?: string} | null = null;
+    let calendarOpen = false;
+    let calendarPopover: HTMLElement | null = null;
+    let calendarInput: HTMLInputElement | null = null;
 
     function formatDate(value: string): string {
         const date = new Date(value);
@@ -76,6 +81,31 @@
             return "+" + value;
         }
         return value;
+    }
+
+    function handleCalendarRangeChange(event: Event) {
+        const target = event.currentTarget as HTMLInputElement;
+        const value = target.value || "";
+        if (!value) {
+            fromDate = "";
+            toDate = "";
+            calendarOpen = false;
+            return;
+        }
+        const [start, end] = value.split("/");
+        fromDate = start ?? "";
+        toDate = end ?? "";
+        if (fromDate && toDate) {
+            calendarOpen = false;
+        }
+    }
+
+    function toggleCalendar() {
+        calendarOpen = !calendarOpen;
+    }
+
+    function closeCalendar() {
+        calendarOpen = false;
     }
 
     function formatSummaryAmount(value: string): string {
@@ -204,6 +234,54 @@
         void loadTransactions();
         void loadCategories();
     }
+
+    $: if (fromDate && toDate) {
+        const next = `${fromDate}/${toDate}`;
+        if (calendarRange !== next) {
+            calendarRange = next;
+        }
+    } else if (!fromDate && !toDate && calendarRange) {
+        calendarRange = "";
+    }
+
+    $: if (calendarElement && calendarElement.value !== calendarRange) {
+        calendarElement.value = calendarRange;
+    }
+
+    $: calendarInputValue =
+        fromDate && toDate ? `${fromDate} — ${toDate}` : fromDate || toDate ? `${fromDate || "—"} — ${toDate || "—"}` : "";
+
+    onMount(async () => {
+        await import("cally");
+
+        const handleDocumentClick = (event: MouseEvent) => {
+            if (!calendarOpen) {
+                return;
+            }
+            const target = event.target as Node | null;
+            if (calendarPopover && target && calendarPopover.contains(target)) {
+                return;
+            }
+            if (calendarInput && target && calendarInput.contains(target)) {
+                return;
+            }
+            calendarOpen = false;
+        };
+
+        const handleKeydown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                calendarOpen = false;
+            }
+        };
+
+        document.addEventListener("click", handleDocumentClick, true);
+        window.addEventListener("keydown", handleKeydown);
+
+        return () => {
+            document.removeEventListener("click", handleDocumentClick, true);
+            window.removeEventListener("keydown", handleKeydown);
+        };
+    });
 </script>
 
 <svelte:head>
@@ -221,64 +299,95 @@
             </div>
 
             <div class="grid gap-4 lg:grid-cols-3">
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Дата с</span>
+                <div class="form-control lg:col-span-2">
+                    <label class="label" for="date-range">
+                        <span class="label-text">Диапазон дат</span>
                     </label>
-                    <input class="input input-bordered" type="date" bind:value={fromDate} />
+                    <div class="relative">
+                        <input
+                            class="input input-bordered w-full"
+                            type="text"
+                            id="date-range"
+                            readonly
+                            placeholder="Выберите диапазон"
+                            bind:this={calendarInput}
+                            value={calendarInputValue}
+                            on:click={toggleCalendar}
+                        />
+                        {#if calendarOpen}
+                            <div
+                                class="absolute z-20 mt-2 rounded-box border border-base-200 bg-base-100 p-2 shadow"
+                                bind:this={calendarPopover}
+                            >
+                                <calendar-range
+                                    class="cally"
+                                    bind:this={calendarElement}
+                                    value={calendarRange}
+                                    on:change={handleCalendarRangeChange}
+                                >
+                                    <calendar-month></calendar-month>
+                                </calendar-range>
+                                <div class="mt-2 text-xs opacity-70">
+                                    {fromDate || "—"} — {toDate || "—"}
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
                 </div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Дата по</span>
-                    </label>
-                    <input class="input input-bordered" type="date" bind:value={toDate} />
-                </div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Источник (ID файла)</span>
-                    </label>
-                    <input class="input input-bordered" type="text" bind:value={sourceFileId} placeholder="например 12" />
-                </div>
-                <div class="form-control">
-                    <label class="label">
+                <div class="form-control flex flex-col">
+                    <label class="label" for="entry-type">
                         <span class="label-text">Тип списания</span>
                     </label>
-                    <select class="select select-bordered" bind:value={entryType}>
+                    <select class="select select-bordered" id="entry-type" bind:value={entryType}>
                         <option value="">Все</option>
                         <option value="debit">Debit</option>
                         <option value="credit">Credit</option>
                     </select>
                 </div>
                 <div class="form-control">
-                    <label class="label">
+                    <label class="label" for="search-text">
                         <span class="label-text">Поиск по описанию</span>
                     </label>
-                    <input class="input input-bordered" type="text" bind:value={searchText} placeholder="например Uber" />
+                    <input class="input input-bordered" type="text" id="search-text" bind:value={searchText} placeholder="например Uber" />
                 </div>
-                <div class="form-control">
-                    <label class="label">
+                <div class="form-control flex flex-col">
+                    <label class="label" for="category-filter">
                         <span class="label-text">Категория</span>
                     </label>
-                    <select class="select select-bordered" bind:value={categoryFilter} disabled={categoriesLoading}>
+                    <select class="select select-bordered" id="category-filter" bind:value={categoryFilter} disabled={categoriesLoading}>
                         <option value="">Все</option>
                         {#each categories as category}
                             <option value={String(category.id)}>{category.name}</option>
                         {/each}
                     </select>
                 </div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Номер счета</span>
-                    </label>
-                    <input class="input input-bordered" type="text" bind:value={accountNumber} />
-                </div>
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Номер карты</span>
-                    </label>
-                    <input class="input input-bordered" type="text" bind:value={cardNumber} />
-                </div>
             </div>
+
+            <details class="collapse collapse-arrow border border-base-200 bg-base-100">
+                <summary class="collapse-title text-sm font-medium">Расширенные фильтры</summary>
+                <div class="collapse-content">
+                    <div class="grid gap-4 lg:grid-cols-3">
+                        <div class="form-control flex flex-col">
+                            <label class="label" for="source-file-id">
+                                <span class="label-text">Источник (ID файла)</span>
+                            </label>
+                            <input class="input input-bordered" type="text" id="source-file-id" bind:value={sourceFileId} placeholder="например 12" />
+                        </div>
+                        <div class="form-control flex flex-col">
+                            <label class="label" for="account-number">
+                                <span class="label-text">Номер счета</span>
+                            </label>
+                            <input class="input input-bordered" type="text" id="account-number" bind:value={accountNumber} />
+                        </div>
+                        <div class="form-control flex flex-col">
+                            <label class="label" for="card-number">
+                                <span class="label-text">Номер карты</span>
+                            </label>
+                            <input class="input input-bordered" type="text" id="card-number" bind:value={cardNumber} />
+                        </div>
+                    </div>
+                </div>
+            </details>
 
             <div class="flex flex-wrap gap-3">
                 <button class="btn btn-primary" type="button" on:click={loadTransactions} disabled={loading}>

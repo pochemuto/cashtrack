@@ -40,6 +40,7 @@
 		"@connectrpc/connect-web": "^2.1.1",
 		"@tailwindcss/vite": "^4.1.18",
 		"@types/google.accounts": "^0.0.18",
+		"cally": "^0.9.0",
 		"daisyui": "^5.5.14",
 		"google-auth-library": "^10.5.0",
 		"simpledotcss": "^2.3.7",
