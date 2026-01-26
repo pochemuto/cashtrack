@@ -172,7 +172,7 @@
     <title>Transactions</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-6xl">
+<section class="mx-auto w-full max-w-none">
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body gap-6">
             <div class="space-y-2">
@@ -265,7 +265,6 @@
                             <th>Категория</th>
                             <th class="text-right">Сумма</th>
                             <th>Валюта</th>
-                            <th>Источник</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -297,14 +296,6 @@
                                 </td>
                                 <td class="text-right font-medium">{amountWithSign(tx.amount, tx.entry_type)}</td>
                                 <td>{tx.currency}</td>
-                                <td class="text-xs">
-                                    {#if tx.source_account_number}
-                                        <div>Счет: {tx.source_account_number}</div>
-                                    {/if}
-                                    {#if tx.source_card_number}
-                                        <div>Карта: {tx.source_card_number}</div>
-                                    {/if}
-                                </td>
                             </tr>
                         {/each}
                         </tbody>
