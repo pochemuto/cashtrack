@@ -56,6 +56,19 @@ SELECT filename, content_type, data
 FROM financial_reports
 WHERE id = $1 AND user_id = $2;
 
+-- name: GetExchangeRate :one
+SELECT rate
+FROM exchange_rates
+WHERE rate_date = $1
+  AND base_currency = $2
+  AND target_currency = $3;
+
+-- name: UpsertExchangeRate :exec
+INSERT INTO exchange_rates (rate_date, base_currency, target_currency, rate)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (rate_date, base_currency, target_currency)
+DO UPDATE SET rate = EXCLUDED.rate;
+
 -- name: ListCategoriesByUser :many
 SELECT id, name, created_at
 FROM categories

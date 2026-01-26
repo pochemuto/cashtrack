@@ -5,11 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -18,9 +16,7 @@ import (
 
 type TransactionsService struct {
 	db            *Db
-	httpClient    *http.Client
-	rateCache     map[string]float64
-	rateCacheLock sync.Mutex
+	exchangeRates *ExchangeRateService
 }
 
 type TransactionEntry struct {
@@ -64,9 +60,8 @@ type TransactionFilters struct {
 
 func NewTransactionsService(db *Db) *TransactionsService {
 	return &TransactionsService{
-		db:         db,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
-		rateCache:  make(map[string]float64),
+		db:            db,
+		exchangeRates: NewExchangeRateService(db),
 	}
 }
 
@@ -225,7 +220,7 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 			currency = "CHF"
 		}
 		if currency != "CHF" {
-			rate, err := s.getRateToCHF(ctx, currency, row.PostedDate.Time)
+			rate, err := s.exchangeRates.GetRateToCHF(ctx, currency, row.PostedDate.Time)
 			if err != nil {
 				log.Error().Err(err).Str("currency", currency).Time("date", row.PostedDate.Time).Msg("failed to convert currency")
 				return TransactionSummary{}, err
@@ -396,48 +391,4 @@ func numericToFloat(value pgtype.Numeric) (float64, error) {
 
 func formatFloat(value float64) string {
 	return strconv.FormatFloat(value, 'f', -1, 64)
-}
-
-func (s *TransactionsService) getRateToCHF(ctx context.Context, currency string, date time.Time) (float64, error) {
-	if currency == "CHF" {
-		return 1, nil
-	}
-	dateKey := date.Format("2006-01-02")
-	cacheKey := currency + "|" + dateKey
-
-	s.rateCacheLock.Lock()
-	if rate, ok := s.rateCache[cacheKey]; ok {
-		s.rateCacheLock.Unlock()
-		return rate, nil
-	}
-	s.rateCacheLock.Unlock()
-
-	url := fmt.Sprintf("https://api.exchangerate.host/%s?base=%s&symbols=CHF", dateKey, currency)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return 0, err
-	}
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return 0, fmt.Errorf("rate request failed: %s", resp.Status)
-	}
-	var payload struct {
-		Rates map[string]float64 `json:"rates"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return 0, err
-	}
-	rate, ok := payload.Rates["CHF"]
-	if !ok || rate == 0 {
-		return 0, fmt.Errorf("missing CHF rate for %s on %s", currency, dateKey)
-	}
-
-	s.rateCacheLock.Lock()
-	s.rateCache[cacheKey] = rate
-	s.rateCacheLock.Unlock()
-	return rate, nil
 }

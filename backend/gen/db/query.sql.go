@@ -223,6 +223,46 @@ func (q *Queries) GetReportByID(ctx context.Context, arg GetReportByIDParams) (G
 	return i, err
 }
 
+const getExchangeRate = `-- name: GetExchangeRate :one
+SELECT rate
+FROM exchange_rates
+WHERE rate_date = $1
+  AND base_currency = $2
+  AND target_currency = $3
+`
+
+type GetExchangeRateParams struct {
+	RateDate       pgtype.Date
+	BaseCurrency   string
+	TargetCurrency string
+}
+
+func (q *Queries) GetExchangeRate(ctx context.Context, arg GetExchangeRateParams) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, getExchangeRate, arg.RateDate, arg.BaseCurrency, arg.TargetCurrency)
+	var rate pgtype.Numeric
+	err := row.Scan(&rate)
+	return rate, err
+}
+
+const upsertExchangeRate = `-- name: UpsertExchangeRate :exec
+INSERT INTO exchange_rates (rate_date, base_currency, target_currency, rate)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (rate_date, base_currency, target_currency)
+DO UPDATE SET rate = EXCLUDED.rate
+`
+
+type UpsertExchangeRateParams struct {
+	RateDate       pgtype.Date
+	BaseCurrency   string
+	TargetCurrency string
+	Rate           pgtype.Numeric
+}
+
+func (q *Queries) UpsertExchangeRate(ctx context.Context, arg UpsertExchangeRateParams) error {
+	_, err := q.db.Exec(ctx, upsertExchangeRate, arg.RateDate, arg.BaseCurrency, arg.TargetCurrency, arg.Rate)
+	return err
+}
+
 const listCategoriesByUser = `-- name: ListCategoriesByUser :many
 SELECT id, name, created_at
 FROM categories

@@ -73,6 +73,15 @@ CREATE TABLE public.category_rules (
 );
 CREATE INDEX category_rules_user_id_idx ON public.category_rules USING btree (user_id);
 CREATE INDEX category_rules_category_id_idx ON public.category_rules USING btree (category_id);
+CREATE TABLE public.exchange_rates (
+    id bigserial PRIMARY KEY,
+    rate_date date NOT NULL,
+    base_currency character varying(3) NOT NULL,
+    target_currency character varying(3) NOT NULL,
+    rate numeric(18, 8) NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX exchange_rates_unique_idx ON public.exchange_rates USING btree (rate_date, base_currency, target_currency);
 CREATE TABLE public.transactions (
     id bigserial PRIMARY KEY,
     user_id integer NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
