@@ -65,6 +65,13 @@
     let calendarPopover: HTMLElement | null = null;
     let calendarInput: HTMLInputElement | null = null;
     let calendarUpdating = false;
+    let textFilterDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastAppliedSignature = "";
+    let lastAppliedTextSignature = "";
+    let lastAppliedNonTextSignature = "";
+    const textFilterDebounceMs = 400;
+    let textFilterSignature = "";
+    let nonTextFilterSignature = "";
 
     function formatYmd(date: Date): string {
         const year = date.getFullYear();
@@ -187,6 +194,36 @@
             return value;
         }
         return parsed.toFixed(2);
+    }
+
+    function clearTextFilterDebounce() {
+        if (textFilterDebounceTimer) {
+            clearTimeout(textFilterDebounceTimer);
+            textFilterDebounceTimer = null;
+        }
+    }
+
+    function triggerFilterLoad() {
+        const signature = `${nonTextFilterSignature}|${textFilterSignature}`;
+        if (signature === lastAppliedSignature) {
+            return;
+        }
+        lastAppliedSignature = signature;
+        lastAppliedTextSignature = textFilterSignature;
+        lastAppliedNonTextSignature = nonTextFilterSignature;
+        void loadTransactions();
+    }
+
+    function scheduleTextFilterLoad() {
+        clearTextFilterDebounce();
+        const expectedSignature = textFilterSignature;
+        textFilterDebounceTimer = setTimeout(() => {
+            textFilterDebounceTimer = null;
+            if (expectedSignature !== textFilterSignature) {
+                return;
+            }
+            triggerFilterLoad();
+        }, textFilterDebounceMs);
     }
 
 
@@ -312,22 +349,36 @@
         categoryFilter = "";
         accountNumber = "";
         cardNumber = "";
-        void loadTransactions();
+        clearTextFilterDebounce();
+        triggerFilterLoad();
     }
-
-    onMount(() => {
-        if ($user?.id) {
-            lastUserId = $user.id;
-            void loadTransactions();
-            void loadCategories();
-        }
-    });
 
     $: if ($user?.id && $user.id !== lastUserId) {
         lastUserId = $user.id;
-        void loadTransactions();
+        clearTextFilterDebounce();
+        lastAppliedSignature = "";
+        lastAppliedTextSignature = "";
+        lastAppliedNonTextSignature = "";
+        triggerFilterLoad();
         void loadCategories();
     }
+
+    $: if ($user?.id) {
+        const nextSignature = `${nonTextFilterSignature}|${textFilterSignature}`;
+        if (nextSignature !== lastAppliedSignature) {
+            const nonTextChanged = nonTextFilterSignature !== lastAppliedNonTextSignature;
+            if (nonTextChanged) {
+                clearTextFilterDebounce();
+                triggerFilterLoad();
+            } else {
+                scheduleTextFilterLoad();
+            }
+        }
+    }
+
+    $: textFilterSignature = [searchText, sourceFileId, accountNumber, cardNumber].join("|");
+
+    $: nonTextFilterSignature = [fromDate, toDate, entryType, categoryFilter].join("|");
 
     $: if (fromDate && toDate) {
         const next = `${fromDate}/${toDate}`;
@@ -503,12 +554,9 @@
                 </div>
             </details>
 
-            <div class="flex flex-wrap gap-3">
-                <button class="btn btn-primary" type="button" on:click={loadTransactions} disabled={loading}>
-                    {loading ? "Загрузка..." : "Применить"}
-                </button>
+            <div class="flex flex-wrap justify-end gap-3">
                 <button class="btn btn-ghost" type="button" on:click={resetFilters} disabled={loading}>
-                    Сбросить
+                    Сбросить фильтры
                 </button>
             </div>
 
