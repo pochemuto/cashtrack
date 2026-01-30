@@ -2,6 +2,7 @@
     import {onMount} from "svelte";
     import type {Category} from "$lib/gen/api/v1/categories_pb";
     import type {Transaction} from "$lib/gen/api/v1/transactions_pb";
+    import {persistedBoolean} from "$lib/stores/persistedBoolean";
 
     type SankeyChart = {
         data: Array<Record<string, unknown>>;
@@ -11,6 +12,8 @@
 
     export let transactions: Transaction[] = [];
     export let categories: Category[] = [];
+
+    const sankeyOpen = persistedBoolean("transactions.sankey.open", false);
 
     let plotlyLoading = false;
     let plotlyError = "";
@@ -318,7 +321,7 @@
     });
 </script>
 
-<details class="collapse collapse-arrow border border-base-200 bg-base-100" on:toggle={handleSankeyToggle}>
+<details class="collapse collapse-arrow border border-base-200 bg-base-100" bind:open={$sankeyOpen} on:toggle={handleSankeyToggle}>
     <summary class="collapse-title text-sm font-medium">Sankey-диаграмма</summary>
     <div class="collapse-content">
         {#if plotlyError}

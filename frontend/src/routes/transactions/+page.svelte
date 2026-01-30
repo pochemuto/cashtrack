@@ -6,6 +6,7 @@
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
     import TransactionsSankey from "$lib/components/TransactionsSankey.svelte";
     import {categories, categoriesLoading, loadCategories} from "$lib/stores/categories";
+    import {persistedBoolean} from "$lib/stores/persistedBoolean";
     import {user} from "../../user";
 
     let transactions: Transaction[] = [];
@@ -37,6 +38,7 @@
     const textFilterDebounceMs = 400;
     let textFilterSignature = "";
     let nonTextFilterSignature = "";
+    const advancedFiltersOpen = persistedBoolean("transactions.advancedFilters.open", false);
 
     function formatYmd(date: Date): string {
         const year = date.getFullYear();
@@ -473,7 +475,7 @@
                 </div>
             </div>
 
-            <details class="collapse collapse-arrow border border-base-200 bg-base-100">
+            <details class="collapse collapse-arrow border border-base-200 bg-base-100" bind:open={$advancedFiltersOpen}>
                 <summary class="collapse-title text-sm font-medium">Расширенные фильтры</summary>
                 <div class="collapse-content">
                     <div class="grid gap-4 lg:grid-cols-3">
