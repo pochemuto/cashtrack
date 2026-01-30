@@ -20,6 +20,14 @@
         config: Record<string, unknown>;
     };
 
+    type CategoryFilterItem = {
+        categoryId: number | null;
+        label: string;
+        color: string;
+        count: number;
+        amount: number;
+    };
+
     export let transactions: Transaction[] = [];
     export let categories: Category[] = [];
 
@@ -36,9 +44,13 @@
     let lastPlotlyClickAt = 0;
     let plotlyClickHandler: ((event: any) => void) | null = null;
     let containerClickHandler: ((event: MouseEvent) => void) | null = null;
+    let categoryFilterItems: CategoryFilterItem[] = [];
+    let categoryVisibility: Record<string, boolean> = {};
+    let showUnknownCategory = true;
 
     const sankeySourceColor = "#e2e8f0";
     const sankeyCategoryFallbackColor = "#94a3b8";
+    const uncategorizedKey = "null";
 
     function normalizeColor(value: string | null, fallback: string): string {
         if (!value) {
@@ -78,6 +90,10 @@
             }
         }
         return fallback;
+    }
+
+    function categoryKey(categoryId: number | null): string {
+        return categoryId === null ? uncategorizedKey : String(categoryId);
     }
 
     function parseSankeyFilter(customdata: unknown): SankeyFilter | null {
@@ -189,7 +205,110 @@
         };
     }
 
-    function buildSankeyChart(items: Transaction[], categoryItems: Category[]): SankeyChart | null {
+    function buildCategoryFilterItems(items: Transaction[], categoryItems: Category[]): CategoryFilterItem[] {
+        if (!items.length) {
+            return [];
+        }
+
+        const categoryLookup = new Map<number, Category>();
+        for (const category of categoryItems) {
+            categoryLookup.set(category.id, category);
+        }
+
+        const totals = new Map<string, CategoryFilterItem>();
+
+        for (const tx of items) {
+            const amount = centsToNumber(tx.amount);
+            if (!Number.isFinite(amount) || amount === 0) {
+                continue;
+            }
+            const value = Math.abs(amount);
+            const descriptor = getCategoryDescriptor(tx.categoryId, categoryLookup);
+            const key = categoryKey(descriptor.categoryId);
+            const existing = totals.get(key);
+            if (existing) {
+                existing.count += 1;
+                existing.amount += value;
+            } else {
+                totals.set(key, {
+                    categoryId: descriptor.categoryId,
+                    label: descriptor.label,
+                    color: descriptor.color,
+                    count: 1,
+                    amount: value,
+                });
+            }
+        }
+
+        return Array.from(totals.values()).sort((left, right) => {
+            if (right.amount !== left.amount) {
+                return right.amount - left.amount;
+            }
+            return left.label.localeCompare(right.label);
+        });
+    }
+
+    function syncCategoryVisibility(
+        current: Record<string, boolean>,
+        items: CategoryFilterItem[]
+    ): Record<string, boolean> {
+        const next: Record<string, boolean> = {};
+        let changed = false;
+
+        for (const item of items) {
+            const key = categoryKey(item.categoryId);
+            const value = current[key] ?? true;
+            next[key] = value;
+            if (current[key] !== value) {
+                changed = true;
+            }
+        }
+
+        const currentKeys = Object.keys(current);
+        if (currentKeys.length !== Object.keys(next).length) {
+            changed = true;
+        } else if (!changed) {
+            for (const key of currentKeys) {
+                if (!(key in next)) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        return changed ? next : current;
+    }
+
+    function isCategoryVisible(categoryId: number | null): boolean {
+        return categoryVisibility[categoryKey(categoryId)] ?? true;
+    }
+
+    function setCategoryVisibility(categoryId: number | null, visible: boolean) {
+        categoryVisibility = {...categoryVisibility, [categoryKey(categoryId)]: visible};
+    }
+
+    function showAllCategories() {
+        const next: Record<string, boolean> = {};
+        for (const item of categoryFilterItems) {
+            next[categoryKey(item.categoryId)] = true;
+        }
+        categoryVisibility = next;
+    }
+
+    function hideAllCategories() {
+        const next: Record<string, boolean> = {};
+        for (const item of categoryFilterItems) {
+            next[categoryKey(item.categoryId)] = false;
+        }
+        categoryVisibility = next;
+    }
+
+    function buildSankeyChart(
+        items: Transaction[],
+        categoryItems: Category[],
+        visibility: Record<string, boolean>,
+        includeUnknown: boolean
+    ): SankeyChart | null {
         if (!items.length) {
             return null;
         }
@@ -257,6 +376,10 @@
             }
             const value = Math.abs(amount);
             const categoryInfo = getCategoryDescriptor(tx.categoryId, categoryLookup);
+            const isVisible = visibility[categoryKey(categoryInfo.categoryId)] ?? true;
+            if (!isVisible) {
+                continue;
+            }
 
             if (tx.entryType === "credit") {
                 totalCredits += value;
@@ -319,7 +442,7 @@
         }
 
         const remainder = Number((totalCredits - totalDebits).toFixed(2));
-        if (remainder > 0) {
+        if (includeUnknown && remainder > 0) {
             const remainderIndex = ensureNode(`debit:${remainderLabel}`, remainderLabel, sankeyCategoryFallbackColor, null);
             const linkKey = `${netIncomeIndex}:${remainderIndex}`;
             links.set(linkKey, {
@@ -428,7 +551,16 @@
         });
     }
 
-    $: sankeyChart = buildSankeyChart(transactions, categories);
+    $: categoryFilterItems = buildCategoryFilterItems(transactions, categories);
+
+    $: {
+        const nextVisibility = syncCategoryVisibility(categoryVisibility, categoryFilterItems);
+        if (nextVisibility !== categoryVisibility) {
+            categoryVisibility = nextVisibility;
+        }
+    }
+
+    $: sankeyChart = buildSankeyChart(transactions, categories, categoryVisibility, showUnknownCategory);
 
     $: if (plotly && sankeyContainer) {
         if (sankeyChart) {
@@ -477,6 +609,37 @@
 <details class="collapse collapse-arrow border border-base-200 bg-base-100" bind:open={$sankeyOpen} on:toggle={handleSankeyToggle}>
     <summary class="collapse-title text-sm font-medium">Sankey-диаграмма</summary>
     <div class="collapse-content">
+        {#if categoryFilterItems.length > 0}
+            <div class="mb-4 space-y-3 rounded-box bg-base-100 p-3 text-xs">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex flex-wrap gap-2">
+                        <button class="btn btn-ghost btn-xs" type="button" on:click={showAllCategories}>Показать все</button>
+                        <button class="btn btn-ghost btn-xs" type="button" on:click={hideAllCategories}>Скрыть все</button>
+                    </div>
+                </div>
+                <div class="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+                    {#each categoryFilterItems as item}
+                        <label class="flex items-center gap-2 rounded-box px-2 py-1 whitespace-nowrap">
+                            <input
+                                class="checkbox checkbox-xs"
+                                type="checkbox"
+                                checked={isCategoryVisible(item.categoryId)}
+                                on:change={(event) =>
+                                    setCategoryVisibility(item.categoryId, (event.currentTarget as HTMLInputElement).checked)}
+                            />
+                            <span class="inline-flex items-center gap-2">
+                                <span class="h-2.5 w-2.5 rounded-full" style={`background:${item.color};`}></span>
+                                <span>{item.label}</span>
+                            </span>
+                        </label>
+                    {/each}
+                    <label class="flex items-center gap-2 rounded-box px-2 py-1 whitespace-nowrap">
+                        <input class="checkbox checkbox-xs" type="checkbox" bind:checked={showUnknownCategory} />
+                        <span>Unknown (остаток)</span>
+                    </label>
+                </div>
+            </div>
+        {/if}
         {#if plotlyError}
             <div class="text-sm text-error">{plotlyError}</div>
         {:else if plotlyLoading}
