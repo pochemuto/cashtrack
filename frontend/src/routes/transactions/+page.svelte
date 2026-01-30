@@ -451,9 +451,6 @@
         <div class="card-body gap-6">
             <div class="space-y-2">
                 <h1 class="text-2xl font-semibold">Транзакции</h1>
-                <p class="text-sm opacity-70">
-                    Фильтруйте транзакции по датам, источнику и описанию.
-                </p>
             </div>
 
             <div class="grid gap-4 lg:grid-cols-2">
