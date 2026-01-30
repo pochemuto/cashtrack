@@ -309,6 +309,12 @@
         const nodeLabels: string[] = [];
         const nodeColors: string[] = [];
         const links = new Map<string, {source: number; target: number; value: number; color: string}>();
+        const creditTotals = new Map<string, {label: string; color: string; value: number}>();
+        const debitTotals = new Map<string, {label: string; color: string; value: number}>();
+        const netIncomeLabel = "Net income";
+        const remainderLabel = "Unknown";
+        let totalCredits = 0;
+        let totalDebits = 0;
 
         const ensureNode = (key: string, label: string, color: string) => {
             if (!nodeIndex.has(key)) {
@@ -319,24 +325,68 @@
             return nodeIndex.get(key) ?? 0;
         };
 
+        const addTotal = (
+            totals: Map<string, {label: string; color: string; value: number}>,
+            key: string,
+            label: string,
+            color: string,
+            value: number
+        ) => {
+            const existing = totals.get(key);
+            if (existing) {
+                existing.value += value;
+            } else {
+                totals.set(key, {label, color, value});
+            }
+        };
+
         for (const tx of items) {
             const amount = Number(tx.amount);
             if (!Number.isFinite(amount) || amount === 0) {
                 continue;
             }
             const value = Math.abs(amount);
-            const sourceLabel = entryTypeLabel(tx.entry_type);
-            const sourceIndex = ensureNode(`source:${sourceLabel}`, sourceLabel, sankeySourceColor);
             const categoryInfo = getCategoryDescriptor(tx.category_id, categoryLookup);
-            const targetIndex = ensureNode(`category:${categoryInfo.key}`, categoryInfo.label, categoryInfo.color);
-            const linkKey = `${sourceIndex}:${targetIndex}`;
-            const linkColor = colorWithAlpha(categoryInfo.color, 0.45, categoryInfo.color);
-            const existing = links.get(linkKey);
-            if (existing) {
-                existing.value += value;
-            } else {
-                links.set(linkKey, {source: sourceIndex, target: targetIndex, value, color: linkColor});
+
+            if (tx.entry_type === "credit") {
+                totalCredits += value;
+                addTotal(creditTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value);
+            } else if (tx.entry_type === "debit") {
+                totalDebits += value;
+                addTotal(debitTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value);
             }
+        }
+
+        if (!creditTotals.size && !debitTotals.size) {
+            return null;
+        }
+
+        const netIncomeIndex = ensureNode("net:income", netIncomeLabel, sankeySourceColor);
+
+        for (const [key, entry] of creditTotals.entries()) {
+            const sourceIndex = ensureNode(`credit:${key}`, entry.label, entry.color);
+            const linkKey = `${sourceIndex}:${netIncomeIndex}`;
+            const linkColor = colorWithAlpha(entry.color, 0.45, entry.color);
+            links.set(linkKey, {source: sourceIndex, target: netIncomeIndex, value: entry.value, color: linkColor});
+        }
+
+        for (const [key, entry] of debitTotals.entries()) {
+            const targetIndex = ensureNode(`debit:${key}`, entry.label, entry.color);
+            const linkKey = `${netIncomeIndex}:${targetIndex}`;
+            const linkColor = colorWithAlpha(entry.color, 0.45, entry.color);
+            links.set(linkKey, {source: netIncomeIndex, target: targetIndex, value: entry.value, color: linkColor});
+        }
+
+        const remainder = Number((totalCredits - totalDebits).toFixed(2));
+        if (remainder > 0) {
+            const remainderIndex = ensureNode(`debit:${remainderLabel}`, remainderLabel, sankeyCategoryFallbackColor);
+            const linkKey = `${netIncomeIndex}:${remainderIndex}`;
+            links.set(linkKey, {
+                source: netIncomeIndex,
+                target: remainderIndex,
+                value: remainder,
+                color: colorWithAlpha(sankeyCategoryFallbackColor, 0.45, sankeyCategoryFallbackColor),
+            });
         }
 
         if (!links.size) {
