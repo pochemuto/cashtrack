@@ -1,16 +1,11 @@
 <script lang="ts">
     import {onMount} from "svelte";
     import {resolveApiUrl} from "$lib/url";
+    import {categories, addCategory, loadCategories, removeCategory, updateCategory} from "$lib/stores/categories";
+    import type {CategoryItem} from "$lib/stores/categories";
     import {user} from "../../user";
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
     import CategoryColorPicker from "$lib/components/CategoryColorPicker.svelte";
-
-    type CategoryItem = {
-        id: number;
-        name: string;
-        color: string | null;
-        created_at: string;
-    };
 
     type RuleItem = {
         id: number;
@@ -20,7 +15,6 @@
         created_at: string;
     };
 
-    let categories: CategoryItem[] = [];
     let rules: RuleItem[] = [];
     let loading = false;
     let listError = "";
@@ -52,11 +46,11 @@
     let menuAnchor: HTMLElement | null = null;
     let lastUserId: number | null = null;
 
-    $: categoryMap = new Map(categories.map((category) => [category.id, category.name]));
+    $: categoryMap = new Map($categories.map((category) => [category.id, category.name]));
 
     async function loadData() {
         if (!$user || !$user.id) {
-            categories = [];
+            await loadCategories();
             rules = [];
             listError = "";
             loading = false;
@@ -67,16 +61,13 @@
         listError = "";
 
         try {
-            const [categoriesResponse, rulesResponse] = await Promise.all([
-                fetch(resolveApiUrl("api/categories"), {credentials: "include"}),
+            const [categoriesOk, rulesResponse] = await Promise.all([
+                loadCategories(),
                 fetch(resolveApiUrl("api/category-rules"), {credentials: "include"}),
             ]);
 
-            if (!categoriesResponse.ok) {
+            if (!categoriesOk) {
                 listError = "Не удалось загрузить категории.";
-                categories = [];
-            } else {
-                categories = (await categoriesResponse.json()) as CategoryItem[];
             }
 
             if (!rulesResponse.ok) {
@@ -115,9 +106,9 @@
                 return;
             }
             const created = (await response.json()) as CategoryItem;
-            categories = [...categories, created].sort((a, b) => a.name.localeCompare(b.name));
+            addCategory(created);
             newCategoryName = "";
-        newCategoryColor = null;
+            newCategoryColor = null;
         } catch {
             actionError = "Не удалось добавить категорию.";
         }
@@ -131,7 +122,7 @@
     }
 
     function startCategoryEditById(categoryId: number) {
-        const category = categories.find((item) => item.id === categoryId);
+        const category = $categories.find((item) => item.id === categoryId);
         if (!category) {
             return;
         }
@@ -163,9 +154,10 @@
                 actionError = "Не удалось обновить категорию.";
                 return;
             }
-            categories = categories.map((category) =>
-                category.id === categoryId ? {...category, name, color} : category
-            );
+            const existing = $categories.find((category) => category.id === categoryId);
+            if (existing) {
+                updateCategory({...existing, name, color});
+            }
             cancelCategoryEdit();
         } catch {
             actionError = "Не удалось обновить категорию.";
@@ -184,7 +176,7 @@
                 actionError = "Не удалось удалить категорию.";
                 return;
             }
-            categories = categories.filter((category) => category.id !== categoryId);
+            removeCategory(categoryId);
             rules = rules.filter((rule) => rule.category_id !== categoryId);
         } catch {
             actionError = "Не удалось удалить категорию.";
@@ -500,7 +492,7 @@
 
             {#if loading}
                 <div class="text-sm opacity-70">Загрузка категорий...</div>
-            {:else if categories.length === 0}
+            {:else if $categories.length === 0}
                 <div class="text-sm opacity-70">Категории пока не добавлены.</div>
             {:else}
                 <div class="overflow-x-auto overflow-y-visible">
@@ -512,7 +504,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                        {#each categories as category}
+                        {#each $categories as category}
                             <tr>
                                 <td>
                                     {#if editingCategoryId === category.id}
@@ -588,7 +580,7 @@
             <div class="grid gap-3 lg:grid-cols-[minmax(200px,1fr)_minmax(240px,2fr)_auto]">
                 <select class="select select-bordered" bind:value={newRuleCategoryId}>
                     <option value="" disabled>Категория</option>
-                    {#each categories as category}
+                    {#each $categories as category}
                         <option value={category.id}>{category.name}</option>
                     {/each}
                 </select>
@@ -602,7 +594,7 @@
                     class="btn btn-primary"
                     type="button"
                     on:click={createRule}
-                    disabled={!categories.length}
+                    disabled={!$categories.length}
                 >
                     Добавить
                 </button>
@@ -632,7 +624,7 @@
                                 <td>
                                     {#if editingRuleId === rule.id}
                                         <select class="select select-bordered select-sm" bind:value={editingRuleCategoryId}>
-                                            {#each categories as category}
+                                            {#each $categories as category}
                                                 <option value={category.id}>{category.name}</option>
                                             {/each}
                                         </select>
