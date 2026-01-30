@@ -29,7 +29,7 @@ type Transaction struct {
 	ParserName          string                 `protobuf:"bytes,4,opt,name=parser_name,json=parserName,proto3" json:"parser_name,omitempty"`
 	PostedDate          string                 `protobuf:"bytes,5,opt,name=posted_date,json=postedDate,proto3" json:"posted_date,omitempty"`
 	Description         string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
-	Amount              string                 `protobuf:"bytes,7,opt,name=amount,proto3" json:"amount,omitempty"`
+	Amount              int64                  `protobuf:"varint,7,opt,name=amount,proto3" json:"amount,omitempty"`
 	Currency            string                 `protobuf:"bytes,8,opt,name=currency,proto3" json:"currency,omitempty"`
 	TransactionId       string                 `protobuf:"bytes,9,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
 	EntryType           string                 `protobuf:"bytes,10,opt,name=entry_type,json=entryType,proto3" json:"entry_type,omitempty"`
@@ -113,11 +113,11 @@ func (x *Transaction) GetDescription() string {
 	return ""
 }
 
-func (x *Transaction) GetAmount() string {
+func (x *Transaction) GetAmount() int64 {
 	if x != nil {
 		return x.Amount
 	}
-	return ""
+	return 0
 }
 
 func (x *Transaction) GetCurrency() string {
@@ -172,9 +172,9 @@ func (x *Transaction) GetCategoryId() int32 {
 type TransactionSummary struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Count          int32                  `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
-	Total          string                 `protobuf:"bytes,2,opt,name=total,proto3" json:"total,omitempty"`
-	Average        string                 `protobuf:"bytes,3,opt,name=average,proto3" json:"average,omitempty"`
-	Median         string                 `protobuf:"bytes,4,opt,name=median,proto3" json:"median,omitempty"`
+	Total          int64                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Average        int64                  `protobuf:"varint,3,opt,name=average,proto3" json:"average,omitempty"`
+	Median         int64                  `protobuf:"varint,4,opt,name=median,proto3" json:"median,omitempty"`
 	Currency       string                 `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
 	UniqueAccounts int32                  `protobuf:"varint,6,opt,name=unique_accounts,json=uniqueAccounts,proto3" json:"unique_accounts,omitempty"`
 	DateRangeStart string                 `protobuf:"bytes,7,opt,name=date_range_start,json=dateRangeStart,proto3" json:"date_range_start,omitempty"`
@@ -220,25 +220,25 @@ func (x *TransactionSummary) GetCount() int32 {
 	return 0
 }
 
-func (x *TransactionSummary) GetTotal() string {
+func (x *TransactionSummary) GetTotal() int64 {
 	if x != nil {
 		return x.Total
 	}
-	return ""
+	return 0
 }
 
-func (x *TransactionSummary) GetAverage() string {
+func (x *TransactionSummary) GetAverage() int64 {
 	if x != nil {
 		return x.Average
 	}
-	return ""
+	return 0
 }
 
-func (x *TransactionSummary) GetMedian() string {
+func (x *TransactionSummary) GetMedian() int64 {
 	if x != nil {
 		return x.Median
 	}
-	return ""
+	return 0
 }
 
 func (x *TransactionSummary) GetCurrency() string {
@@ -539,7 +539,7 @@ const file_api_v1_transactions_proto_rawDesc = "" +
 	"\vposted_date\x18\x05 \x01(\tR\n" +
 	"postedDate\x12 \n" +
 	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\x16\n" +
-	"\x06amount\x18\a \x01(\tR\x06amount\x12\x1a\n" +
+	"\x06amount\x18\a \x01(\x03R\x06amount\x12\x1a\n" +
 	"\bcurrency\x18\b \x01(\tR\bcurrency\x12%\n" +
 	"\x0etransaction_id\x18\t \x01(\tR\rtransactionId\x12\x1d\n" +
 	"\n" +
@@ -554,9 +554,9 @@ const file_api_v1_transactions_proto_rawDesc = "" +
 	"\f_category_id\"\x87\x02\n" +
 	"\x12TransactionSummary\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x05R\x05count\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\tR\x05total\x12\x18\n" +
-	"\aaverage\x18\x03 \x01(\tR\aaverage\x12\x16\n" +
-	"\x06median\x18\x04 \x01(\tR\x06median\x12\x1a\n" +
+	"\x05total\x18\x02 \x01(\x03R\x05total\x12\x18\n" +
+	"\aaverage\x18\x03 \x01(\x03R\aaverage\x12\x16\n" +
+	"\x06median\x18\x04 \x01(\x03R\x06median\x12\x1a\n" +
 	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x12'\n" +
 	"\x0funique_accounts\x18\x06 \x01(\x05R\x0euniqueAccounts\x12(\n" +
 	"\x10date_range_start\x18\a \x01(\tR\x0edateRangeStart\x12$\n" +

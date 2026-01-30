@@ -6,6 +6,7 @@
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
     import TransactionsSankey from "$lib/components/TransactionsSankey.svelte";
     import {categories, categoriesLoading, loadCategories} from "$lib/stores/categories";
+    import {formatCents, formatSignedCents} from "$lib/money";
     import {persistedBoolean} from "$lib/stores/persistedBoolean";
     import {user} from "../../user";
 
@@ -58,15 +59,6 @@
         return `${year}-${month}-${day}`;
     }
 
-    function amountWithSign(value: string, entryType: string): string {
-        if (!value) {
-            return "";
-        }
-        if (entryType === "credit" && !value.startsWith("+")) {
-            return "+" + value;
-        }
-        return value;
-    }
 
     function handleCalendarRangeChange(event: Event) {
         if (calendarUpdating) {
@@ -155,13 +147,6 @@
         });
     }
 
-    function formatSummaryAmount(value: string): string {
-        const parsed = Number(value);
-        if (!Number.isFinite(parsed)) {
-            return value;
-        }
-        return parsed.toFixed(2);
-    }
 
     function formatSummaryDateRange(start: string, end: string): string {
         if (!start && !end) {
@@ -532,19 +517,19 @@
                         <div class="stat">
                             <div class="stat-title">Общая сумма</div>
                             <div class="stat-value text-lg">
-                                {formatSummaryAmount(summary.total)} {summary.currency}
+                                {formatCents(summary.total)} {summary.currency}
                             </div>
                         </div>
                         <div class="stat">
                             <div class="stat-title">Средняя сумма</div>
                             <div class="stat-value text-lg">
-                                {formatSummaryAmount(summary.average)} {summary.currency}
+                                {formatCents(summary.average)} {summary.currency}
                             </div>
                         </div>
                         <div class="stat">
                             <div class="stat-title">Медианная сумма</div>
                             <div class="stat-value text-lg">
-                                {formatSummaryAmount(summary.median)} {summary.currency}
+                                {formatCents(summary.median)} {summary.currency}
                             </div>
                         </div>
                         <div class="stat">
@@ -612,7 +597,7 @@
                                         </ul>
                                     </div>
                                 </td>
-                                <td class="text-right font-medium">{amountWithSign(tx.amount, tx.entryType)}</td>
+                                <td class="text-right font-medium">{formatSignedCents(tx.amount, tx.entryType)}</td>
                                 <td>{tx.currency}</td>
                             </tr>
                         {/each}

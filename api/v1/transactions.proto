@@ -9,7 +9,7 @@ message Transaction {
   string parser_name = 4;
   string posted_date = 5;
   string description = 6;
-  string amount = 7;
+  int64 amount = 7;
   string currency = 8;
   string transaction_id = 9;
   string entry_type = 10;
@@ -21,9 +21,9 @@ message Transaction {
 
 message TransactionSummary {
   int32 count = 1;
-  string total = 2;
-  string average = 3;
-  string median = 4;
+  int64 total = 2;
+  int64 average = 3;
+  int64 median = 4;
   string currency = 5;
   int32 unique_accounts = 6;
   string date_range_start = 7;

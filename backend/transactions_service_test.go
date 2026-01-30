@@ -2,8 +2,6 @@ package cashtrack
 
 import (
 	"context"
-	"math"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -40,9 +38,9 @@ func TestTransactionsSummaryHandlesNegativeMedian(t *testing.T) {
 	if summary.Count != 1 {
 		t.Fatalf("expected count 1, got %d", summary.Count)
 	}
-	assertSummaryValue(t, summary.Total, -5.9)
-	assertSummaryValue(t, summary.Average, -5.9)
-	assertSummaryValue(t, summary.Median, -5.9)
+	assertSummaryCents(t, summary.Total, -590)
+	assertSummaryCents(t, summary.Average, -590)
+	assertSummaryCents(t, summary.Median, -590)
 }
 
 func TestTransactionsSummaryEmpty(t *testing.T) {
@@ -62,9 +60,9 @@ func TestTransactionsSummaryEmpty(t *testing.T) {
 	if summary.Count != 0 {
 		t.Fatalf("expected count 0, got %d", summary.Count)
 	}
-	assertSummaryValue(t, summary.Total, 0)
-	assertSummaryValue(t, summary.Average, 0)
-	assertSummaryValue(t, summary.Median, 0)
+	assertSummaryCents(t, summary.Total, 0)
+	assertSummaryCents(t, summary.Average, 0)
+	assertSummaryCents(t, summary.Median, 0)
 }
 
 func createSummaryTables(t *testing.T, db *Db) {
@@ -88,14 +86,10 @@ func createSummaryTables(t *testing.T, db *Db) {
 	}
 }
 
-func assertSummaryValue(t *testing.T, raw string, expected float64) {
+func assertSummaryCents(t *testing.T, raw int64, expected int64) {
 	t.Helper()
-	value, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		t.Fatalf("parse summary %q: %v", raw, err)
-	}
-	if math.Abs(value-expected) > 0.0001 {
-		t.Fatalf("expected %.4f, got %.4f", expected, value)
+	if raw != expected {
+		t.Fatalf("expected %d, got %d", expected, raw)
 	}
 }
 

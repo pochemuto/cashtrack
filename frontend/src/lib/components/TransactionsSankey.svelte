@@ -3,6 +3,7 @@
     import type {Category} from "$lib/gen/api/v1/categories_pb";
     import type {Transaction} from "$lib/gen/api/v1/transactions_pb";
     import {persistedBoolean} from "$lib/stores/persistedBoolean";
+    import {centsToNumber, formatChfAmount} from "$lib/money";
 
     type SankeyChart = {
         data: Array<Record<string, unknown>>;
@@ -64,19 +65,6 @@
         return fallback;
     }
 
-    function formatChfAmount(value: number): string {
-        const safeValue = Number.isFinite(value) ? value : 0;
-        const amount = safeValue < 0 ? 0 : safeValue;
-        if (amount >= 100) {
-            const grouped = Math.round(amount)
-                .toString()
-                .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-            return `${grouped} CHF`;
-        }
-        const [integerPart, fractionalPart] = amount.toFixed(2).split(".");
-        const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-        return `${grouped}.${fractionalPart} CHF`;
-    }
 
     function getCategoryDescriptor(categoryId: number | undefined, categoryLookup: Map<number, Category>) {
         if (categoryId === undefined) {
@@ -150,7 +138,7 @@
         };
 
         for (const tx of items) {
-            const amount = Number(tx.amount);
+            const amount = centsToNumber(tx.amount);
             if (!Number.isFinite(amount) || amount === 0) {
                 continue;
             }

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -141,6 +140,10 @@ func (s *TransactionsService) List(ctx context.Context, userID int32, filters Tr
 		if row.CreatedAt.Valid {
 			createdAt = row.CreatedAt.Time.Format(time.RFC3339Nano)
 		}
+		amountCents, err := numericToCents(row.Amount)
+		if err != nil {
+			return nil, fmt.Errorf("convert amount: %w", err)
+		}
 		entry := &apiv1.Transaction{
 			Id:                  int32(row.ID),
 			SourceFileId:        int32(row.SourceFileID),
@@ -148,7 +151,7 @@ func (s *TransactionsService) List(ctx context.Context, userID int32, filters Tr
 			ParserName:          row.ParserName,
 			PostedDate:          postedDate,
 			Description:         row.Description,
-			Amount:              numericToString(row.Amount),
+			Amount:              amountCents,
 			Currency:            row.Currency,
 			TransactionId:       row.TransactionID.String,
 			EntryType:           row.EntryType,
@@ -188,9 +191,9 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 	if len(rows) == 0 {
 		return &apiv1.TransactionSummary{
 			Count:          0,
-			Total:          "0",
-			Average:        "0",
-			Median:         "0",
+			Total:          0,
+			Average:        0,
+			Median:         0,
 			Currency:       "CHF",
 			UniqueAccounts: 0,
 			DateRangeStart: "",
@@ -276,9 +279,9 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 
 	return &apiv1.TransactionSummary{
 		Count:          int32(len(amounts)),
-		Total:          formatFloat(total),
-		Average:        formatFloat(average),
-		Median:         formatFloat(median),
+		Total:          centsFromFloat(total),
+		Average:        centsFromFloat(average),
+		Median:         centsFromFloat(median),
 		Currency:       "CHF",
 		UniqueAccounts: int32(len(uniqueAccounts)),
 		DateRangeStart: dateRangeStart,
@@ -440,49 +443,4 @@ func int32OrDefault(value int, fallback int32) int32 {
 		return fallback
 	}
 	return int32(value)
-}
-
-func numericFromString(value string) (pgtype.Numeric, error) {
-	var numeric pgtype.Numeric
-	if strings.TrimSpace(value) == "" {
-		return numeric, fmt.Errorf("amount is empty")
-	}
-	if err := numeric.Scan(value); err != nil {
-		return numeric, err
-	}
-	return numeric, nil
-}
-
-func numericToString(value pgtype.Numeric) string {
-	if !value.Valid {
-		return ""
-	}
-	plan := (pgtype.NumericCodec{}).PlanEncode(nil, 0, pgtype.TextFormatCode, value)
-	if plan == nil {
-		return ""
-	}
-	buf, err := plan.Encode(value, nil)
-	if err != nil {
-		return ""
-	}
-	return string(buf)
-}
-
-func numericToFloat(value pgtype.Numeric) (float64, error) {
-	if !value.Valid {
-		return 0, nil
-	}
-	raw := numericToString(value)
-	if raw == "" {
-		return 0, nil
-	}
-	parsed, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		return 0, err
-	}
-	return parsed, nil
-}
-
-func formatFloat(value float64) string {
-	return strconv.FormatFloat(value, 'f', -1, 64)
 }
