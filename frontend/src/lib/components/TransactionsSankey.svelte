@@ -61,6 +61,20 @@
         return fallback;
     }
 
+    function formatChfAmount(value: number): string {
+        const safeValue = Number.isFinite(value) ? value : 0;
+        const amount = safeValue < 0 ? 0 : safeValue;
+        if (amount >= 100) {
+            const grouped = Math.round(amount)
+                .toString()
+                .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+            return `${grouped} CHF`;
+        }
+        const [integerPart, fractionalPart] = amount.toFixed(2).split(".");
+        const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        return `${grouped}.${fractionalPart} CHF`;
+    }
+
     function getCategoryDescriptor(categoryId: number | undefined, categoryLookup: Map<number, Category>) {
         if (categoryId === undefined) {
             return {
@@ -98,12 +112,13 @@
         const nodeLabels: string[] = [];
         const nodeColors: string[] = [];
         const links = new Map<string, {source: number; target: number; value: number; color: string}>();
-        const creditTotals = new Map<string, {label: string; color: string; value: number}>();
-        const debitTotals = new Map<string, {label: string; color: string; value: number}>();
+        const creditTotals = new Map<string, {label: string; color: string; value: number; count: number}>();
+        const debitTotals = new Map<string, {label: string; color: string; value: number; count: number}>();
         const netIncomeLabel = "Net income";
         const remainderLabel = "Unknown";
         let totalCredits = 0;
         let totalDebits = 0;
+        let totalCreditCount = 0;
 
         const ensureNode = (key: string, label: string, color: string) => {
             if (!nodeIndex.has(key)) {
@@ -115,17 +130,19 @@
         };
 
         const addTotal = (
-            totals: Map<string, {label: string; color: string; value: number}>,
+            totals: Map<string, {label: string; color: string; value: number; count: number}>,
             key: string,
             label: string,
             color: string,
-            value: number
+            value: number,
+            count: number
         ) => {
             const existing = totals.get(key);
             if (existing) {
                 existing.value += value;
+                existing.count += count;
             } else {
-                totals.set(key, {label, color, value});
+                totals.set(key, {label, color, value, count});
             }
         };
 
@@ -139,15 +156,25 @@
 
             if (tx.entryType === "credit") {
                 totalCredits += value;
-                addTotal(creditTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value);
+                totalCreditCount += 1;
+                addTotal(creditTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value, 1);
             } else if (tx.entryType === "debit") {
                 totalDebits += value;
-                addTotal(debitTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value);
+                addTotal(debitTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value, 1);
             }
         }
 
         if (!creditTotals.size && !debitTotals.size) {
             return null;
+        }
+
+        const nodeStats = new Map<string, {count: number; amount: number}>();
+        nodeStats.set("net:income", {count: totalCreditCount, amount: totalCredits});
+        for (const [key, entry] of creditTotals.entries()) {
+            nodeStats.set(`credit:${key}`, {count: entry.count, amount: entry.value});
+        }
+        for (const [key, entry] of debitTotals.entries()) {
+            nodeStats.set(`debit:${key}`, {count: entry.count, amount: entry.value});
         }
 
         const netIncomeIndex = ensureNode("net:income", netIncomeLabel, sankeySourceColor);
@@ -176,6 +203,7 @@
                 value: remainder,
                 color: colorWithAlpha(sankeyCategoryFallbackColor, 0.45, sankeyCategoryFallbackColor),
             });
+            nodeStats.set(`debit:${remainderLabel}`, {count: 0, amount: remainder});
         }
 
         if (!links.size) {
@@ -186,12 +214,22 @@
         const targets: number[] = [];
         const values: number[] = [];
         const colors: string[] = [];
+        const linkCustomData: string[] = [];
+        const nodeCustomData: Array<[number, string]> = nodeLabels.map(() => [0, formatChfAmount(0)]);
+
+        for (const [key, stats] of nodeStats.entries()) {
+            const index = nodeIndex.get(key);
+            if (index !== undefined) {
+                nodeCustomData[index] = [stats.count, formatChfAmount(stats.amount)];
+            }
+        }
 
         for (const link of links.values()) {
             sources.push(link.source);
             targets.push(link.target);
             values.push(Number(link.value.toFixed(2)));
             colors.push(link.color);
+            linkCustomData.push(formatChfAmount(link.value));
         }
 
         const height = Math.min(640, Math.max(280, nodeLabels.length * 24));
@@ -207,13 +245,17 @@
                         line: {color: "rgba(0,0,0,0.2)", width: 0.5},
                         label: nodeLabels,
                         color: nodeColors,
+                        customdata: nodeCustomData,
+                        hovertemplate:
+                            "%{label}<br>Входящие транзакции: %{customdata[0]}<br>%{customdata[1]}<extra></extra>",
                     },
                     link: {
                         source: sources,
                         target: targets,
                         value: values,
                         color: colors,
-                        hovertemplate: "%{source.label} -> %{target.label}<br>%{value:.2f}<extra></extra>",
+                        customdata: linkCustomData,
+                        hovertemplate: "%{source.label} → %{target.label}<br>%{customdata}<extra></extra>",
                     },
                 },
             ],
