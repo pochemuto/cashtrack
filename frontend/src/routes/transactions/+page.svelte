@@ -458,7 +458,7 @@
                         <option value="credit">Credit</option>
                     </select>
                 </div>
-                <div class="form-control">
+                <div class="form-control flex flex-col">
                     <label class="label" for="search-text">
                         <span class="label-text">Поиск по описанию</span>
                     </label>
