@@ -38,11 +38,14 @@ type TransactionEntry struct {
 }
 
 type TransactionSummary struct {
-	Count    int64  `json:"count"`
-	Total    string `json:"total"`
-	Average  string `json:"average"`
-	Median   string `json:"median"`
-	Currency string `json:"currency"`
+	Count          int64  `json:"count"`
+	Total          string `json:"total"`
+	Average        string `json:"average"`
+	Median         string `json:"median"`
+	Currency       string `json:"currency"`
+	UniqueAccounts int64  `json:"unique_accounts"`
+	DateRangeStart string `json:"date_range_start"`
+	DateRangeEnd   string `json:"date_range_end"`
 }
 
 type TransactionFilters struct {
@@ -205,16 +208,23 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 
 	if len(rows) == 0 {
 		return TransactionSummary{
-			Count:    0,
-			Total:    "0",
-			Average:  "0",
-			Median:   "0",
-			Currency: "CHF",
+			Count:          0,
+			Total:          "0",
+			Average:        "0",
+			Median:         "0",
+			Currency:       "CHF",
+			UniqueAccounts: 0,
+			DateRangeStart: "",
+			DateRangeEnd:   "",
 		}, nil
 	}
 
 	amounts := make([]float64, 0, len(rows))
 	var total float64
+	uniqueAccounts := make(map[string]struct{})
+	var minDate time.Time
+	var maxDate time.Time
+	hasDate := false
 	for _, row := range rows {
 		value, err := numericToFloat(row.Amount)
 		if err != nil {
@@ -234,6 +244,33 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 		}
 		total += value
 		amounts = append(amounts, value)
+
+		if row.PostedDate.Valid {
+			postedDate := row.PostedDate.Time
+			if !hasDate {
+				minDate = postedDate
+				maxDate = postedDate
+				hasDate = true
+			} else {
+				if postedDate.Before(minDate) {
+					minDate = postedDate
+				}
+				if postedDate.After(maxDate) {
+					maxDate = postedDate
+				}
+			}
+		}
+
+		accountKey := ""
+		if row.SourceAccountNumber.Valid {
+			accountKey = strings.TrimSpace(row.SourceAccountNumber.String)
+		}
+		if accountKey == "" && row.SourceCardNumber.Valid {
+			accountKey = strings.TrimSpace(row.SourceCardNumber.String)
+		}
+		if accountKey != "" {
+			uniqueAccounts[accountKey] = struct{}{}
+		}
 	}
 
 	sort.Float64s(amounts)
@@ -251,12 +288,22 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 		average = total / float64(len(amounts))
 	}
 
+	dateRangeStart := ""
+	dateRangeEnd := ""
+	if hasDate {
+		dateRangeStart = minDate.Format("2006-01-02")
+		dateRangeEnd = maxDate.Format("2006-01-02")
+	}
+
 	return TransactionSummary{
-		Count:    int64(len(amounts)),
-		Total:    formatFloat(total),
-		Average:  formatFloat(average),
-		Median:   formatFloat(median),
-		Currency: "CHF",
+		Count:          int64(len(amounts)),
+		Total:          formatFloat(total),
+		Average:        formatFloat(average),
+		Median:         formatFloat(median),
+		Currency:       "CHF",
+		UniqueAccounts: int64(len(uniqueAccounts)),
+		DateRangeStart: dateRangeStart,
+		DateRangeEnd:   dateRangeEnd,
 	}, nil
 }
 

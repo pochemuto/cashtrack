@@ -221,7 +221,7 @@ WHERE user_id = sqlc.arg(user_id)
   AND (sqlc.narg(category_id)::bigint IS NULL OR category_id = sqlc.narg(category_id));
 
 -- name: ListTransactionsSummaryRows :many
-SELECT posted_date, amount, currency
+SELECT posted_date, amount, currency, source_account_number, source_card_number
 FROM transactions
 WHERE user_id = sqlc.arg(user_id)
   AND (sqlc.narg(from_date)::date IS NULL OR posted_date >= sqlc.narg(from_date))

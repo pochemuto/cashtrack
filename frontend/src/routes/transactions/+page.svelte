@@ -27,6 +27,9 @@
         average: string;
         median: string;
         currency: string;
+        unique_accounts: number;
+        date_range_start: string;
+        date_range_end: string;
     };
 
     type TransactionListResponse = {
@@ -194,6 +197,16 @@
             return value;
         }
         return parsed.toFixed(2);
+    }
+
+    function formatSummaryDateRange(start: string, end: string): string {
+        if (!start && !end) {
+            return "—";
+        }
+        if (start && end) {
+            return `${start} — ${end}`;
+        }
+        return start || end;
     }
 
     function clearTextFilterDebounce() {
@@ -598,6 +611,16 @@
                             <div class="stat-title">Медианная сумма</div>
                             <div class="stat-value text-lg">
                                 {formatSummaryAmount(summary.median)} {summary.currency}
+                            </div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-title">Уникальные счета</div>
+                            <div class="stat-value text-lg">{summary.unique_accounts}</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-title">Диапазон дат</div>
+                            <div class="stat-value text-lg">
+                                {formatSummaryDateRange(summary.date_range_start, summary.date_range_end)}
                             </div>
                         </div>
                     </div>

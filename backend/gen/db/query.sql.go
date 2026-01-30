@@ -686,7 +686,7 @@ func (q *Queries) SummaryTransactions(ctx context.Context, arg SummaryTransactio
 }
 
 const listTransactionsSummaryRows = `-- name: ListTransactionsSummaryRows :many
-SELECT posted_date, amount, currency
+SELECT posted_date, amount, currency, source_account_number, source_card_number
 FROM transactions
 WHERE user_id = $1
   AND ($2::date IS NULL OR posted_date >= $2)
@@ -712,9 +712,11 @@ type ListTransactionsSummaryRowsParams struct {
 }
 
 type ListTransactionsSummaryRowsRow struct {
-	PostedDate pgtype.Date
-	Amount     pgtype.Numeric
-	Currency   string
+	PostedDate          pgtype.Date
+	Amount              pgtype.Numeric
+	Currency            string
+	SourceAccountNumber pgtype.Text
+	SourceCardNumber    pgtype.Text
 }
 
 func (q *Queries) ListTransactionsSummaryRows(ctx context.Context, arg ListTransactionsSummaryRowsParams) ([]ListTransactionsSummaryRowsRow, error) {
@@ -740,6 +742,8 @@ func (q *Queries) ListTransactionsSummaryRows(ctx context.Context, arg ListTrans
 			&i.PostedDate,
 			&i.Amount,
 			&i.Currency,
+			&i.SourceAccountNumber,
+			&i.SourceCardNumber,
 		); err != nil {
 			return nil, err
 		}
