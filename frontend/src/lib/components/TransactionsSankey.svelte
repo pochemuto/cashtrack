@@ -189,8 +189,7 @@
         for (const [key, entry] of debitTotals.entries()) {
             const targetIndex = ensureNode(`debit:${key}`, entry.label, entry.color);
             const linkKey = `${netIncomeIndex}:${targetIndex}`;
-            const linkColor = colorWithAlpha(entry.color, 0.45, entry.color);
-            links.set(linkKey, {source: netIncomeIndex, target: targetIndex, value: entry.value, color: linkColor});
+            links.set(linkKey, {source: netIncomeIndex, target: targetIndex, value: entry.value, color: entry.color});
         }
 
         const remainder = Number((totalCredits - totalDebits).toFixed(2));
