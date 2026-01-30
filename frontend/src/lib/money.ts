@@ -18,16 +18,27 @@ export function centsToNumber(value: bigint): number {
     return Number(value) / 100;
 }
 
-export function formatChfAmount(value: number): string {
+function formatAmount(value: number, clampNegative: boolean): string {
     const safeValue = Number.isFinite(value) ? value : 0;
-    const amount = safeValue < 0 ? 0 : safeValue;
-    if (amount >= 100) {
-        const grouped = Math.round(amount)
+    const normalized = clampNegative ? Math.max(safeValue, 0) : safeValue;
+    const sign = !clampNegative && normalized < 0 ? "-" : "";
+    const absValue = Math.abs(normalized);
+    if (absValue >= 100) {
+        const grouped = Math.round(absValue)
             .toString()
             .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-        return `${grouped} CHF`;
+        return `${sign}${grouped}`;
     }
-    const [integerPart, fractionalPart] = amount.toFixed(2).split(".");
+    const [integerPart, fractionalPart] = absValue.toFixed(2).split(".");
     const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    return `${grouped}.${fractionalPart} CHF`;
+    return `${sign}${grouped}.${fractionalPart}`;
+}
+
+export function formatCurrencyAmount(value: number, currency: string, clampNegative = false): string {
+    const formatted = formatAmount(value, clampNegative);
+    return currency ? `${formatted} ${currency}` : formatted;
+}
+
+export function formatChfAmount(value: number): string {
+    return formatCurrencyAmount(value, "CHF", true);
 }

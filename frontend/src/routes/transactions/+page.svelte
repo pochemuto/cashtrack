@@ -6,7 +6,7 @@
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
     import TransactionsSankey from "$lib/components/TransactionsSankey.svelte";
     import {categories, categoriesLoading, loadCategories} from "$lib/stores/categories";
-    import {formatCents, formatSignedCents} from "$lib/money";
+    import {centsToNumber, formatCurrencyAmount, formatSignedCents} from "$lib/money";
     import {persistedBoolean} from "$lib/stores/persistedBoolean";
     import {user} from "../../user";
 
@@ -517,19 +517,19 @@
                         <div class="stat">
                             <div class="stat-title">Общая сумма</div>
                             <div class="stat-value text-lg">
-                                {formatCents(summary.total)} {summary.currency}
+                                {formatCurrencyAmount(centsToNumber(summary.total), summary.currency)}
                             </div>
                         </div>
                         <div class="stat">
                             <div class="stat-title">Средняя сумма</div>
                             <div class="stat-value text-lg">
-                                {formatCents(summary.average)} {summary.currency}
+                                {formatCurrencyAmount(centsToNumber(summary.average), summary.currency)}
                             </div>
                         </div>
                         <div class="stat">
                             <div class="stat-title">Медианная сумма</div>
                             <div class="stat-value text-lg">
-                                {formatCents(summary.median)} {summary.currency}
+                                {formatCurrencyAmount(centsToNumber(summary.median), summary.currency)}
                             </div>
                         </div>
                         <div class="stat">
