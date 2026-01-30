@@ -392,8 +392,8 @@
                 </p>
             </div>
 
-            <div class="grid gap-4 lg:grid-cols-3">
-                <div class="form-control lg:col-span-2">
+            <div class="grid gap-4 lg:grid-cols-2">
+                <div class="form-control">
                     <label class="label" for="date-range">
                         <span class="label-text">Диапазон дат</span>
                     </label>
@@ -449,22 +449,6 @@
                     </div>
                 </div>
                 <div class="form-control flex flex-col">
-                    <label class="label" for="entry-type">
-                        <span class="label-text">Тип списания</span>
-                    </label>
-                    <select class="select select-bordered" id="entry-type" bind:value={entryType}>
-                        <option value="">Все</option>
-                        <option value="debit">Debit</option>
-                        <option value="credit">Credit</option>
-                    </select>
-                </div>
-                <div class="form-control flex flex-col">
-                    <label class="label" for="search-text">
-                        <span class="label-text">Поиск по описанию</span>
-                    </label>
-                    <input class="input input-bordered" type="text" id="search-text" bind:value={searchText} placeholder="например Uber" />
-                </div>
-                <div class="form-control flex flex-col">
                     <label class="label" for="category-filter">
                         <span class="label-text">Категория</span>
                     </label>
@@ -473,6 +457,22 @@
                         {#each categories as category}
                             <option value={String(category.id)}>{category.name}</option>
                         {/each}
+                    </select>
+                </div>
+                <div class="form-control flex flex-col">
+                    <label class="label" for="search-text">
+                        <span class="label-text">Поиск по описанию</span>
+                    </label>
+                    <input class="input input-bordered w-full" type="text" id="search-text" bind:value={searchText} placeholder="например Uber" />
+                </div>
+                <div class="form-control flex flex-col">
+                    <label class="label" for="entry-type">
+                        <span class="label-text">Тип списания</span>
+                    </label>
+                    <select class="select select-bordered" id="entry-type" bind:value={entryType}>
+                        <option value="">Все</option>
+                        <option value="debit">Debit</option>
+                        <option value="credit">Credit</option>
                     </select>
                 </div>
             </div>
