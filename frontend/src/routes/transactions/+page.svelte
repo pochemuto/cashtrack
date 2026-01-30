@@ -600,10 +600,10 @@
                             <span class="font-medium">Подфильтровано по Sankey:</span>
                             <span class="badge badge-outline">{formatSankeyFilterType(sankeyFilter)}</span>
                             <span>{formatSankeyFilterLabel(sankeyFilter)}</span>
+                            <button class="btn btn-ghost btn-xs" type="button" on:click={resetSankeyFilter}>
+                                Сбросить
+                            </button>
                         </div>
-                        <button class="btn btn-ghost btn-xs" type="button" on:click={resetSankeyFilter}>
-                            Сбросить
-                        </button>
                     </div>
                 {/if}
                 {#if tableTransactions.length === 0}
