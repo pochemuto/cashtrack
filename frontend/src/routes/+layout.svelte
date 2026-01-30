@@ -10,12 +10,6 @@
 
     const GOOGLE_CLIENT_ID = "1010772966942-khflv7f816n0bqebf7mll7hb0eu589r0.apps.googleusercontent.com";
 
-    declare global {
-        interface Window {
-            google?: typeof google;
-        }
-    }
-
     function handleGoogleCredential(response: google.accounts.id.CredentialResponse) {
         console.info("Google credential received", response);
         const redirect = window.location.origin;

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package api.v1;
+
+message User {
+  int32 id = 1;
+  string username = 2;
+}
+
+message AuthMeRequest {}
+
+message AuthMeResponse {
+  User user = 1;
+}
+
+message AuthLogoutRequest {}
+
+message AuthLogoutResponse {}
+
+service AuthService {
+  rpc Me(AuthMeRequest) returns (AuthMeResponse) {}
+  rpc Logout(AuthLogoutRequest) returns (AuthLogoutResponse) {}
+}

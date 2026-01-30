@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package api.v1;
+
+message ReportInfo {
+  int32 id = 1;
+  string filename = 2;
+  int32 size_bytes = 3;
+  string status = 4;
+  string uploaded_at = 5;
+  string status_description = 6;
+}
+
+message UploadReportRequest {
+  string filename = 1;
+  bytes data = 2;
+  string content_type = 3;
+}
+
+message UploadReportResponse {}
+
+message ListReportsRequest {}
+
+message ListReportsResponse {
+  repeated ReportInfo reports = 1;
+}
+
+message DownloadReportRequest {
+  int32 id = 1;
+}
+
+message DownloadReportResponse {
+  bytes data = 1;
+  string filename = 2;
+  string content_type = 3;
+}
+
+message DeleteReportRequest {
+  int32 id = 1;
+}
+
+message DeleteReportResponse {}
+
+service ReportService {
+  rpc UploadReport(UploadReportRequest) returns (UploadReportResponse) {}
+  rpc ListReports(ListReportsRequest) returns (ListReportsResponse) {}
+  rpc DownloadReport(DownloadReportRequest) returns (DownloadReportResponse) {}
+  rpc DeleteReport(DeleteReportRequest) returns (DeleteReportResponse) {}
+}

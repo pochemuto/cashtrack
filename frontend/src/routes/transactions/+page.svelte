@@ -1,45 +1,14 @@
 <script lang="ts">
     import {onMount} from "svelte";
-    import {resolveApiUrl} from "$lib/url";
+    import {Transactions} from "$lib/api";
+    import type {Transaction, TransactionSummary} from "$lib/gen/api/v1/transactions_pb";
+    import {Code, ConnectError} from "@connectrpc/connect";
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
     import TransactionsSankey from "$lib/components/TransactionsSankey.svelte";
     import {categories, categoriesLoading, loadCategories} from "$lib/stores/categories";
     import {user} from "../../user";
 
-    type TransactionItem = {
-        id: number;
-        source_file_id: number;
-        source_file_row: number;
-        parser_name: string;
-        posted_date: string;
-        description: string;
-        amount: string;
-        currency: string;
-        transaction_id: string;
-        entry_type: string;
-        source_account_number: string;
-        source_card_number: string;
-        created_at: string;
-        category_id: number | null;
-    };
-
-    type TransactionSummary = {
-        count: number;
-        total: string;
-        average: string;
-        median: string;
-        currency: string;
-        unique_accounts: number;
-        date_range_start: string;
-        date_range_end: string;
-    };
-
-    type TransactionListResponse = {
-        items: TransactionItem[];
-        summary: TransactionSummary;
-    };
-
-    let transactions: TransactionItem[] = [];
+    let transactions: Transaction[] = [];
     let summary: TransactionSummary | null = null;
     let loading = false;
     let listError = "";
@@ -246,35 +215,26 @@
         loading = true;
         listError = "";
 
-        const params = new URLSearchParams();
-        if (fromDate) params.set("from", fromDate);
-        if (toDate) params.set("to", toDate);
-        if (sourceFileId) params.set("source_file_id", sourceFileId);
-        if (entryType) params.set("entry_type", entryType);
-        if (searchText) params.set("search", searchText);
-        if (categoryFilter) params.set("category_id", categoryFilter);
-        if (accountNumber) params.set("account_number", accountNumber);
-        if (cardNumber) params.set("card_number", cardNumber);
-
         try {
-            const response = await fetch(resolveApiUrl(`api/transactions?${params.toString()}`), {
-                credentials: "include",
+            const response = await Transactions.listTransactions({
+                fromDate,
+                toDate,
+                sourceFileId: sourceFileId ? Number(sourceFileId) : 0,
+                entryType,
+                searchText,
+                categoryId: categoryFilter ? Number(categoryFilter) : 0,
+                accountNumber,
+                cardNumber,
             });
-            if (!response.ok) {
-                if (response.status === 401) {
-                    listError = "Нужен вход для просмотра транзакций.";
-                    transactions = [];
-                    summary = null;
-                    return;
-                }
-                listError = "Не удалось загрузить транзакции.";
+            transactions = response.items ?? [];
+            summary = response.summary ?? null;
+        } catch (err) {
+            if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+                listError = "Нужен вход для просмотра транзакций.";
+                transactions = [];
                 summary = null;
                 return;
             }
-            const payload = (await response.json()) as TransactionListResponse;
-            transactions = payload.items ?? [];
-            summary = payload.summary ?? null;
-        } catch {
             listError = "Не удалось загрузить транзакции.";
             summary = null;
         } finally {
@@ -286,20 +246,19 @@
         updateError = "";
         categoryUpdates = {...categoryUpdates, [transactionId]: true};
         try {
-            const response = await fetch(resolveApiUrl(`api/transactions/${transactionId}/category`), {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                credentials: "include",
-                body: JSON.stringify({category_id: categoryId}),
-            });
-            if (!response.ok) {
-                updateError = "Не удалось сохранить категорию.";
+            const request: {transactionId: number; categoryId?: number} = {transactionId};
+            if (categoryId !== null) {
+                request.categoryId = categoryId;
+            }
+            await Transactions.updateTransactionCategory(request);
+            transactions = transactions.map((tx) =>
+                tx.id === transactionId ? {...tx, categoryId: categoryId ?? undefined} : tx
+            );
+        } catch (err) {
+            if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+                updateError = "Нужен вход для изменения категории.";
                 return;
             }
-            transactions = transactions.map((tx) =>
-                tx.id === transactionId ? {...tx, category_id: categoryId} : tx
-            );
-        } catch {
             updateError = "Не удалось сохранить категорию.";
         } finally {
             const {[transactionId]: _removed, ...rest} = categoryUpdates;
@@ -384,8 +343,8 @@
     $: calendarInputValue =
         fromDate && toDate ? `${fromDate} — ${toDate}` : fromDate || toDate ? `${fromDate || "—"} — ${toDate || "—"}` : "";
 
-    onMount(async () => {
-        await import("cally");
+    onMount(() => {
+        void import("cally");
 
         const handleDocumentClick = (event: MouseEvent) => {
             if (!calendarOpen) {
@@ -588,12 +547,12 @@
                         </div>
                         <div class="stat">
                             <div class="stat-title">Уникальные счета</div>
-                            <div class="stat-value text-lg">{summary.unique_accounts}</div>
+                                <div class="stat-value text-lg">{summary.uniqueAccounts}</div>
                         </div>
                         <div class="stat">
                             <div class="stat-title">Диапазон дат</div>
                             <div class="stat-value text-lg">
-                                {formatSummaryDateRange(summary.date_range_start, summary.date_range_end)}
+                                {formatSummaryDateRange(summary.dateRangeStart, summary.dateRangeEnd)}
                             </div>
                         </div>
                     </div>
@@ -613,10 +572,10 @@
                         <tbody>
                         {#each transactions as tx}
                             <tr>
-                                <td class="whitespace-nowrap">{formatDate(tx.posted_date)}</td>
+                                <td class="whitespace-nowrap">{formatDate(tx.postedDate)}</td>
                                 <td>
                                     <div class="font-medium">{tx.description}</div>
-                                    <div class="text-xs opacity-70">ID: {tx.transaction_id || "—"}</div>
+                                    <div class="text-xs opacity-70">ID: {tx.transactionId || "—"}</div>
                                 </td>
                                 <td class="whitespace-nowrap">
                                     <div class="dropdown dropdown-start">
@@ -625,10 +584,10 @@
                                             type="button"
                                             disabled={$categoriesLoading || !$categories.length || categoryUpdates[tx.id]}
                                         >
-                                            {#if tx.category_id}
+                                            {#if tx.categoryId}
                                                 <CategoryBadge
-                                                    name={$categories.find((category) => category.id === tx.category_id)?.name || "Категория"}
-                                                    color={$categories.find((category) => category.id === tx.category_id)?.color || ""}
+                                                    name={$categories.find((category) => category.id === tx.categoryId)?.name || "Категория"}
+                                                    color={$categories.find((category) => category.id === tx.categoryId)?.color || ""}
                                                     primaryWhenNoColor={true}
                                                 />
                                             {:else}
@@ -651,7 +610,7 @@
                                         </ul>
                                     </div>
                                 </td>
-                                <td class="text-right font-medium">{amountWithSign(tx.amount, tx.entry_type)}</td>
+                                <td class="text-right font-medium">{amountWithSign(tx.amount, tx.entryType)}</td>
                                 <td>{tx.currency}</td>
                             </tr>
                         {/each}

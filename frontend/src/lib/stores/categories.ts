@@ -1,34 +1,29 @@
+import {Categories} from "$lib/api";
+import type {Category} from "$lib/gen/api/v1/categories_pb";
+import {Code, ConnectError} from "@connectrpc/connect";
 import {get, writable} from "svelte/store";
-import {resolveApiUrl} from "$lib/url";
 import {user} from "../../user";
 
-export type CategoryItem = {
-    id: number;
-    name: string;
-    color: string | null;
-    created_at: string;
-};
-
-export const categories = writable<CategoryItem[]>([]);
+export const categories = writable<Category[]>([]);
 export const categoriesLoading = writable(false);
 export const categoriesError = writable("");
 
 let loadedUserId: number | null = null;
 let loadInFlight: Promise<boolean> | null = null;
 
-function sortCategories(items: CategoryItem[]): CategoryItem[] {
+function sortCategories(items: Category[]): Category[] {
     return [...items].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function setCategories(items: CategoryItem[]) {
+export function setCategories(items: Category[]) {
     categories.set(sortCategories(items));
 }
 
-export function addCategory(category: CategoryItem) {
+export function addCategory(category: Category) {
     categories.update((items) => sortCategories([...items, category]));
 }
 
-export function updateCategory(updated: CategoryItem) {
+export function updateCategory(updated: Category) {
     categories.update((items) =>
         sortCategories(items.map((category) => (category.id === updated.id ? updated : category)))
     );
@@ -60,20 +55,17 @@ export async function loadCategories(force = false): Promise<boolean> {
 
     const loadPromise = (async () => {
         try {
-            const response = await fetch(resolveApiUrl("api/categories"), {credentials: "include"});
-            if (!response.ok) {
-                categories.set([]);
-                categoriesError.set("Failed to load categories.");
-                loadedUserId = null;
-                return false;
-            }
-            const payload = (await response.json()) as CategoryItem[];
-            setCategories(payload);
+            const response = await Categories.listCategories({});
+            setCategories(response.categories ?? []);
             loadedUserId = currentUser.id;
             return true;
-        } catch {
+        } catch (err) {
             categories.set([]);
-            categoriesError.set("Failed to load categories.");
+            if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+                categoriesError.set("Failed to load categories.");
+            } else {
+                categoriesError.set("Failed to load categories.");
+            }
             loadedUserId = null;
             return false;
         } finally {

@@ -1,21 +1,14 @@
 <script lang="ts">
     import {onMount} from "svelte";
-    import {resolveApiUrl} from "$lib/url";
+    import {Categories} from "$lib/api";
+    import type {Category, CategoryRule} from "$lib/gen/api/v1/categories_pb";
+    import {Code, ConnectError} from "@connectrpc/connect";
     import {categories, addCategory, loadCategories, removeCategory, updateCategory} from "$lib/stores/categories";
-    import type {CategoryItem} from "$lib/stores/categories";
     import {user} from "../../user";
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
     import CategoryColorPicker from "$lib/components/CategoryColorPicker.svelte";
 
-    type RuleItem = {
-        id: number;
-        category_id: number;
-        description_contains: string;
-        position: number;
-        created_at: string;
-    };
-
-    let rules: RuleItem[] = [];
+    let rules: CategoryRule[] = [];
     let loading = false;
     let listError = "";
     let actionError = "";
@@ -63,24 +56,22 @@
         try {
             const [categoriesOk, rulesResponse] = await Promise.all([
                 loadCategories(),
-                fetch(resolveApiUrl("api/category-rules"), {credentials: "include"}),
+                Categories.listCategoryRules({}),
             ]);
 
             if (!categoriesOk) {
                 listError = "Не удалось загрузить категории.";
             }
 
-            if (!rulesResponse.ok) {
-                if (!listError) {
-                    listError = "Не удалось загрузить правила.";
-                }
+            rules = rulesResponse.rules ?? [];
+        } catch (err) {
+            if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+                listError = "Нужен вход для просмотра правил.";
                 rules = [];
-            } else {
-                const payload = (await rulesResponse.json()) as RuleItem[] | null;
-                rules = Array.isArray(payload) ? payload : [];
+                return;
             }
-        } catch {
             listError = "Не удалось загрузить категории.";
+            rules = [];
         } finally {
             loading = false;
         }
@@ -95,18 +86,12 @@
         const color = (newCategoryColor ?? "").trim();
 
         try {
-            const response = await fetch(resolveApiUrl("api/categories"), {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                credentials: "include",
-                body: JSON.stringify({name, color}),
-            });
-            if (!response.ok) {
+            const response = await Categories.createCategory({name, color});
+            if (!response.category) {
                 actionError = "Не удалось добавить категорию.";
                 return;
             }
-            const created = (await response.json()) as CategoryItem;
-            addCategory(created);
+            addCategory(response.category);
             newCategoryName = "";
             newCategoryColor = null;
         } catch {
@@ -114,7 +99,7 @@
         }
     }
 
-    function startCategoryEdit(category: CategoryItem) {
+    function startCategoryEdit(category: Category) {
         editingCategoryId = category.id;
         editingCategoryName = category.name;
         editingCategoryColor = category.color || null;
@@ -144,16 +129,7 @@
         const color = (editingCategoryColor ?? "").trim();
 
         try {
-            const response = await fetch(resolveApiUrl(`api/categories/${categoryId}`), {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                credentials: "include",
-                body: JSON.stringify({name, color}),
-            });
-            if (!response.ok) {
-                actionError = "Не удалось обновить категорию.";
-                return;
-            }
+            await Categories.updateCategory({id: categoryId, name, color});
             const existing = $categories.find((category) => category.id === categoryId);
             if (existing) {
                 updateCategory({...existing, name, color});
@@ -168,16 +144,9 @@
         actionError = "";
         menuOpen = null;
         try {
-            const response = await fetch(resolveApiUrl(`api/categories/${categoryId}`), {
-                method: "DELETE",
-                credentials: "include",
-            });
-            if (!response.ok) {
-                actionError = "Не удалось удалить категорию.";
-                return;
-            }
+            await Categories.deleteCategory({id: categoryId});
             removeCategory(categoryId);
-            rules = rules.filter((rule) => rule.category_id !== categoryId);
+            rules = rules.filter((rule) => rule.categoryId !== categoryId);
         } catch {
             actionError = "Не удалось удалить категорию.";
         }
@@ -192,21 +161,15 @@
         }
 
         try {
-            const response = await fetch(resolveApiUrl("api/category-rules"), {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                credentials: "include",
-                body: JSON.stringify({
-                    category_id: Number(newRuleCategoryId),
-                    description_contains: descriptionContains,
-                }),
+            const response = await Categories.createCategoryRule({
+                categoryId: Number(newRuleCategoryId),
+                descriptionContains,
             });
-            if (!response.ok) {
+            if (!response.rule) {
                 actionError = "Не удалось добавить правило.";
                 return;
             }
-            const created = (await response.json()) as RuleItem;
-            rules = [...rules, created];
+            rules = [...rules, response.rule];
             newRuleText = "";
             newRuleCategoryId = "";
         } catch {
@@ -214,10 +177,10 @@
         }
     }
 
-    function startRuleEdit(rule: RuleItem) {
+    function startRuleEdit(rule: CategoryRule) {
         editingRuleId = rule.id;
-        editingRuleCategoryId = String(rule.category_id);
-        editingRuleText = rule.description_contains;
+        editingRuleCategoryId = String(rule.categoryId);
+        editingRuleText = rule.descriptionContains;
         menuOpen = null;
     }
 
@@ -243,25 +206,17 @@
         }
 
         try {
-            const response = await fetch(resolveApiUrl(`api/category-rules/${ruleId}`), {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                credentials: "include",
-                body: JSON.stringify({
-                    category_id: Number(editingRuleCategoryId),
-                    description_contains: descriptionContains,
-                }),
+            await Categories.updateCategoryRule({
+                id: ruleId,
+                categoryId: Number(editingRuleCategoryId),
+                descriptionContains,
             });
-            if (!response.ok) {
-                actionError = "Не удалось обновить правило.";
-                return;
-            }
             rules = rules.map((rule) =>
                 rule.id === ruleId
                     ? {
                         ...rule,
-                        category_id: Number(editingRuleCategoryId),
-                        description_contains: descriptionContains,
+                        categoryId: Number(editingRuleCategoryId),
+                        descriptionContains,
                     }
                     : rule
             );
@@ -275,14 +230,7 @@
         actionError = "";
         menuOpen = null;
         try {
-            const response = await fetch(resolveApiUrl(`api/category-rules/${ruleId}`), {
-                method: "DELETE",
-                credentials: "include",
-            });
-            if (!response.ok) {
-                actionError = "Не удалось удалить правило.";
-                return;
-            }
+            await Categories.deleteCategoryRule({id: ruleId});
             rules = rules.filter((rule) => rule.id !== ruleId);
         } catch {
             actionError = "Не удалось удалить правило.";
@@ -336,20 +284,11 @@
         dragOverIndex = null;
     }
 
-    async function persistRuleOrder(nextRules: RuleItem[]) {
+    async function persistRuleOrder(nextRules: CategoryRule[]) {
         actionError = "";
         rulesReordering = true;
         try {
-            const response = await fetch(resolveApiUrl("api/category-rules/reorder"), {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                credentials: "include",
-                body: JSON.stringify({rule_ids: nextRules.map((rule) => rule.id)}),
-            });
-            if (!response.ok) {
-                actionError = "Не удалось изменить порядок правил.";
-                await loadData();
-            }
+            await Categories.reorderCategoryRules({ruleIds: nextRules.map((rule) => rule.id)});
         } catch {
             actionError = "Не удалось изменить порядок правил.";
             await loadData();
@@ -365,21 +304,14 @@
         actionError = "";
         applyingRules = true;
         try {
-            const response = await fetch(resolveApiUrl("api/category-rules/apply"), {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                credentials: "include",
-                body: JSON.stringify({apply_to_all: applyRulesToAll}),
-            });
-            if (!response.ok) {
-                actionError = "Не удалось применить правила.";
+            const response = await Categories.applyCategoryRules({applyToAll: applyRulesToAll});
+            const updatedCount = response.updatedCount ?? 0;
+            showToast(`Правила применены. Обновлено транзакций: ${updatedCount}.`);
+        } catch (err) {
+            if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+                actionError = "Нужен вход для применения правил.";
                 return;
             }
-            const payload = (await response.json()) as {updated_count?: number} | null;
-            const updatedCount =
-                payload && typeof payload.updated_count === "number" ? payload.updated_count : 0;
-            showToast(`Правила применены. Обновлено транзакций: ${updatedCount}.`);
-        } catch {
             actionError = "Не удалось применить правила.";
         } finally {
             applyingRules = false;
@@ -641,7 +573,7 @@
                                             >
                                                 ⋮⋮
                                             </button>
-                                            <div class="font-medium">{categoryMap.get(rule.category_id) || "—"}</div>
+                                            <div class="font-medium">{categoryMap.get(rule.categoryId) || "—"}</div>
                                         </div>
                                     {/if}
                                 </td>
@@ -653,7 +585,7 @@
                                             bind:value={editingRuleText}
                                         />
                                     {:else}
-                                        <span>{rule.description_contains}</span>
+                                        <span>{rule.descriptionContains}</span>
                                     {/if}
                                 </td>
                                 <td class="text-right">
@@ -694,23 +626,23 @@
     >
         {#if menuOpen.type === "category"}
             <li>
-                <button type="button" on:click={() => startCategoryEditById(menuOpen.id)}>
+                <button type="button" on:click={() => menuOpen && startCategoryEditById(menuOpen.id)}>
                     Редактировать
                 </button>
             </li>
             <li>
-                <button type="button" on:click={() => deleteCategory(menuOpen.id)}>
+                <button type="button" on:click={() => menuOpen && deleteCategory(menuOpen.id)}>
                     Удалить
                 </button>
             </li>
         {:else}
             <li>
-                <button type="button" on:click={() => startRuleEditById(menuOpen.id)}>
+                <button type="button" on:click={() => menuOpen && startRuleEditById(menuOpen.id)}>
                     Редактировать
                 </button>
             </li>
             <li>
-                <button type="button" on:click={() => deleteRule(menuOpen.id)}>
+                <button type="button" on:click={() => menuOpen && deleteRule(menuOpen.id)}>
                     Удалить
                 </button>
             </li>

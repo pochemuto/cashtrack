@@ -1,12 +1,7 @@
 <script lang="ts">
     import {onMount} from "svelte";
-    import type {CategoryItem} from "$lib/stores/categories";
-
-    export type SankeyTransaction = {
-        amount: string;
-        entry_type: string;
-        category_id: number | null;
-    };
+    import type {Category} from "$lib/gen/api/v1/categories_pb";
+    import type {Transaction} from "$lib/gen/api/v1/transactions_pb";
 
     type SankeyChart = {
         data: Array<Record<string, unknown>>;
@@ -14,8 +9,8 @@
         config: Record<string, unknown>;
     };
 
-    export let transactions: SankeyTransaction[] = [];
-    export let categories: CategoryItem[] = [];
+    export let transactions: Transaction[] = [];
+    export let categories: Category[] = [];
 
     let plotlyLoading = false;
     let plotlyError = "";
@@ -66,8 +61,8 @@
         return fallback;
     }
 
-    function getCategoryDescriptor(categoryId: number | null, categoryLookup: Map<number, CategoryItem>) {
-        if (categoryId === null) {
+    function getCategoryDescriptor(categoryId: number | undefined, categoryLookup: Map<number, Category>) {
+        if (categoryId === undefined) {
             return {
                 key: "none",
                 label: "Без категории",
@@ -89,12 +84,12 @@
         };
     }
 
-    function buildSankeyChart(items: SankeyTransaction[], categoryItems: CategoryItem[]): SankeyChart | null {
+    function buildSankeyChart(items: Transaction[], categoryItems: Category[]): SankeyChart | null {
         if (!items.length) {
             return null;
         }
 
-        const categoryLookup = new Map<number, CategoryItem>();
+        const categoryLookup = new Map<number, Category>();
         for (const category of categoryItems) {
             categoryLookup.set(category.id, category);
         }
@@ -140,12 +135,12 @@
                 continue;
             }
             const value = Math.abs(amount);
-            const categoryInfo = getCategoryDescriptor(tx.category_id, categoryLookup);
+            const categoryInfo = getCategoryDescriptor(tx.categoryId, categoryLookup);
 
-            if (tx.entry_type === "credit") {
+            if (tx.entryType === "credit") {
                 totalCredits += value;
                 addTotal(creditTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value);
-            } else if (tx.entry_type === "debit") {
+            } else if (tx.entryType === "debit") {
                 totalDebits += value;
                 addTotal(debitTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value);
             }

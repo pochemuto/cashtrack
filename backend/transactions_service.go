@@ -1,6 +1,7 @@
 package cashtrack
 
 import (
+	apiv1 "cashtrack/backend/gen/api/v1"
 	db "cashtrack/backend/gen/db"
 	"context"
 	"encoding/json"
@@ -17,35 +18,6 @@ import (
 type TransactionsService struct {
 	db            *Db
 	exchangeRates *ExchangeRateService
-}
-
-type TransactionEntry struct {
-	ID                  int64
-	SourceFileID        int64
-	SourceFileRow       int
-	ParserName          string
-	PostedDate          time.Time
-	Description         string
-	Amount              string
-	Currency            string
-	TransactionID       string
-	EntryType           string
-	SourceAccountNumber string
-	SourceCardNumber    string
-	ParserMeta          json.RawMessage
-	CreatedAt           time.Time
-	CategoryID          *int64
-}
-
-type TransactionSummary struct {
-	Count          int64  `json:"count"`
-	Total          string `json:"total"`
-	Average        string `json:"average"`
-	Median         string `json:"median"`
-	Currency       string `json:"currency"`
-	UniqueAccounts int64  `json:"unique_accounts"`
-	DateRangeStart string `json:"date_range_start"`
-	DateRangeEnd   string `json:"date_range_end"`
 }
 
 type TransactionFilters struct {
@@ -134,7 +106,7 @@ func (s *TransactionsService) ReplaceForSourceTx(ctx context.Context, tx pgx.Tx,
 	return nil
 }
 
-func (s *TransactionsService) List(ctx context.Context, userID int32, filters TransactionFilters) ([]TransactionEntry, error) {
+func (s *TransactionsService) List(ctx context.Context, userID int32, filters TransactionFilters) ([]*apiv1.Transaction, error) {
 	params := db.ListTransactionsParams{
 		UserID:              userID,
 		FromDate:            dateOrNull(filters.FromDate),
@@ -154,29 +126,36 @@ func (s *TransactionsService) List(ctx context.Context, userID int32, filters Tr
 		return nil, fmt.Errorf("query transactions: %w", err)
 	}
 
-	entries := make([]TransactionEntry, 0)
+	entries := make([]*apiv1.Transaction, 0)
 	for _, row := range rows {
-		var categoryID *int64
+		var categoryID *int32
 		if row.CategoryID.Valid {
-			value := row.CategoryID.Int64
+			value := int32(row.CategoryID.Int64)
 			categoryID = &value
 		}
-		entry := TransactionEntry{
-			ID:                  row.ID,
-			SourceFileID:        row.SourceFileID,
-			SourceFileRow:       int(row.SourceFileRow),
+		postedDate := ""
+		if row.PostedDate.Valid {
+			postedDate = row.PostedDate.Time.Format(time.RFC3339Nano)
+		}
+		createdAt := ""
+		if row.CreatedAt.Valid {
+			createdAt = row.CreatedAt.Time.Format(time.RFC3339Nano)
+		}
+		entry := &apiv1.Transaction{
+			Id:                  int32(row.ID),
+			SourceFileId:        int32(row.SourceFileID),
+			SourceFileRow:       row.SourceFileRow,
 			ParserName:          row.ParserName,
-			PostedDate:          row.PostedDate.Time,
+			PostedDate:          postedDate,
 			Description:         row.Description,
 			Amount:              numericToString(row.Amount),
 			Currency:            row.Currency,
-			TransactionID:       row.TransactionID.String,
+			TransactionId:       row.TransactionID.String,
 			EntryType:           row.EntryType,
 			SourceAccountNumber: row.SourceAccountNumber.String,
 			SourceCardNumber:    row.SourceCardNumber.String,
-			ParserMeta:          row.ParserMeta,
-			CreatedAt:           row.CreatedAt.Time,
-			CategoryID:          categoryID,
+			CreatedAt:           createdAt,
+			CategoryId:          categoryID,
 		}
 		entries = append(entries, entry)
 	}
@@ -189,7 +168,7 @@ type CategoryRuleEntry struct {
 	DescriptionContains string
 }
 
-func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters TransactionFilters) (TransactionSummary, error) {
+func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters TransactionFilters) (*apiv1.TransactionSummary, error) {
 	rows, err := s.db.Queries.ListTransactionsSummaryRows(ctx, db.ListTransactionsSummaryRowsParams{
 		UserID:              userID,
 		FromDate:            dateOrNull(filters.FromDate),
@@ -203,11 +182,11 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 	})
 	if err != nil {
 		log.Error().Err(err).Interface("filters", filters).Msg("failed to query transactions summary")
-		return TransactionSummary{}, err
+		return nil, err
 	}
 
 	if len(rows) == 0 {
-		return TransactionSummary{
+		return &apiv1.TransactionSummary{
 			Count:          0,
 			Total:          "0",
 			Average:        "0",
@@ -228,7 +207,7 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 	for _, row := range rows {
 		value, err := numericToFloat(row.Amount)
 		if err != nil {
-			return TransactionSummary{}, fmt.Errorf("parse amount: %w", err)
+			return nil, fmt.Errorf("parse amount: %w", err)
 		}
 		currency := strings.ToUpper(strings.TrimSpace(row.Currency))
 		if currency == "" {
@@ -238,7 +217,7 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 			rate, err := s.exchangeRates.GetRateToCHF(ctx, currency, row.PostedDate.Time)
 			if err != nil {
 				log.Error().Err(err).Str("currency", currency).Time("date", row.PostedDate.Time).Msg("failed to convert currency")
-				return TransactionSummary{}, err
+				return nil, err
 			}
 			value = value * rate
 		}
@@ -295,19 +274,19 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 		dateRangeEnd = maxDate.Format("2006-01-02")
 	}
 
-	return TransactionSummary{
-		Count:          int64(len(amounts)),
+	return &apiv1.TransactionSummary{
+		Count:          int32(len(amounts)),
 		Total:          formatFloat(total),
 		Average:        formatFloat(average),
 		Median:         formatFloat(median),
 		Currency:       "CHF",
-		UniqueAccounts: int64(len(uniqueAccounts)),
+		UniqueAccounts: int32(len(uniqueAccounts)),
 		DateRangeStart: dateRangeStart,
 		DateRangeEnd:   dateRangeEnd,
 	}, nil
 }
 
-func (s *TransactionsService) ListWithCategories(ctx context.Context, userID int32, filters TransactionFilters) ([]TransactionEntry, error) {
+func (s *TransactionsService) ListWithCategories(ctx context.Context, userID int32, filters TransactionFilters) ([]*apiv1.Transaction, error) {
 	return s.List(ctx, userID, filters)
 }
 
@@ -335,8 +314,8 @@ func (s *TransactionsService) ApplyCategoryRules(ctx context.Context, userID int
 	normalizedRules := normalizeRules(rules)
 
 	rows, err := s.db.Queries.ListTransactionsForRuleApply(ctx, db.ListTransactionsForRuleApplyParams{
-		UserID:     userID,
-		ApplyToAll: applyToAll,
+		UserID:  userID,
+		Column2: applyToAll,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("load transactions: %w", err)

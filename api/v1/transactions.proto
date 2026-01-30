@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package api.v1;
+
+message Transaction {
+  int32 id = 1;
+  int32 source_file_id = 2;
+  int32 source_file_row = 3;
+  string parser_name = 4;
+  string posted_date = 5;
+  string description = 6;
+  string amount = 7;
+  string currency = 8;
+  string transaction_id = 9;
+  string entry_type = 10;
+  string source_account_number = 11;
+  string source_card_number = 12;
+  string created_at = 13;
+  optional int32 category_id = 14;
+}
+
+message TransactionSummary {
+  int32 count = 1;
+  string total = 2;
+  string average = 3;
+  string median = 4;
+  string currency = 5;
+  int32 unique_accounts = 6;
+  string date_range_start = 7;
+  string date_range_end = 8;
+}
+
+message ListTransactionsRequest {
+  string from_date = 1;
+  string to_date = 2;
+  int32 source_file_id = 3;
+  string entry_type = 4;
+  string search_text = 5;
+  int32 category_id = 6;
+  string account_number = 7;
+  string card_number = 8;
+  int32 limit = 9;
+  int32 offset = 10;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction items = 1;
+  TransactionSummary summary = 2;
+}
+
+message UpdateTransactionCategoryRequest {
+  int32 transaction_id = 1;
+  optional int32 category_id = 2;
+}
+
+message UpdateTransactionCategoryResponse {}
+
+service TransactionService {
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse) {}
+  rpc UpdateTransactionCategory(UpdateTransactionCategoryRequest) returns (UpdateTransactionCategoryResponse) {}
+}

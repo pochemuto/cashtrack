@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,9 @@ import (
 	"testing"
 	"time"
 
+	apiv1 "cashtrack/backend/gen/api/v1"
+	"cashtrack/backend/gen/api/v1/apiv1connect"
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -91,27 +95,26 @@ func TestAuthMeHandler(t *testing.T) {
 	userID := createUser(t, db, "me@example.com")
 	sessionID := createSessionForUser(t, db, userID)
 
-	handler := NewAuthMeHandler(db).Handler
+	handler := NewAuthServiceHandler(db)
+	server := httptest.NewServer(handler.Handler)
+	defer server.Close()
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
-	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionID})
-	rec := httptest.NewRecorder()
+	client := connect.NewClient[apiv1.AuthMeRequest, apiv1.AuthMeResponse](
+		server.Client(),
+		server.URL+apiv1connect.AuthServiceMeProcedure,
+	)
+	req := connect.NewRequest(&apiv1.AuthMeRequest{})
+	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", sessionCookieName, sessionID))
 
-	handler.ServeHTTP(rec, req)
-
-	res := rec.Result()
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", res.StatusCode)
+	res, err := client.CallUnary(context.Background(), req)
+	if err != nil {
+		t.Fatalf("failed to call auth me: %v", err)
 	}
-
-	var body AuthUser
-	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
+	if res.Msg.User == nil {
+		t.Fatalf("expected user in response")
 	}
-	if body.ID != userID || body.Username != "me@example.com" {
-		t.Fatalf("unexpected user response: %+v", body)
+	if res.Msg.User.Id != userID || res.Msg.User.Username != "me@example.com" {
+		t.Fatalf("unexpected user response: %+v", res.Msg.User)
 	}
 }
 
@@ -119,15 +122,26 @@ func TestAuthMeHandlerUnauthorized(t *testing.T) {
 	db, cleanup := openTestDB(t)
 	defer cleanup()
 
-	handler := NewAuthMeHandler(db).Handler
+	handler := NewAuthServiceHandler(db)
+	server := httptest.NewServer(handler.Handler)
+	defer server.Close()
 
-	req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
-	rec := httptest.NewRecorder()
+	client := connect.NewClient[apiv1.AuthMeRequest, apiv1.AuthMeResponse](
+		server.Client(),
+		server.URL+apiv1connect.AuthServiceMeProcedure,
+	)
+	req := connect.NewRequest(&apiv1.AuthMeRequest{})
 
-	handler.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", rec.Code)
+	_, err := client.CallUnary(context.Background(), req)
+	if err == nil {
+		t.Fatalf("expected unauthenticated error")
+	}
+	var connectErr *connect.Error
+	if !errors.As(err, &connectErr) {
+		t.Fatalf("expected connect error, got %T", err)
+	}
+	if connectErr.Code() != connect.CodeUnauthenticated {
+		t.Fatalf("expected unauthenticated, got %v", connectErr.Code())
 	}
 }
 
@@ -138,23 +152,24 @@ func TestAuthLogoutHandler(t *testing.T) {
 	userID := createUser(t, db, "logout@example.com")
 	sessionID := createSessionForUser(t, db, userID)
 
-	handler := NewAuthLogoutHandler(db).Handler
+	handler := NewAuthServiceHandler(db)
+	server := httptest.NewServer(handler.Handler)
+	defer server.Close()
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: sessionID})
-	rec := httptest.NewRecorder()
+	client := connect.NewClient[apiv1.AuthLogoutRequest, apiv1.AuthLogoutResponse](
+		server.Client(),
+		server.URL+apiv1connect.AuthServiceLogoutProcedure,
+	)
+	req := connect.NewRequest(&apiv1.AuthLogoutRequest{})
+	req.Header().Set("Cookie", fmt.Sprintf("%s=%s", sessionCookieName, sessionID))
 
-	handler.ServeHTTP(rec, req)
-
-	res := rec.Result()
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusNoContent {
-		t.Fatalf("expected status 204, got %d", res.StatusCode)
+	res, err := client.CallUnary(context.Background(), req)
+	if err != nil {
+		t.Fatalf("failed to call auth logout: %v", err)
 	}
 
 	var remaining int
-	err := db.conn.QueryRow(context.Background(), `SELECT COUNT(*) FROM sessions WHERE id = $1`, sessionID).Scan(&remaining)
+	err = db.conn.QueryRow(context.Background(), `SELECT COUNT(*) FROM sessions WHERE id = $1`, sessionID).Scan(&remaining)
 	if err != nil {
 		t.Fatalf("failed to query sessions: %v", err)
 	}
@@ -162,15 +177,22 @@ func TestAuthLogoutHandler(t *testing.T) {
 		t.Fatalf("expected session to be deleted")
 	}
 
-	var cleared bool
-	for _, cookie := range res.Cookies() {
-		if cookie.Name == sessionCookieName && cookie.MaxAge == -1 {
-			cleared = true
+	cookies := (&http.Response{Header: res.Header()}).Cookies()
+	var cleared *http.Cookie
+	for _, cookie := range cookies {
+		if cookie.Name == sessionCookieName {
+			cleared = cookie
 			break
 		}
 	}
-	if !cleared {
+	if cleared == nil {
 		t.Fatalf("expected session cookie to be cleared")
+	}
+	if cleared.Value != "" {
+		t.Fatalf("expected session cookie to be cleared, got %q", cleared.Value)
+	}
+	if !cleared.Expires.Before(time.Now()) {
+		t.Fatalf("expected session cookie to expire in the past")
 	}
 }
 

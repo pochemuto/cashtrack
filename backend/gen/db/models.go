@@ -8,6 +8,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Category struct {
+	ID        int64
+	UserID    int32
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	Color     pgtype.Text
+}
+
+type CategoryRule struct {
+	ID                  int64
+	UserID              int32
+	CategoryID          int64
+	DescriptionContains string
+	CreatedAt           pgtype.Timestamptz
+	Position            int32
+}
+
+type ExchangeRate struct {
+	ID             int64
+	RateDate       pgtype.Date
+	BaseCurrency   string
+	TargetCurrency string
+	Rate           pgtype.Numeric
+	CreatedAt      pgtype.Timestamptz
+}
+
 type FinancialReport struct {
 	ID                int64
 	UserID            int32
@@ -47,6 +73,8 @@ type Transaction struct {
 	SourceCardNumber    pgtype.Text
 	ParserMeta          []byte
 	CreatedAt           pgtype.Timestamptz
+	CategoryID          pgtype.Int8
+	CategorySource      pgtype.Text
 }
 
 type User struct {

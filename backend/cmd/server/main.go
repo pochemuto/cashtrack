@@ -14,15 +14,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	server, processor, err := cashtrack.InitializeApp(ctx)
+	app, err := cashtrack.InitializeApp(ctx)
 	if err != nil {
 		panic(err)
 	}
-	go processor.Run(ctx, 10*time.Second)
+	go app.Processor.Run(ctx, 10*time.Second)
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- server.ListenAndServe()
+		errCh <- app.Server.ListenAndServe()
 	}()
 
 	select {
@@ -35,7 +35,7 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	if err := app.Server.Shutdown(shutdownCtx); err != nil {
 		panic(err)
 	}
 }

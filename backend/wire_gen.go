@@ -8,53 +8,62 @@ package cashtrack
 
 import (
 	"context"
-	"net/http"
 )
 
 // Injectors from wire.go:
 
-func InitializeApp(ctx context.Context) (*http.Server, *ReportProcessor, error) {
+func InitializeApp(ctx context.Context) (*App, error) {
 	config, err := ProvideConfig()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	serverConfig := config.ServerConfig
 	dbConfig := config.Db
 	pool, err := NewPgxPool(ctx, dbConfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	db, err := NewDB(pool)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	todoHandler := NewTodoHandler(db)
 	greetHandler := NewGreetHandler()
 	authHandler := NewAuthHandler(db)
-	authMeHandler := NewAuthMeHandler(db)
-	authLogoutHandler := NewAuthLogoutHandler(db)
-	reportUploadHandler := NewReportUploadHandler(db)
-	reportListHandler := NewReportListHandler(db)
-	reportDownloadHandler := NewReportDownloadHandler(db)
-	reportDeleteHandler := NewReportDeleteHandler(db)
+	authServiceHandler := NewAuthServiceHandler(db)
+	reportServiceHandler := NewReportServiceHandler(db)
 	transactionsService := NewTransactionsService(db)
-	transactionsListHandler := NewTransactionsListHandler(db, transactionsService)
-	categoriesHandler := NewCategoriesHandler(db)
-	categoryHandler := NewCategoryHandler(db)
-	categoryRulesHandler := NewCategoryRulesHandler(db)
-	categoryRuleHandler := NewCategoryRuleHandler(db)
-	categoryRulesApplyHandler := NewCategoryRulesApplyHandler(db, transactionsService)
-	categoryRulesReorderHandler := NewCategoryRulesReorderHandler(db)
-	transactionCategoryHandler := NewTransactionCategoryHandler(db)
-	v := handlers(todoHandler, greetHandler, authHandler, authMeHandler, authLogoutHandler, reportUploadHandler, reportListHandler, reportDownloadHandler, reportDeleteHandler, transactionsListHandler, categoriesHandler, categoryHandler, categoryRulesHandler, categoryRuleHandler, categoryRulesApplyHandler, categoryRulesReorderHandler, transactionCategoryHandler)
+	transactionServiceHandler := NewTransactionServiceHandler(db, transactionsService)
+	categoryServiceHandler := NewCategoryServiceHandler(db, transactionsService)
+	v := handlers(todoHandler, greetHandler, authHandler, authServiceHandler, reportServiceHandler, transactionServiceHandler, categoryServiceHandler)
 	server := NewHttpServer(serverConfig, v)
 	reportParsingService := NewReportParsingService()
 	reportProcessor := NewReportProcessor(db, reportParsingService, transactionsService)
-	return server, reportProcessor, nil
+	app := &App{
+		Server:    server,
+		Processor: reportProcessor,
+	}
+	return app, nil
 }
 
 // wire.go:
 
-func handlers(todo *TodoHandler, greet *GreetHandler, auth *AuthHandler, authMe *AuthMeHandler, authLogout *AuthLogoutHandler, upload *ReportUploadHandler, reportList *ReportListHandler, reportDownload *ReportDownloadHandler, reportDelete *ReportDeleteHandler, transactionsList *TransactionsListHandler, categories *CategoriesHandler, category *CategoryHandler, categoryRules *CategoryRulesHandler, categoryRule *CategoryRuleHandler, categoryRulesApply *CategoryRulesApplyHandler, categoryRulesReorder *CategoryRulesReorderHandler, transactionCategory *TransactionCategoryHandler) []*Handler {
-	return []*Handler{(*Handler)(todo), (*Handler)(greet), (*Handler)(auth), (*Handler)(authMe), (*Handler)(authLogout), (*Handler)(upload), (*Handler)(reportList), (*Handler)(reportDownload), (*Handler)(reportDelete), (*Handler)(transactionsList), (*Handler)(categories), (*Handler)(category), (*Handler)(categoryRules), (*Handler)(categoryRule), (*Handler)(categoryRulesApply), (*Handler)(categoryRulesReorder), (*Handler)(transactionCategory)}
+func handlers(
+	todo *TodoHandler,
+	greet *GreetHandler,
+	auth *AuthHandler,
+	authService *AuthServiceHandler,
+	reportService *ReportServiceHandler,
+	transactionService *TransactionServiceHandler,
+	categoryService *CategoryServiceHandler,
+) []*Handler {
+	return []*Handler{
+		(*Handler)(todo),
+		(*Handler)(greet),
+		(*Handler)(auth),
+		(*Handler)(authService),
+		(*Handler)(reportService),
+		(*Handler)(transactionService),
+		(*Handler)(categoryService),
+	}
 }

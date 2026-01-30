@@ -1,156 +1,169 @@
 package cashtrack
 
 import (
-	"encoding/json"
-	"net/http"
-	"strconv"
+	"context"
+	"errors"
+	"strings"
 	"time"
+
+	apiv1 "cashtrack/backend/gen/api/v1"
+	"cashtrack/backend/gen/api/v1/apiv1connect"
+	dbgen "cashtrack/backend/gen/db"
+	"connectrpc.com/connect"
+	"connectrpc.com/validate"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type TransactionsListHandler Handler
-
-type TransactionItem struct {
-	ID                  int64     `json:"id"`
-	SourceFileID        int64     `json:"source_file_id"`
-	SourceFileRow       int       `json:"source_file_row"`
-	ParserName          string    `json:"parser_name"`
-	PostedDate          time.Time `json:"posted_date"`
-	Description         string    `json:"description"`
-	Amount              string    `json:"amount"`
-	Currency            string    `json:"currency"`
-	TransactionID       string    `json:"transaction_id"`
-	EntryType           string    `json:"entry_type"`
-	SourceAccountNumber string    `json:"source_account_number"`
-	SourceCardNumber    string    `json:"source_card_number"`
-	CreatedAt           time.Time `json:"created_at"`
-	CategoryID          *int64    `json:"category_id"`
+type TransactionService struct {
+	db           *Db
+	transactions *TransactionsService
 }
 
-type TransactionsResponse struct {
-	Items   []TransactionItem  `json:"items"`
-	Summary TransactionSummary `json:"summary"`
+type TransactionServiceHandler Handler
+
+func NewTransactionServiceHandler(db *Db, transactions *TransactionsService) *TransactionServiceHandler {
+	service := &TransactionService{db: db, transactions: transactions}
+	path, handler := apiv1connect.NewTransactionServiceHandler(
+		service,
+		connect.WithInterceptors(validate.NewInterceptor(), NewAuthInterceptor(db)),
+	)
+	return &TransactionServiceHandler{Path: path, Handler: handler}
 }
 
-func NewTransactionsListHandler(db *Db, service *TransactionsService) *TransactionsListHandler {
-	return &TransactionsListHandler{
-		Path: "/api/transactions",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodGet {
-				w.Header().Set("Allow", http.MethodGet)
-				w.WriteHeader(http.StatusMethodNotAllowed)
-				return
-			}
-
-			user, ok := userFromRequest(r.Context(), db, r.Header)
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			filters, err := parseTransactionFilters(r)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-
-			items, err := service.ListWithCategories(r.Context(), user.ID, filters)
-			if err != nil {
-				http.Error(w, "failed to load transactions", http.StatusInternalServerError)
-				return
-			}
-
-			summary, err := service.Summary(r.Context(), user.ID, filters)
-			if err != nil {
-				http.Error(w, "failed to load summary", http.StatusInternalServerError)
-				return
-			}
-
-			response := make([]TransactionItem, 0, len(items))
-			for _, entry := range items {
-				response = append(response, TransactionItem{
-					ID:                  entry.ID,
-					SourceFileID:        entry.SourceFileID,
-					SourceFileRow:       entry.SourceFileRow,
-					ParserName:          entry.ParserName,
-					PostedDate:          entry.PostedDate,
-					Description:         entry.Description,
-					Amount:              entry.Amount,
-					Currency:            entry.Currency,
-					TransactionID:       entry.TransactionID,
-					EntryType:           entry.EntryType,
-					SourceAccountNumber: entry.SourceAccountNumber,
-					SourceCardNumber:    entry.SourceCardNumber,
-					CreatedAt:           entry.CreatedAt,
-					CategoryID:          entry.CategoryID,
-				})
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(TransactionsResponse{Items: response, Summary: summary}); err != nil {
-				http.Error(w, "failed to encode response", http.StatusInternalServerError)
-			}
-		}),
+func (s *TransactionService) ListTransactions(ctx context.Context, req *apiv1.ListTransactionsRequest) (*apiv1.ListTransactionsResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
 	}
+
+	filters, err := transactionFiltersFromRequest(req)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	items, err := s.transactions.ListWithCategories(ctx, user.Id, filters)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	summary, err := s.transactions.Summary(ctx, user.Id, filters)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return &apiv1.ListTransactionsResponse{Items: items, Summary: summary}, nil
 }
 
-func parseTransactionFilters(r *http.Request) (TransactionFilters, error) {
-	query := r.URL.Query()
+func (s *TransactionService) UpdateTransactionCategory(ctx context.Context, req *apiv1.UpdateTransactionCategoryRequest) (*apiv1.UpdateTransactionCategoryResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if req.TransactionId == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("transaction_id is required"))
+	}
 
+	var categoryID *int64
+	if req.CategoryId != nil {
+		value := int64(*req.CategoryId)
+		if value == 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category_id must be set or omitted"))
+		}
+		if !categoryExists(ctx, s.db, user.Id, int32(value)) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category not found"))
+		}
+		categoryID = &value
+	}
+
+	if err := updateTransactionCategory(ctx, s.db, user.Id, req.TransactionId, categoryID); err != nil {
+		if errors.Is(err, errNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.UpdateTransactionCategoryResponse{}, nil
+}
+
+func transactionFiltersFromRequest(req *apiv1.ListTransactionsRequest) (TransactionFilters, error) {
 	filters := TransactionFilters{}
-	if from := query.Get("from"); from != "" {
-		value, err := time.Parse("2006-01-02", from)
+
+	fromDate := strings.TrimSpace(req.FromDate)
+	if fromDate != "" {
+		value, err := time.Parse("2006-01-02", fromDate)
 		if err != nil {
 			return filters, err
 		}
 		filters.FromDate = &value
 	}
-	if to := query.Get("to"); to != "" {
-		value, err := time.Parse("2006-01-02", to)
+
+	toDate := strings.TrimSpace(req.ToDate)
+	if toDate != "" {
+		value, err := time.Parse("2006-01-02", toDate)
 		if err != nil {
 			return filters, err
 		}
 		filters.ToDate = &value
 	}
-	if sourceFile := query.Get("source_file_id"); sourceFile != "" {
-		value, err := strconv.ParseInt(sourceFile, 10, 64)
-		if err != nil {
-			return filters, err
-		}
+
+	if req.SourceFileId > 0 {
+		value := int64(req.SourceFileId)
 		filters.SourceFileID = &value
 	}
-	if entryType := query.Get("entry_type"); entryType != "" {
+
+	entryType := strings.TrimSpace(req.EntryType)
+	if entryType != "" {
 		filters.EntryType = entryType
 	}
-	if search := query.Get("search"); search != "" {
-		filters.SearchText = search
+
+	searchText := strings.TrimSpace(req.SearchText)
+	if searchText != "" {
+		filters.SearchText = searchText
 	}
-	if category := query.Get("category_id"); category != "" {
-		value, err := strconv.ParseInt(category, 10, 64)
-		if err != nil {
-			return filters, err
-		}
+
+	if req.CategoryId > 0 {
+		value := int64(req.CategoryId)
 		filters.CategoryID = &value
 	}
-	if account := query.Get("account_number"); account != "" {
-		filters.SourceAccountNumber = account
+
+	accountNumber := strings.TrimSpace(req.AccountNumber)
+	if accountNumber != "" {
+		filters.SourceAccountNumber = accountNumber
 	}
-	if card := query.Get("card_number"); card != "" {
-		filters.SourceCardNumber = card
+
+	cardNumber := strings.TrimSpace(req.CardNumber)
+	if cardNumber != "" {
+		filters.SourceCardNumber = cardNumber
 	}
-	if limit := query.Get("limit"); limit != "" {
-		value, err := strconv.Atoi(limit)
-		if err != nil {
-			return filters, err
-		}
-		filters.Limit = value
+
+	if req.Limit > 0 {
+		filters.Limit = int(req.Limit)
 	}
-	if offset := query.Get("offset"); offset != "" {
-		value, err := strconv.Atoi(offset)
-		if err != nil {
-			return filters, err
-		}
-		filters.Offset = value
+
+	if req.Offset > 0 {
+		filters.Offset = int(req.Offset)
 	}
 
 	return filters, nil
+}
+
+func updateTransactionCategory(ctx context.Context, db *Db, userID int32, transactionID int32, categoryID *int64) error {
+	var category pgtype.Int8
+	var categorySource pgtype.Text
+	if categoryID != nil {
+		category = pgtype.Int8{Int64: *categoryID, Valid: true}
+		categorySource = pgtype.Text{String: categorySourceManual, Valid: true}
+	}
+	affected, err := db.Queries.UpdateTransactionCategory(ctx, dbgen.UpdateTransactionCategoryParams{
+		CategoryID:     category,
+		CategorySource: categorySource,
+		ID:             int64(transactionID),
+		UserID:         userID,
+	})
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return errNotFound
+	}
+	return nil
 }

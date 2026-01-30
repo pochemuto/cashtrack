@@ -1,508 +1,327 @@
 package cashtrack
 
 import (
-	dbgen "cashtrack/backend/gen/db"
 	"context"
-	"encoding/json"
 	"errors"
-	"io"
-	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
+	apiv1 "cashtrack/backend/gen/api/v1"
+	"cashtrack/backend/gen/api/v1/apiv1connect"
+	dbgen "cashtrack/backend/gen/db"
+	"connectrpc.com/connect"
+	"connectrpc.com/validate"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Category struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	Color     string    `json:"color"`
-	CreatedAt time.Time `json:"created_at"`
+type CategoryService struct {
+	db           *Db
+	transactions *TransactionsService
 }
 
-type CategoryRule struct {
-	ID                  int64     `json:"id"`
-	CategoryID          int64     `json:"category_id"`
-	DescriptionContains string    `json:"description_contains"`
-	Position            int32     `json:"position"`
-	CreatedAt           time.Time `json:"created_at"`
-}
-
-type CategoriesHandler Handler
-
-type CategoryHandler Handler
-
-type CategoryRulesHandler Handler
-
-type CategoryRuleHandler Handler
-
-type CategoryRulesApplyHandler Handler
-
-type CategoryRulesReorderHandler Handler
-
-type TransactionCategoryHandler Handler
-
-type categoryPayload struct {
-	Name  string `json:"name"`
-	Color string `json:"color"`
-}
-
-type categoryRulePayload struct {
-	CategoryID          int64  `json:"category_id"`
-	DescriptionContains string `json:"description_contains"`
-}
-
-type transactionCategoryPayload struct {
-	CategoryID *int64 `json:"category_id"`
-}
-
-type applyCategoryRulesPayload struct {
-	ApplyToAll bool `json:"apply_to_all"`
-}
-
-type categoryRulesReorderPayload struct {
-	RuleIDs []int64 `json:"rule_ids"`
-}
-
-func NewCategoriesHandler(db *Db) *CategoriesHandler {
-	return &CategoriesHandler{
-		Path: "/api/categories",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				user, ok := userFromRequest(r.Context(), db, r.Header)
-				if !ok {
-					w.WriteHeader(http.StatusUnauthorized)
-					return
-				}
-				categories, err := listCategories(r.Context(), db, user.ID)
-				if err != nil {
-					http.Error(w, "failed to load categories", http.StatusInternalServerError)
-					return
-				}
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(categories); err != nil {
-					http.Error(w, "failed to encode response", http.StatusInternalServerError)
-				}
-			case http.MethodPost:
-				user, ok := userFromRequest(r.Context(), db, r.Header)
-				if !ok {
-					w.WriteHeader(http.StatusUnauthorized)
-					return
-				}
-				payload, err := decodeCategoryPayload(r)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-				category, err := createCategory(r.Context(), db, user.ID, payload.Name, payload.Color)
-				if err != nil {
-					http.Error(w, "failed to create category", http.StatusInternalServerError)
-					return
-				}
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(category); err != nil {
-					http.Error(w, "failed to encode response", http.StatusInternalServerError)
-				}
-			default:
-				w.Header().Set("Allow", strings.Join([]string{http.MethodGet, http.MethodPost}, ", "))
-				w.WriteHeader(http.StatusMethodNotAllowed)
-			}
-		}),
-	}
-}
-
-func NewCategoryHandler(db *Db) *CategoryHandler {
-	return &CategoryHandler{
-		Path: "/api/categories/",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			id, ok := parseIDFromPath(r.URL.Path, "/api/categories/")
-			if !ok {
-				http.NotFound(w, r)
-				return
-			}
-
-			user, ok := userFromRequest(r.Context(), db, r.Header)
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			switch r.Method {
-			case http.MethodPatch:
-				payload, err := decodeCategoryPayload(r)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-				if err := updateCategory(r.Context(), db, user.ID, id, payload.Name, payload.Color); err != nil {
-					if errors.Is(err, errNotFound) {
-						http.NotFound(w, r)
-						return
-					}
-					http.Error(w, "failed to update category", http.StatusInternalServerError)
-					return
-				}
-				w.WriteHeader(http.StatusNoContent)
-			case http.MethodDelete:
-				if err := deleteCategory(r.Context(), db, user.ID, id); err != nil {
-					if errors.Is(err, errNotFound) {
-						http.NotFound(w, r)
-						return
-					}
-					http.Error(w, "failed to delete category", http.StatusInternalServerError)
-					return
-				}
-				w.WriteHeader(http.StatusNoContent)
-			default:
-				w.Header().Set("Allow", strings.Join([]string{http.MethodPatch, http.MethodDelete}, ", "))
-				w.WriteHeader(http.StatusMethodNotAllowed)
-			}
-		}),
-	}
-}
-
-func NewCategoryRulesHandler(db *Db) *CategoryRulesHandler {
-	return &CategoryRulesHandler{
-		Path: "/api/category-rules",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				user, ok := userFromRequest(r.Context(), db, r.Header)
-				if !ok {
-					w.WriteHeader(http.StatusUnauthorized)
-					return
-				}
-				rules, err := listCategoryRules(r.Context(), db, user.ID)
-				if err != nil {
-					http.Error(w, "failed to load rules", http.StatusInternalServerError)
-					return
-				}
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(rules); err != nil {
-					http.Error(w, "failed to encode response", http.StatusInternalServerError)
-				}
-			case http.MethodPost:
-				user, ok := userFromRequest(r.Context(), db, r.Header)
-				if !ok {
-					w.WriteHeader(http.StatusUnauthorized)
-					return
-				}
-				payload, err := decodeCategoryRulePayload(r)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-				if !categoryExists(r.Context(), db, user.ID, payload.CategoryID) {
-					http.Error(w, "category not found", http.StatusBadRequest)
-					return
-				}
-				rule, err := createCategoryRule(r.Context(), db, user.ID, payload)
-				if err != nil {
-					http.Error(w, "failed to create rule", http.StatusInternalServerError)
-					return
-				}
-				w.Header().Set("Content-Type", "application/json")
-				if err := json.NewEncoder(w).Encode(rule); err != nil {
-					http.Error(w, "failed to encode response", http.StatusInternalServerError)
-				}
-			default:
-				w.Header().Set("Allow", strings.Join([]string{http.MethodGet, http.MethodPost}, ", "))
-				w.WriteHeader(http.StatusMethodNotAllowed)
-			}
-		}),
-	}
-}
-
-func NewCategoryRuleHandler(db *Db) *CategoryRuleHandler {
-	return &CategoryRuleHandler{
-		Path: "/api/category-rules/",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			id, ok := parseIDFromPath(r.URL.Path, "/api/category-rules/")
-			if !ok {
-				http.NotFound(w, r)
-				return
-			}
-
-			user, ok := userFromRequest(r.Context(), db, r.Header)
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			switch r.Method {
-			case http.MethodPatch:
-				payload, err := decodeCategoryRulePayload(r)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-				if !categoryExists(r.Context(), db, user.ID, payload.CategoryID) {
-					http.Error(w, "category not found", http.StatusBadRequest)
-					return
-				}
-				if err := updateCategoryRule(r.Context(), db, user.ID, id, payload); err != nil {
-					if errors.Is(err, errNotFound) {
-						http.NotFound(w, r)
-						return
-					}
-					http.Error(w, "failed to update rule", http.StatusInternalServerError)
-					return
-				}
-				w.WriteHeader(http.StatusNoContent)
-			case http.MethodDelete:
-				if err := deleteCategoryRule(r.Context(), db, user.ID, id); err != nil {
-					if errors.Is(err, errNotFound) {
-						http.NotFound(w, r)
-						return
-					}
-					http.Error(w, "failed to delete rule", http.StatusInternalServerError)
-					return
-				}
-				w.WriteHeader(http.StatusNoContent)
-			default:
-				w.Header().Set("Allow", strings.Join([]string{http.MethodPatch, http.MethodDelete}, ", "))
-				w.WriteHeader(http.StatusMethodNotAllowed)
-			}
-		}),
-	}
-}
-
-func NewCategoryRulesApplyHandler(db *Db, transactions *TransactionsService) *CategoryRulesApplyHandler {
-	return &CategoryRulesApplyHandler{
-		Path: "/api/category-rules/apply",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodPost {
-				w.Header().Set("Allow", http.MethodPost)
-				w.WriteHeader(http.StatusMethodNotAllowed)
-				return
-			}
-
-			user, ok := userFromRequest(r.Context(), db, r.Header)
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			payload := applyCategoryRulesPayload{}
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil && !errors.Is(err, io.EOF) {
-				http.Error(w, "invalid payload", http.StatusBadRequest)
-				return
-			}
-
-			updated, err := transactions.ApplyCategoryRules(r.Context(), user.ID, payload.ApplyToAll)
-			if err != nil {
-				http.Error(w, "failed to apply rules", http.StatusInternalServerError)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]int64{"updated_count": updated}); err != nil {
-				http.Error(w, "failed to encode response", http.StatusInternalServerError)
-			}
-		}),
-	}
-}
-
-func NewCategoryRulesReorderHandler(db *Db) *CategoryRulesReorderHandler {
-	return &CategoryRulesReorderHandler{
-		Path: "/api/category-rules/reorder",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodPost {
-				w.Header().Set("Allow", http.MethodPost)
-				w.WriteHeader(http.StatusMethodNotAllowed)
-				return
-			}
-
-			user, ok := userFromRequest(r.Context(), db, r.Header)
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			payload := categoryRulesReorderPayload{}
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				http.Error(w, "invalid payload", http.StatusBadRequest)
-				return
-			}
-			if len(payload.RuleIDs) == 0 {
-				http.Error(w, "rule_ids is required", http.StatusBadRequest)
-				return
-			}
-
-			rules, err := listCategoryRules(r.Context(), db, user.ID)
-			if err != nil {
-				http.Error(w, "failed to load rules", http.StatusInternalServerError)
-				return
-			}
-
-			if len(payload.RuleIDs) != len(rules) {
-				http.Error(w, "rule_ids must include all rules", http.StatusBadRequest)
-				return
-			}
-
-			ruleMap := make(map[int64]struct{}, len(rules))
-			for _, rule := range rules {
-				ruleMap[rule.ID] = struct{}{}
-			}
-
-			seen := make(map[int64]struct{}, len(payload.RuleIDs))
-			for _, id := range payload.RuleIDs {
-				if _, ok := ruleMap[id]; !ok {
-					http.Error(w, "unknown rule id", http.StatusBadRequest)
-					return
-				}
-				if _, ok := seen[id]; ok {
-					http.Error(w, "duplicate rule id", http.StatusBadRequest)
-					return
-				}
-				seen[id] = struct{}{}
-			}
-
-			tx, err := db.conn.Begin(r.Context())
-			if err != nil {
-				http.Error(w, "failed to start transaction", http.StatusInternalServerError)
-				return
-			}
-			defer func() {
-				_ = tx.Rollback(r.Context())
-			}()
-
-			txQueries := db.Queries.WithTx(tx)
-			for index, id := range payload.RuleIDs {
-				affected, err := txQueries.UpdateCategoryRulePosition(r.Context(), dbgen.UpdateCategoryRulePositionParams{
-					Position: int32(index + 1),
-					ID:       id,
-					UserID:   user.ID,
-				})
-				if err != nil {
-					http.Error(w, "failed to update rule order", http.StatusInternalServerError)
-					return
-				}
-				if affected == 0 {
-					http.Error(w, "rule not found", http.StatusBadRequest)
-					return
-				}
-			}
-
-			if err := tx.Commit(r.Context()); err != nil {
-				http.Error(w, "failed to commit order", http.StatusInternalServerError)
-				return
-			}
-
-			w.WriteHeader(http.StatusNoContent)
-		}),
-	}
-}
-
-func NewTransactionCategoryHandler(db *Db) *TransactionCategoryHandler {
-	return &TransactionCategoryHandler{
-		Path: "/api/transactions/",
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodPatch {
-				w.Header().Set("Allow", http.MethodPatch)
-				w.WriteHeader(http.StatusMethodNotAllowed)
-				return
-			}
-
-			id, ok := parseTransactionCategoryPath(r.URL.Path)
-			if !ok {
-				http.NotFound(w, r)
-				return
-			}
-
-			user, ok := userFromRequest(r.Context(), db, r.Header)
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-
-			payload := transactionCategoryPayload{}
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				http.Error(w, "invalid payload", http.StatusBadRequest)
-				return
-			}
-
-			if payload.CategoryID != nil {
-				if !categoryExists(r.Context(), db, user.ID, *payload.CategoryID) {
-					http.Error(w, "category not found", http.StatusBadRequest)
-					return
-				}
-			}
-
-			if err := updateTransactionCategory(r.Context(), db, user.ID, id, payload.CategoryID); err != nil {
-				if errors.Is(err, errNotFound) {
-					http.NotFound(w, r)
-					return
-				}
-				http.Error(w, "failed to update category", http.StatusInternalServerError)
-				return
-			}
-
-			w.WriteHeader(http.StatusNoContent)
-		}),
-	}
-}
+type CategoryServiceHandler Handler
 
 var errNotFound = errors.New("not found")
 
-func listCategories(ctx context.Context, db *Db, userID int32) ([]Category, error) {
+func NewCategoryServiceHandler(db *Db, transactions *TransactionsService) *CategoryServiceHandler {
+	service := &CategoryService{db: db, transactions: transactions}
+	path, handler := apiv1connect.NewCategoryServiceHandler(
+		service,
+		connect.WithInterceptors(validate.NewInterceptor(), NewAuthInterceptor(db)),
+	)
+	return &CategoryServiceHandler{Path: path, Handler: handler}
+}
+
+func (s *CategoryService) ListCategories(ctx context.Context, req *apiv1.ListCategoriesRequest) (*apiv1.ListCategoriesResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	categories, err := listCategories(ctx, s.db, user.Id)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.ListCategoriesResponse{Categories: categories}, nil
+}
+
+func (s *CategoryService) CreateCategory(ctx context.Context, req *apiv1.CreateCategoryRequest) (*apiv1.CreateCategoryResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+	colorValue := strings.TrimSpace(req.Color)
+	color, err := parseCategoryColor(colorValue)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	category, err := createCategory(ctx, s.db, user.Id, name, color)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.CreateCategoryResponse{Category: category}, nil
+}
+
+func (s *CategoryService) UpdateCategory(ctx context.Context, req *apiv1.UpdateCategoryRequest) (*apiv1.UpdateCategoryResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Id == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
+	}
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
+	}
+	colorValue := strings.TrimSpace(req.Color)
+	color, err := parseCategoryColor(colorValue)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if err := updateCategory(ctx, s.db, user.Id, req.Id, name, color); err != nil {
+		if errors.Is(err, errNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.UpdateCategoryResponse{}, nil
+}
+
+func (s *CategoryService) DeleteCategory(ctx context.Context, req *apiv1.DeleteCategoryRequest) (*apiv1.DeleteCategoryResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Id == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
+	}
+	if err := deleteCategory(ctx, s.db, user.Id, req.Id); err != nil {
+		if errors.Is(err, errNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.DeleteCategoryResponse{}, nil
+}
+
+func (s *CategoryService) ListCategoryRules(ctx context.Context, req *apiv1.ListCategoryRulesRequest) (*apiv1.ListCategoryRulesResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rules, err := listCategoryRules(ctx, s.db, user.Id)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.ListCategoryRulesResponse{Rules: rules}, nil
+}
+
+func (s *CategoryService) CreateCategoryRule(ctx context.Context, req *apiv1.CreateCategoryRuleRequest) (*apiv1.CreateCategoryRuleResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.CategoryId == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category_id is required"))
+	}
+	description := strings.TrimSpace(req.DescriptionContains)
+	if description == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("description_contains is required"))
+	}
+	if !categoryExists(ctx, s.db, user.Id, req.CategoryId) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category not found"))
+	}
+
+	rule, err := createCategoryRule(ctx, s.db, user.Id, req.CategoryId, description)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.CreateCategoryRuleResponse{Rule: rule}, nil
+}
+
+func (s *CategoryService) UpdateCategoryRule(ctx context.Context, req *apiv1.UpdateCategoryRuleRequest) (*apiv1.UpdateCategoryRuleResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Id == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
+	}
+	if req.CategoryId == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category_id is required"))
+	}
+	description := strings.TrimSpace(req.DescriptionContains)
+	if description == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("description_contains is required"))
+	}
+	if !categoryExists(ctx, s.db, user.Id, req.CategoryId) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category not found"))
+	}
+
+	if err := updateCategoryRule(ctx, s.db, user.Id, req.Id, req.CategoryId, description); err != nil {
+		if errors.Is(err, errNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.UpdateCategoryRuleResponse{}, nil
+}
+
+func (s *CategoryService) DeleteCategoryRule(ctx context.Context, req *apiv1.DeleteCategoryRuleRequest) (*apiv1.DeleteCategoryRuleResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Id == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
+	}
+	if err := deleteCategoryRule(ctx, s.db, user.Id, req.Id); err != nil {
+		if errors.Is(err, errNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.DeleteCategoryRuleResponse{}, nil
+}
+
+func (s *CategoryService) ApplyCategoryRules(ctx context.Context, req *apiv1.ApplyCategoryRulesRequest) (*apiv1.ApplyCategoryRulesResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	updated, err := s.transactions.ApplyCategoryRules(ctx, user.Id, req.ApplyToAll)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return &apiv1.ApplyCategoryRulesResponse{UpdatedCount: int32(updated)}, nil
+}
+
+func (s *CategoryService) ReorderCategoryRules(ctx context.Context, req *apiv1.ReorderCategoryRulesRequest) (*apiv1.ReorderCategoryRulesResponse, error) {
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(req.RuleIds) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("rule_ids is required"))
+	}
+
+	rules, err := listCategoryRules(ctx, s.db, user.Id)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	if len(req.RuleIds) != len(rules) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("rule_ids must include all rules"))
+	}
+
+	ruleMap := make(map[int32]struct{}, len(rules))
+	for _, rule := range rules {
+		ruleMap[rule.Id] = struct{}{}
+	}
+
+	seen := make(map[int32]struct{}, len(req.RuleIds))
+	for _, id := range req.RuleIds {
+		if _, ok := ruleMap[id]; !ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unknown rule id"))
+		}
+		if _, ok := seen[id]; ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("duplicate rule id"))
+		}
+		seen[id] = struct{}{}
+	}
+
+	tx, err := s.db.conn.Begin(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	txQueries := s.db.Queries.WithTx(tx)
+	for index, id := range req.RuleIds {
+		affected, err := txQueries.UpdateCategoryRulePosition(ctx, dbgen.UpdateCategoryRulePositionParams{
+			Position: int32(index + 1),
+			ID:       int64(id),
+			UserID:   user.Id,
+		})
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if affected == 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("rule not found"))
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return &apiv1.ReorderCategoryRulesResponse{}, nil
+}
+
+func listCategories(ctx context.Context, db *Db, userID int32) ([]*apiv1.Category, error) {
 	rows, err := db.Queries.ListCategoriesByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	categories := make([]Category, 0, len(rows))
+	categories := make([]*apiv1.Category, 0, len(rows))
 	for _, row := range rows {
 		color := ""
 		if row.Color.Valid {
 			color = row.Color.String
 		}
-		categories = append(categories, Category{
-			ID:        row.ID,
+		categories = append(categories, &apiv1.Category{
+			Id:        int32(row.ID),
 			Name:      row.Name,
 			Color:     color,
-			CreatedAt: row.CreatedAt.Time,
+			CreatedAt: row.CreatedAt.Time.Format(time.RFC3339Nano),
 		})
 	}
 	return categories, nil
 }
 
-func createCategory(ctx context.Context, db *Db, userID int32, name string, color string) (Category, error) {
-	parsedColor, err := parseCategoryColor(color)
-	if err != nil {
-		return Category{}, err
-	}
+func createCategory(ctx context.Context, db *Db, userID int32, name string, color pgtype.Text) (*apiv1.Category, error) {
 	row, err := db.Queries.CreateCategory(ctx, dbgen.CreateCategoryParams{
 		UserID: userID,
 		Name:   name,
-		Color:  parsedColor,
+		Color:  color,
 	})
 	if err != nil {
-		return Category{}, err
+		return nil, err
 	}
 	colorValue := ""
 	if row.Color.Valid {
 		colorValue = row.Color.String
 	}
-	return Category{
-		ID:        row.ID,
+	return &apiv1.Category{
+		Id:        int32(row.ID),
 		Name:      row.Name,
 		Color:     colorValue,
-		CreatedAt: row.CreatedAt.Time,
+		CreatedAt: row.CreatedAt.Time.Format(time.RFC3339Nano),
 	}, nil
 }
 
-func updateCategory(ctx context.Context, db *Db, userID int32, id int64, name string, color string) error {
-	parsedColor, err := parseCategoryColor(color)
-	if err != nil {
-		return err
-	}
+func updateCategory(ctx context.Context, db *Db, userID int32, id int32, name string, color pgtype.Text) error {
 	affected, err := db.Queries.UpdateCategory(ctx, dbgen.UpdateCategoryParams{
 		Name:   name,
-		Color:  parsedColor,
-		ID:     id,
+		Color:  color,
+		ID:     int64(id),
 		UserID: userID,
 	})
 	if err != nil {
@@ -514,9 +333,9 @@ func updateCategory(ctx context.Context, db *Db, userID int32, id int64, name st
 	return nil
 }
 
-func deleteCategory(ctx context.Context, db *Db, userID int32, id int64) error {
+func deleteCategory(ctx context.Context, db *Db, userID int32, id int32) error {
 	affected, err := db.Queries.DeleteCategory(ctx, dbgen.DeleteCategoryParams{
-		ID:     id,
+		ID:     int64(id),
 		UserID: userID,
 	})
 	if err != nil {
@@ -528,48 +347,48 @@ func deleteCategory(ctx context.Context, db *Db, userID int32, id int64) error {
 	return nil
 }
 
-func listCategoryRules(ctx context.Context, db *Db, userID int32) ([]CategoryRule, error) {
+func listCategoryRules(ctx context.Context, db *Db, userID int32) ([]*apiv1.CategoryRule, error) {
 	rows, err := db.Queries.ListCategoryRulesByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	rules := make([]CategoryRule, 0, len(rows))
+	rules := make([]*apiv1.CategoryRule, 0, len(rows))
 	for _, row := range rows {
-		rules = append(rules, CategoryRule{
-			ID:                  row.ID,
-			CategoryID:          row.CategoryID,
+		rules = append(rules, &apiv1.CategoryRule{
+			Id:                  int32(row.ID),
+			CategoryId:          int32(row.CategoryID),
 			DescriptionContains: row.DescriptionContains,
 			Position:            row.Position,
-			CreatedAt:           row.CreatedAt.Time,
+			CreatedAt:           row.CreatedAt.Time.Format(time.RFC3339Nano),
 		})
 	}
 	return rules, nil
 }
 
-func createCategoryRule(ctx context.Context, db *Db, userID int32, payload categoryRulePayload) (CategoryRule, error) {
+func createCategoryRule(ctx context.Context, db *Db, userID int32, categoryID int32, description string) (*apiv1.CategoryRule, error) {
 	row, err := db.Queries.CreateCategoryRule(ctx, dbgen.CreateCategoryRuleParams{
 		UserID:              userID,
-		CategoryID:          payload.CategoryID,
-		DescriptionContains: payload.DescriptionContains,
+		CategoryID:          int64(categoryID),
+		DescriptionContains: description,
 	})
 	if err != nil {
-		return CategoryRule{}, err
+		return nil, err
 	}
-	return CategoryRule{
-		ID:                  row.ID,
-		CategoryID:          row.CategoryID,
+	return &apiv1.CategoryRule{
+		Id:                  int32(row.ID),
+		CategoryId:          int32(row.CategoryID),
 		DescriptionContains: row.DescriptionContains,
 		Position:            row.Position,
-		CreatedAt:           row.CreatedAt.Time,
+		CreatedAt:           row.CreatedAt.Time.Format(time.RFC3339Nano),
 	}, nil
 }
 
-func updateCategoryRule(ctx context.Context, db *Db, userID int32, id int64, payload categoryRulePayload) error {
+func updateCategoryRule(ctx context.Context, db *Db, userID int32, id int32, categoryID int32, description string) error {
 	affected, err := db.Queries.UpdateCategoryRule(ctx, dbgen.UpdateCategoryRuleParams{
-		CategoryID:          payload.CategoryID,
-		DescriptionContains: payload.DescriptionContains,
-		ID:                  id,
+		CategoryID:          int64(categoryID),
+		DescriptionContains: description,
+		ID:                  int64(id),
 		UserID:              userID,
 	})
 	if err != nil {
@@ -581,9 +400,9 @@ func updateCategoryRule(ctx context.Context, db *Db, userID int32, id int64, pay
 	return nil
 }
 
-func deleteCategoryRule(ctx context.Context, db *Db, userID int32, id int64) error {
+func deleteCategoryRule(ctx context.Context, db *Db, userID int32, id int32) error {
 	affected, err := db.Queries.DeleteCategoryRule(ctx, dbgen.DeleteCategoryRuleParams{
-		ID:     id,
+		ID:     int64(id),
 		UserID: userID,
 	})
 	if err != nil {
@@ -595,84 +414,12 @@ func deleteCategoryRule(ctx context.Context, db *Db, userID int32, id int64) err
 	return nil
 }
 
-func categoryExists(ctx context.Context, db *Db, userID int32, id int64) bool {
+func categoryExists(ctx context.Context, db *Db, userID int32, id int32) bool {
 	exists, err := db.Queries.CategoryExists(ctx, dbgen.CategoryExistsParams{
-		ID:     id,
+		ID:     int64(id),
 		UserID: userID,
 	})
 	return err == nil && exists
-}
-
-func updateTransactionCategory(ctx context.Context, db *Db, userID int32, transactionID int64, categoryID *int64) error {
-	var category pgtype.Int8
-	var categorySource pgtype.Text
-	if categoryID != nil {
-		category = pgtype.Int8{Int64: *categoryID, Valid: true}
-		categorySource = pgtype.Text{String: categorySourceManual, Valid: true}
-	}
-	affected, err := db.Queries.UpdateTransactionCategory(ctx, dbgen.UpdateTransactionCategoryParams{
-		CategoryID:     category,
-		CategorySource: categorySource,
-		ID:             transactionID,
-		UserID:         userID,
-	})
-	if err != nil {
-		return err
-	}
-	if affected == 0 {
-		return errNotFound
-	}
-	return nil
-}
-
-func parseIDFromPath(path string, prefix string) (int64, bool) {
-	if !strings.HasPrefix(path, prefix) {
-		return 0, false
-	}
-	idPart := strings.TrimPrefix(path, prefix)
-	if idPart == "" {
-		return 0, false
-	}
-	if strings.Contains(idPart, "/") {
-		return 0, false
-	}
-	id, err := strconv.ParseInt(idPart, 10, 64)
-	if err != nil {
-		return 0, false
-	}
-	return id, true
-}
-
-func parseTransactionCategoryPath(path string) (int64, bool) {
-	if !strings.HasPrefix(path, "/api/transactions/") {
-		return 0, false
-	}
-	remainder := strings.TrimPrefix(path, "/api/transactions/")
-	parts := strings.Split(remainder, "/")
-	if len(parts) != 2 || parts[1] != "category" {
-		return 0, false
-	}
-	id, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		return 0, false
-	}
-	return id, true
-}
-
-func decodeCategoryPayload(r *http.Request) (categoryPayload, error) {
-	payload := categoryPayload{}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		return payload, errors.New("invalid payload")
-	}
-	payload.Name = strings.TrimSpace(payload.Name)
-	if payload.Name == "" {
-		return payload, errors.New("name is required")
-	}
-	payload.Color = strings.TrimSpace(payload.Color)
-	if _, err := parseCategoryColor(payload.Color); err != nil {
-		return payload, err
-	}
-	return payload, nil
 }
 
 func parseCategoryColor(value string) (pgtype.Text, error) {
@@ -692,16 +439,4 @@ func parseCategoryColor(value string) (pgtype.Text, error) {
 		}
 	}
 	return pgtype.Text{String: "#" + strings.ToUpper(color), Valid: true}, nil
-}
-
-func decodeCategoryRulePayload(r *http.Request) (categoryRulePayload, error) {
-	payload := categoryRulePayload{}
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		return payload, errors.New("invalid payload")
-	}
-	payload.DescriptionContains = strings.TrimSpace(payload.DescriptionContains)
-	if payload.DescriptionContains == "" {
-		return payload, errors.New("description_contains is required")
-	}
-	return payload, nil
 }
