@@ -401,35 +401,6 @@
         });
     }
 
-    async function loadPlotly() {
-        if (plotly) {
-            return plotly;
-        }
-        if (typeof window === "undefined") {
-            return null;
-        }
-        const win = window as Window & {Plotly?: any};
-        if (win.Plotly) {
-            plotly = win.Plotly;
-            return plotly;
-        }
-        return new Promise((resolve, reject) => {
-            const existing = document.querySelector("script[data-plotly]") as HTMLScriptElement | null;
-            if (existing) {
-                existing.addEventListener("load", () => resolve(win.Plotly));
-                existing.addEventListener("error", () => reject(new Error("plotly")));
-                return;
-            }
-            const script = document.createElement("script");
-            script.src = "https://cdn.plot.ly/plotly-2.32.0.min.js";
-            script.async = true;
-            script.dataset.plotly = "true";
-            script.onload = () => resolve(win.Plotly);
-            script.onerror = () => reject(new Error("plotly"));
-            document.head.appendChild(script);
-        });
-    }
-
     function clearTextFilterDebounce() {
         if (textFilterDebounceTimer) {
             clearTimeout(textFilterDebounceTimer);
@@ -675,16 +646,12 @@
     onMount(() => {
         let cancelled = false;
         plotlyLoading = true;
-        loadPlotly()
-            .then((loaded) => {
+        import("plotly.js-dist-min")
+            .then((module) => {
                 if (cancelled) {
                     return;
                 }
-                if (!loaded) {
-                    plotlyError = "Не удалось загрузить диаграмму.";
-                    return;
-                }
-                plotly = loaded;
+                plotly = module.default ?? module;
             })
             .catch(() => {
                 if (!cancelled) {

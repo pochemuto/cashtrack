@@ -43,6 +43,7 @@
 		"cally": "^0.9.0",
 		"daisyui": "^5.5.14",
 		"google-auth-library": "^10.5.0",
+		"plotly.js-dist-min": "^2.32.0",
 		"simpledotcss": "^2.3.7",
 		"svelte-awesome-color-picker": "^4.1.1",
 		"tailwindcss": "^4.1.18"
