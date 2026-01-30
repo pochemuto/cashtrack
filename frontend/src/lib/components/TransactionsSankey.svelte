@@ -1,9 +1,18 @@
 <script lang="ts">
-    import {onMount} from "svelte";
+    import {createEventDispatcher, onMount} from "svelte";
     import type {Category} from "$lib/gen/api/v1/categories_pb";
     import type {Transaction} from "$lib/gen/api/v1/transactions_pb";
     import {persistedBoolean} from "$lib/stores/persistedBoolean";
     import {centsToNumber, formatChfAmount} from "$lib/money";
+
+    type SankeyFilter = {
+        kind: "node" | "link";
+        entryType: "credit" | "debit";
+        categoryId: number | null;
+        label: string;
+    };
+
+    type SankeyCustomData = [number, string, string, number | null, string, "node" | "link"];
 
     type SankeyChart = {
         data: Array<Record<string, unknown>>;
@@ -16,11 +25,17 @@
 
     const sankeyOpen = persistedBoolean("transactions.sankey.open", false);
 
+    const dispatch = createEventDispatcher<{filterChange: SankeyFilter | null}>();
+
     let plotlyLoading = false;
     let plotlyError = "";
     let plotly: any = null;
     let sankeyContainer: HTMLDivElement | null = null;
     let sankeyChart: SankeyChart | null = null;
+    let sankeyHandlersAttached = false;
+    let lastPlotlyClickAt = 0;
+    let plotlyClickHandler: ((event: any) => void) | null = null;
+    let containerClickHandler: ((event: MouseEvent) => void) | null = null;
 
     const sankeySourceColor = "#e2e8f0";
     const sankeyCategoryFallbackColor = "#94a3b8";
@@ -65,6 +80,88 @@
         return fallback;
     }
 
+    function parseSankeyFilter(customdata: unknown): SankeyFilter | null {
+        if (!Array.isArray(customdata)) {
+            return null;
+        }
+        const entryType = customdata[2];
+        const rawCategoryId = customdata[3];
+        const label = customdata[4];
+        const kind = customdata[5];
+        if (entryType !== "credit" && entryType !== "debit") {
+            return null;
+        }
+        if (kind !== "node" && kind !== "link") {
+            return null;
+        }
+        const categoryId =
+            typeof rawCategoryId === "number"
+                ? rawCategoryId
+                : rawCategoryId === null
+                    ? null
+                    : Number.isFinite(Number(rawCategoryId))
+                        ? Number(rawCategoryId)
+                        : null;
+        return {
+            kind,
+            entryType,
+            categoryId,
+            label: typeof label === "string" ? label : "",
+        };
+    }
+
+    function attachSankeyHandlers() {
+        if (!sankeyContainer || sankeyHandlersAttached) {
+            return;
+        }
+        const plotlyTarget = sankeyContainer as unknown as {
+            on?: (event: string, handler: (event: any) => void) => void;
+            removeListener?: (event: string, handler: (event: any) => void) => void;
+            removeAllListeners?: (event: string) => void;
+        };
+        plotlyClickHandler = (event: any) => {
+            const now = performance.now();
+            const customdata = event?.points?.[0]?.customdata;
+            lastPlotlyClickAt = now;
+            dispatch("filterChange", parseSankeyFilter(customdata));
+        };
+        plotlyTarget.on?.("plotly_click", plotlyClickHandler);
+
+        containerClickHandler = () => {
+            if (!sankeyChart) {
+                return;
+            }
+            if (performance.now() - lastPlotlyClickAt < 250) {
+                return;
+            }
+            dispatch("filterChange", null);
+        };
+        sankeyContainer.addEventListener("click", containerClickHandler);
+        sankeyHandlersAttached = true;
+    }
+
+    function detachSankeyHandlers() {
+        if (!sankeyContainer || !sankeyHandlersAttached) {
+            return;
+        }
+        const plotlyTarget = sankeyContainer as unknown as {
+            removeListener?: (event: string, handler: (event: any) => void) => void;
+            removeAllListeners?: (event: string) => void;
+        };
+        if (plotlyClickHandler) {
+            if (plotlyTarget.removeListener) {
+                plotlyTarget.removeListener("plotly_click", plotlyClickHandler);
+            } else if (plotlyTarget.removeAllListeners) {
+                plotlyTarget.removeAllListeners("plotly_click");
+            }
+        }
+        if (containerClickHandler) {
+            sankeyContainer.removeEventListener("click", containerClickHandler);
+        }
+        plotlyClickHandler = null;
+        containerClickHandler = null;
+        sankeyHandlersAttached = false;
+    }
 
     function getCategoryDescriptor(categoryId: number | undefined, categoryLookup: Map<number, Category>) {
         if (categoryId === undefined) {
@@ -72,6 +169,7 @@
                 key: "none",
                 label: "Без категории",
                 color: sankeyCategoryFallbackColor,
+                categoryId: null,
             };
         }
         const category = categoryLookup.get(categoryId);
@@ -80,12 +178,14 @@
                 key: String(categoryId),
                 label: `Категория ${categoryId}`,
                 color: sankeyCategoryFallbackColor,
+                categoryId,
             };
         }
         return {
             key: String(category.id),
             label: category.name || `Категория ${category.id}`,
             color: normalizeColor(category.color, sankeyCategoryFallbackColor),
+            categoryId,
         };
     }
 
@@ -99,41 +199,54 @@
             categoryLookup.set(category.id, category);
         }
 
+        type FilterMeta = {entryType: "credit" | "debit"; categoryId: number | null; label: string};
+
         const nodeIndex = new Map<string, number>();
         const nodeLabels: string[] = [];
         const nodeColors: string[] = [];
-        const links = new Map<string, {source: number; target: number; value: number; color: string; count: number}>();
-        const creditTotals = new Map<string, {label: string; color: string; value: number; count: number}>();
-        const debitTotals = new Map<string, {label: string; color: string; value: number; count: number}>();
+        const links = new Map<
+            string,
+            {source: number; target: number; value: number; color: string; count: number; meta: FilterMeta | null}
+        >();
+        const creditTotals = new Map<string, {label: string; color: string; value: number; count: number; categoryId: number | null}>();
+        const debitTotals = new Map<string, {label: string; color: string; value: number; count: number; categoryId: number | null}>();
         const netIncomeLabel = "Net income";
         const remainderLabel = "Unknown";
         let totalCredits = 0;
         let totalDebits = 0;
         let totalCreditCount = 0;
 
-        const ensureNode = (key: string, label: string, color: string) => {
+        const nodeMetaByIndex: Array<FilterMeta | null> = [];
+
+        const ensureNode = (key: string, label: string, color: string, meta: FilterMeta | null = null) => {
             if (!nodeIndex.has(key)) {
                 nodeIndex.set(key, nodeLabels.length);
                 nodeLabels.push(label);
                 nodeColors.push(color);
+                nodeMetaByIndex.push(meta);
             }
-            return nodeIndex.get(key) ?? 0;
+            const index = nodeIndex.get(key) ?? 0;
+            if (meta && !nodeMetaByIndex[index]) {
+                nodeMetaByIndex[index] = meta;
+            }
+            return index;
         };
 
         const addTotal = (
-            totals: Map<string, {label: string; color: string; value: number; count: number}>,
+            totals: Map<string, {label: string; color: string; value: number; count: number; categoryId: number | null}>,
             key: string,
             label: string,
             color: string,
             value: number,
-            count: number
+            count: number,
+            categoryId: number | null
         ) => {
             const existing = totals.get(key);
             if (existing) {
                 existing.value += value;
                 existing.count += count;
             } else {
-                totals.set(key, {label, color, value, count});
+                totals.set(key, {label, color, value, count, categoryId});
             }
         };
 
@@ -148,10 +261,10 @@
             if (tx.entryType === "credit") {
                 totalCredits += value;
                 totalCreditCount += 1;
-                addTotal(creditTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value, 1);
+                addTotal(creditTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value, 1, categoryInfo.categoryId);
             } else if (tx.entryType === "debit") {
                 totalDebits += value;
-                addTotal(debitTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value, 1);
+                addTotal(debitTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value, 1, categoryInfo.categoryId);
             }
         }
 
@@ -168,10 +281,14 @@
             nodeStats.set(`debit:${key}`, {count: entry.count, amount: entry.value});
         }
 
-        const netIncomeIndex = ensureNode("net:income", netIncomeLabel, sankeySourceColor);
+        const netIncomeIndex = ensureNode("net:income", netIncomeLabel, sankeySourceColor, null);
 
         for (const [key, entry] of creditTotals.entries()) {
-            const sourceIndex = ensureNode(`credit:${key}`, entry.label, entry.color);
+            const sourceIndex = ensureNode(`credit:${key}`, entry.label, entry.color, {
+                entryType: "credit",
+                categoryId: entry.categoryId,
+                label: entry.label,
+            });
             const linkKey = `${sourceIndex}:${netIncomeIndex}`;
             const linkColor = colorWithAlpha(entry.color, 0.45, entry.color);
             links.set(linkKey, {
@@ -180,11 +297,16 @@
                 value: entry.value,
                 color: linkColor,
                 count: entry.count,
+                meta: {entryType: "credit", categoryId: entry.categoryId, label: entry.label},
             });
         }
 
         for (const [key, entry] of debitTotals.entries()) {
-            const targetIndex = ensureNode(`debit:${key}`, entry.label, entry.color);
+            const targetIndex = ensureNode(`debit:${key}`, entry.label, entry.color, {
+                entryType: "debit",
+                categoryId: entry.categoryId,
+                label: entry.label,
+            });
             const linkKey = `${netIncomeIndex}:${targetIndex}`;
             links.set(linkKey, {
                 source: netIncomeIndex,
@@ -192,12 +314,13 @@
                 value: entry.value,
                 color: entry.color,
                 count: entry.count,
+                meta: {entryType: "debit", categoryId: entry.categoryId, label: entry.label},
             });
         }
 
         const remainder = Number((totalCredits - totalDebits).toFixed(2));
         if (remainder > 0) {
-            const remainderIndex = ensureNode(`debit:${remainderLabel}`, remainderLabel, sankeyCategoryFallbackColor);
+            const remainderIndex = ensureNode(`debit:${remainderLabel}`, remainderLabel, sankeyCategoryFallbackColor, null);
             const linkKey = `${netIncomeIndex}:${remainderIndex}`;
             links.set(linkKey, {
                 source: netIncomeIndex,
@@ -205,6 +328,7 @@
                 value: remainder,
                 color: colorWithAlpha(sankeyCategoryFallbackColor, 0.45, sankeyCategoryFallbackColor),
                 count: 0,
+                meta: null,
             });
             nodeStats.set(`debit:${remainderLabel}`, {count: 0, amount: remainder});
         }
@@ -217,13 +341,24 @@
         const targets: number[] = [];
         const values: number[] = [];
         const colors: string[] = [];
-        const linkCustomData: Array<[number, string]> = [];
-        const nodeCustomData: Array<[number, string]> = nodeLabels.map(() => [0, formatChfAmount(0)]);
+        const linkCustomData: SankeyCustomData[] = [];
+        const nodeCustomData: SankeyCustomData[] = nodeLabels.map((label, index) => {
+            const meta = nodeMetaByIndex[index];
+            return [0, formatChfAmount(0), meta?.entryType ?? "", meta?.categoryId ?? null, meta?.label ?? label, "node"];
+        });
 
         for (const [key, stats] of nodeStats.entries()) {
             const index = nodeIndex.get(key);
             if (index !== undefined) {
-                nodeCustomData[index] = [stats.count, formatChfAmount(stats.amount)];
+                const meta = nodeMetaByIndex[index];
+                nodeCustomData[index] = [
+                    stats.count,
+                    formatChfAmount(stats.amount),
+                    meta?.entryType ?? "",
+                    meta?.categoryId ?? null,
+                    meta?.label ?? nodeLabels[index] ?? "",
+                    "node",
+                ];
             }
         }
 
@@ -232,7 +367,14 @@
             targets.push(link.target);
             values.push(Number(link.value.toFixed(2)));
             colors.push(link.color);
-            linkCustomData.push([link.count, formatChfAmount(link.value)]);
+            linkCustomData.push([
+                link.count,
+                formatChfAmount(link.value),
+                link.meta?.entryType ?? "",
+                link.meta?.categoryId ?? null,
+                link.meta?.label ?? "",
+                "link",
+            ]);
         }
 
         const height = Math.min(640, Math.max(280, nodeLabels.length * 24));
@@ -296,6 +438,14 @@
         }
     }
 
+    $: if (plotly && sankeyContainer && sankeyChart && !sankeyHandlersAttached) {
+        attachSankeyHandlers();
+    }
+
+    $: if ((!sankeyContainer || !sankeyChart) && sankeyHandlersAttached) {
+        detachSankeyHandlers();
+    }
+
     onMount(() => {
         let cancelled = false;
         plotlyLoading = true;
@@ -319,6 +469,7 @@
 
         return () => {
             cancelled = true;
+            detachSankeyHandlers();
         };
     });
 </script>

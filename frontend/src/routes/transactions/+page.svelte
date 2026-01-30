@@ -10,6 +10,13 @@
     import {persistedBoolean} from "$lib/stores/persistedBoolean";
     import {user} from "../../user";
 
+    type SankeyFilter = {
+        kind: "node" | "link";
+        entryType: "credit" | "debit";
+        categoryId: number | null;
+        label: string;
+    };
+
     let transactions: Transaction[] = [];
     let summary: TransactionSummary | null = null;
     let loading = false;
@@ -32,6 +39,8 @@
     let calendarPopover: HTMLElement | null = null;
     let calendarInput: HTMLInputElement | null = null;
     let calendarUpdating = false;
+    let sankeyFilter: SankeyFilter | null = null;
+    let tableTransactions: Transaction[] = [];
     let textFilterDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     let lastAppliedSignature = "";
     let lastAppliedTextSignature = "";
@@ -286,6 +295,44 @@
         triggerFilterLoad();
     }
 
+    function handleSankeyFilterChange(event: CustomEvent<SankeyFilter | null>) {
+        sankeyFilter = event.detail;
+    }
+
+    function resetSankeyFilter() {
+        sankeyFilter = null;
+    }
+
+    function matchesSankeyFilter(transaction: Transaction, filter: SankeyFilter): boolean {
+        if (transaction.entryType !== filter.entryType) {
+            return false;
+        }
+        if (filter.categoryId === null) {
+            return transaction.categoryId === undefined || transaction.categoryId === null;
+        }
+        return transaction.categoryId === filter.categoryId;
+    }
+
+    function resolveSankeyCategoryLabel(filter: SankeyFilter): string {
+        if (filter.label) {
+            return filter.label;
+        }
+        if (filter.categoryId === null) {
+            return "Без категории";
+        }
+        return $categories.find((category) => category.id === filter.categoryId)?.name || `Категория ${filter.categoryId}`;
+    }
+
+    function formatSankeyFilterLabel(filter: SankeyFilter): string {
+        const entryLabel = filter.entryType === "credit" ? "Credit" : "Debit";
+        const categoryLabel = resolveSankeyCategoryLabel(filter);
+        return `${entryLabel}: ${categoryLabel}`;
+    }
+
+    function formatSankeyFilterType(filter: SankeyFilter): string {
+        return filter.kind === "link" ? "Связь" : "Узел";
+    }
+
     $: if ($user?.id && $user.id !== lastUserId) {
         lastUserId = $user.id;
         clearTextFilterDebounce();
@@ -312,6 +359,8 @@
     $: textFilterSignature = [searchText, sourceFileId, accountNumber, cardNumber].join("|");
 
     $: nonTextFilterSignature = [fromDate, toDate, entryType, categoryFilter].join("|");
+
+    $: tableTransactions = sankeyFilter ? transactions.filter((tx) => matchesSankeyFilter(tx, sankeyFilter)) : transactions;
 
 
     $: if (fromDate && toDate) {
@@ -544,66 +593,82 @@
                         </div>
                     </div>
                 {/if}
-                <TransactionsSankey {transactions} categories={$categories} />
-                <div class="overflow-x-auto">
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th>Дата</th>
-                            <th>Описание</th>
-                            <th>Категория</th>
-                            <th class="text-right">Сумма</th>
-                            <th>Валюта</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {#each transactions as tx}
+                <TransactionsSankey {transactions} categories={$categories} on:filterChange={handleSankeyFilterChange} />
+                {#if sankeyFilter}
+                    <div class="flex flex-wrap items-center justify-between gap-3 rounded-box border border-base-200 bg-base-100 p-3 text-sm">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="font-medium">Подфильтровано по Sankey:</span>
+                            <span class="badge badge-outline">{formatSankeyFilterType(sankeyFilter)}</span>
+                            <span>{formatSankeyFilterLabel(sankeyFilter)}</span>
+                        </div>
+                        <button class="btn btn-ghost btn-xs" type="button" on:click={resetSankeyFilter}>
+                            Сбросить
+                        </button>
+                    </div>
+                {/if}
+                {#if tableTransactions.length === 0}
+                    <div class="text-sm opacity-70">Нет транзакций для выбранного элемента Sankey.</div>
+                {:else}
+                    <div class="overflow-x-auto">
+                        <table class="table">
+                            <thead>
                             <tr>
-                                <td class="whitespace-nowrap">{formatDate(tx.postedDate)}</td>
-                                <td>
-                                    <div class="font-medium">{tx.description}</div>
-                                    <div class="text-xs opacity-70">ID: {tx.transactionId || "—"}</div>
-                                </td>
-                                <td class="whitespace-nowrap">
-                                    <div class="dropdown dropdown-start">
-                                        <button
-                                            class="p-0"
-                                            type="button"
-                                            disabled={$categoriesLoading || !$categories.length || categoryUpdates[tx.id]}
-                                        >
-                                            {#if tx.categoryId}
-                                                <CategoryBadge
-                                                    name={$categories.find((category) => category.id === tx.categoryId)?.name || "Категория"}
-                                                    color={$categories.find((category) => category.id === tx.categoryId)?.color || ""}
-                                                    primaryWhenNoColor={true}
-                                                />
-                                            {:else}
-                                                <CategoryBadge name="Без категории" />
-                                            {/if}
-                                        </button>
-                                        <ul class="menu dropdown-content z-20 mt-2 w-56 rounded-box bg-base-100 p-2 shadow">
-                                            <li>
-                                                <button type="button" on:click={(event) => handleCategorySelect(event, tx.id, null)}>
+                                <th>Дата</th>
+                                <th>Описание</th>
+                                <th>Категория</th>
+                                <th class="text-right">Сумма</th>
+                                <th>Валюта</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {#each tableTransactions as tx}
+                                <tr>
+                                    <td class="whitespace-nowrap">{formatDate(tx.postedDate)}</td>
+                                    <td>
+                                        <div class="font-medium">{tx.description}</div>
+                                        <div class="text-xs opacity-70">ID: {tx.transactionId || "—"}</div>
+                                    </td>
+                                    <td class="whitespace-nowrap">
+                                        <div class="dropdown dropdown-start">
+                                            <button
+                                                class="p-0"
+                                                type="button"
+                                                disabled={$categoriesLoading || !$categories.length || categoryUpdates[tx.id]}
+                                            >
+                                                {#if tx.categoryId}
+                                                    <CategoryBadge
+                                                        name={$categories.find((category) => category.id === tx.categoryId)?.name || "Категория"}
+                                                        color={$categories.find((category) => category.id === tx.categoryId)?.color || ""}
+                                                        primaryWhenNoColor={true}
+                                                    />
+                                                {:else}
                                                     <CategoryBadge name="Без категории" />
-                                                </button>
-                                            </li>
-                                            {#each $categories as category}
+                                                {/if}
+                                            </button>
+                                            <ul class="menu dropdown-content z-20 mt-2 w-56 rounded-box bg-base-100 p-2 shadow">
                                                 <li>
-                                                    <button type="button" on:click={(event) => handleCategorySelect(event, tx.id, category.id)}>
-                                                        <CategoryBadge name={category.name} color={category.color} primaryWhenNoColor={true} />
+                                                    <button type="button" on:click={(event) => handleCategorySelect(event, tx.id, null)}>
+                                                        <CategoryBadge name="Без категории" />
                                                     </button>
                                                 </li>
-                                            {/each}
-                                        </ul>
-                                    </div>
-                                </td>
-                                <td class="text-right font-medium">{formatSignedCents(tx.amount, tx.entryType)}</td>
-                                <td>{tx.currency}</td>
-                            </tr>
-                        {/each}
-                        </tbody>
-                    </table>
-                </div>
+                                                {#each $categories as category}
+                                                    <li>
+                                                        <button type="button" on:click={(event) => handleCategorySelect(event, tx.id, category.id)}>
+                                                            <CategoryBadge name={category.name} color={category.color} primaryWhenNoColor={true} />
+                                                        </button>
+                                                    </li>
+                                                {/each}
+                                            </ul>
+                                        </div>
+                                    </td>
+                                    <td class="text-right font-medium">{formatSignedCents(tx.amount, tx.entryType)}</td>
+                                    <td>{tx.currency}</td>
+                                </tr>
+                            {/each}
+                            </tbody>
+                        </table>
+                    </div>
+                {/if}
             {/if}
         </div>
     </div>
