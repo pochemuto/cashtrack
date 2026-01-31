@@ -65,6 +65,58 @@ func TestTransactionsSummaryEmpty(t *testing.T) {
 	assertSummaryCents(t, summary.Median, 0)
 }
 
+func TestTransactionsSummaryUsesDebitForAverageMedian(t *testing.T) {
+	db, cleanup := openTestDB(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	createSummaryTables(t, db)
+	userID := createUser(t, db, "summary-mixed@example.com")
+
+	_, err := db.conn.Exec(ctx, `
+		INSERT INTO transactions (
+			user_id,
+			source_file_id,
+			posted_date,
+			description,
+			amount,
+			entry_type,
+			category_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, userID, int64(1), time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC), "Debit", "-5.90", EntryTypeDebit, int64(4))
+	if err != nil {
+		t.Fatalf("insert debit transaction: %v", err)
+	}
+
+	_, err = db.conn.Exec(ctx, `
+		INSERT INTO transactions (
+			user_id,
+			source_file_id,
+			posted_date,
+			description,
+			amount,
+			entry_type,
+			category_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, userID, int64(1), time.Date(2026, 1, 3, 0, 0, 0, 0, time.UTC), "Credit", "10.00", EntryTypeCredit, int64(4))
+	if err != nil {
+		t.Fatalf("insert credit transaction: %v", err)
+	}
+
+	service := NewTransactionsService(db)
+	summary, err := service.Summary(ctx, userID, TransactionFilters{CategoryID: int64Ptr(4)})
+	if err != nil {
+		t.Fatalf("summary: %v", err)
+	}
+
+	if summary.Count != 2 {
+		t.Fatalf("expected count 2, got %d", summary.Count)
+	}
+	assertSummaryCents(t, summary.Total, 410)
+	assertSummaryCents(t, summary.Average, -590)
+	assertSummaryCents(t, summary.Median, -590)
+}
+
 func createSummaryTables(t *testing.T, db *Db) {
 	t.Helper()
 	_, err := db.conn.Exec(context.Background(), `

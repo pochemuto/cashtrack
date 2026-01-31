@@ -201,8 +201,9 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 		}, nil
 	}
 
-	amounts := make([]float64, 0, len(rows))
+	debitAmounts := make([]float64, 0, len(rows))
 	var total float64
+	var debitTotal float64
 	uniqueAccounts := make(map[string]struct{})
 	var minDate time.Time
 	var maxDate time.Time
@@ -225,7 +226,10 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 			value = value * rate
 		}
 		total += value
-		amounts = append(amounts, value)
+		if value < 0 {
+			debitTotal += value
+			debitAmounts = append(debitAmounts, value)
+		}
 
 		if row.PostedDate.Valid {
 			postedDate := row.PostedDate.Time
@@ -255,19 +259,19 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 		}
 	}
 
-	sort.Float64s(amounts)
+	sort.Float64s(debitAmounts)
 	median := 0.0
-	if len(amounts) > 0 {
-		middle := len(amounts) / 2
-		if len(amounts)%2 == 0 {
-			median = (amounts[middle-1] + amounts[middle]) / 2
+	if len(debitAmounts) > 0 {
+		middle := len(debitAmounts) / 2
+		if len(debitAmounts)%2 == 0 {
+			median = (debitAmounts[middle-1] + debitAmounts[middle]) / 2
 		} else {
-			median = amounts[middle]
+			median = debitAmounts[middle]
 		}
 	}
 	average := 0.0
-	if len(amounts) > 0 {
-		average = total / float64(len(amounts))
+	if len(debitAmounts) > 0 {
+		average = debitTotal / float64(len(debitAmounts))
 	}
 
 	dateRangeStart := ""
@@ -278,7 +282,7 @@ func (s *TransactionsService) Summary(ctx context.Context, userID int32, filters
 	}
 
 	return &apiv1.TransactionSummary{
-		Count:          int32(len(amounts)),
+		Count:          int32(len(rows)),
 		Total:          centsFromFloat(total),
 		Average:        centsFromFloat(average),
 		Median:         centsFromFloat(median),
