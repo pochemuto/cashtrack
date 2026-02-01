@@ -11,6 +11,7 @@ import (
 	dbgen "cashtrack/backend/gen/db"
 	"connectrpc.com/connect"
 	"connectrpc.com/validate"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -60,7 +61,12 @@ func (s *CategoryService) CreateCategory(ctx context.Context, req *apiv1.CreateC
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	category, err := createCategory(ctx, s.db, user.Id, name, color)
+	parentID, err := resolveCategoryParent(ctx, s.db, user.Id, 0, req.ParentId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	category, err := createCategory(ctx, s.db, user.Id, name, color, parentID, req.IsGroup)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -86,7 +92,12 @@ func (s *CategoryService) UpdateCategory(ctx context.Context, req *apiv1.UpdateC
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if err := updateCategory(ctx, s.db, user.Id, req.Id, name, color); err != nil {
+	parentID, err := resolveCategoryParent(ctx, s.db, user.Id, req.Id, req.ParentId)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if err := updateCategory(ctx, s.db, user.Id, req.Id, name, color, parentID, req.IsGroup); err != nil {
 		if errors.Is(err, errNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
 		}
@@ -138,8 +149,15 @@ func (s *CategoryService) CreateCategoryRule(ctx context.Context, req *apiv1.Cre
 	if description == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("description_contains is required"))
 	}
-	if !categoryExists(ctx, s.db, user.Id, req.CategoryId) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category not found"))
+	category, err := getCategory(ctx, s.db, user.Id, req.CategoryId)
+	if err != nil {
+		if errors.Is(err, errNotFound) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if category.IsGroup {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category cannot be a group"))
 	}
 
 	rule, err := createCategoryRule(ctx, s.db, user.Id, req.CategoryId, description)
@@ -165,8 +183,15 @@ func (s *CategoryService) UpdateCategoryRule(ctx context.Context, req *apiv1.Upd
 	if description == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("description_contains is required"))
 	}
-	if !categoryExists(ctx, s.db, user.Id, req.CategoryId) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category not found"))
+	category, err := getCategory(ctx, s.db, user.Id, req.CategoryId)
+	if err != nil {
+		if errors.Is(err, errNotFound) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category not found"))
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if category.IsGroup {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category cannot be a group"))
 	}
 
 	if err := updateCategoryRule(ctx, s.db, user.Id, req.Id, req.CategoryId, description); err != nil {
@@ -286,21 +311,29 @@ func listCategories(ctx context.Context, db *Db, userID int32) ([]*apiv1.Categor
 		if row.Color.Valid {
 			color = row.Color.String
 		}
+		var parentID int32
+		if row.ParentID.Valid {
+			parentID = int32(row.ParentID.Int64)
+		}
 		categories = append(categories, &apiv1.Category{
 			Id:        int32(row.ID),
 			Name:      row.Name,
 			Color:     color,
 			CreatedAt: row.CreatedAt.Time.Format(time.RFC3339Nano),
+			ParentId:  parentID,
+			IsGroup:   row.IsGroup,
 		})
 	}
 	return categories, nil
 }
 
-func createCategory(ctx context.Context, db *Db, userID int32, name string, color pgtype.Text) (*apiv1.Category, error) {
+func createCategory(ctx context.Context, db *Db, userID int32, name string, color pgtype.Text, parentID pgtype.Int8, isGroup bool) (*apiv1.Category, error) {
 	row, err := db.Queries.CreateCategory(ctx, dbgen.CreateCategoryParams{
-		UserID: userID,
-		Name:   name,
-		Color:  color,
+		UserID:   userID,
+		Name:     name,
+		Color:    color,
+		ParentID: parentID,
+		IsGroup:  isGroup,
 	})
 	if err != nil {
 		return nil, err
@@ -309,20 +342,28 @@ func createCategory(ctx context.Context, db *Db, userID int32, name string, colo
 	if row.Color.Valid {
 		colorValue = row.Color.String
 	}
+	var parentIDValue int32
+	if row.ParentID.Valid {
+		parentIDValue = int32(row.ParentID.Int64)
+	}
 	return &apiv1.Category{
 		Id:        int32(row.ID),
 		Name:      row.Name,
 		Color:     colorValue,
 		CreatedAt: row.CreatedAt.Time.Format(time.RFC3339Nano),
+		ParentId:  parentIDValue,
+		IsGroup:   row.IsGroup,
 	}, nil
 }
 
-func updateCategory(ctx context.Context, db *Db, userID int32, id int32, name string, color pgtype.Text) error {
+func updateCategory(ctx context.Context, db *Db, userID int32, id int32, name string, color pgtype.Text, parentID pgtype.Int8, isGroup bool) error {
 	affected, err := db.Queries.UpdateCategory(ctx, dbgen.UpdateCategoryParams{
-		Name:   name,
-		Color:  color,
-		ID:     int64(id),
-		UserID: userID,
+		Name:     name,
+		Color:    color,
+		ParentID: parentID,
+		IsGroup:  isGroup,
+		ID:       int64(id),
+		UserID:   userID,
 	})
 	if err != nil {
 		return err
@@ -345,6 +386,77 @@ func deleteCategory(ctx context.Context, db *Db, userID int32, id int32) error {
 		return errNotFound
 	}
 	return nil
+}
+
+func getCategory(ctx context.Context, db *Db, userID int32, id int32) (*dbgen.GetCategoryByIDRow, error) {
+	row, err := db.Queries.GetCategoryByID(ctx, dbgen.GetCategoryByIDParams{
+		ID:     int64(id),
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errNotFound
+		}
+		return nil, err
+	}
+	return &row, nil
+}
+
+func resolveCategoryParent(ctx context.Context, db *Db, userID int32, categoryID int32, parentID int32) (pgtype.Int8, error) {
+	if parentID < 0 {
+		return pgtype.Int8{}, errors.New("parent_id must be positive")
+	}
+	if parentID == 0 {
+		return pgtype.Int8{}, nil
+	}
+	if categoryID != 0 && parentID == categoryID {
+		return pgtype.Int8{}, errors.New("parent_id must be different from id")
+	}
+	if _, err := getCategory(ctx, db, userID, parentID); err != nil {
+		if errors.Is(err, errNotFound) {
+			return pgtype.Int8{}, errors.New("parent category not found")
+		}
+		return pgtype.Int8{}, err
+	}
+	if categoryID != 0 {
+		rows, err := db.Queries.ListCategoriesByUser(ctx, userID)
+		if err != nil {
+			return pgtype.Int8{}, err
+		}
+		if hasCategoryParentCycle(rows, categoryID, parentID) {
+			return pgtype.Int8{}, errors.New("category parent creates a cycle")
+		}
+	}
+	return pgtype.Int8{Int64: int64(parentID), Valid: true}, nil
+}
+
+func hasCategoryParentCycle(rows []dbgen.ListCategoriesByUserRow, categoryID int32, parentID int32) bool {
+	if categoryID == 0 || parentID == 0 {
+		return false
+	}
+	parentByID := make(map[int32]int32, len(rows))
+	for _, row := range rows {
+		if row.ParentID.Valid {
+			parentByID[int32(row.ID)] = int32(row.ParentID.Int64)
+		}
+	}
+	visited := make(map[int32]struct{}, len(rows))
+	current := parentID
+	for current != 0 {
+		if current == categoryID {
+			return true
+		}
+		if _, ok := visited[current]; ok {
+			return true
+		}
+		visited[current] = struct{}{}
+		next, ok := parentByID[current]
+		if !ok {
+			break
+		}
+		current = next
+	}
+	return false
 }
 
 func listCategoryRules(ctx context.Context, db *Db, userID int32) ([]*apiv1.CategoryRule, error) {
@@ -412,14 +524,6 @@ func deleteCategoryRule(ctx context.Context, db *Db, userID int32, id int32) err
 		return errNotFound
 	}
 	return nil
-}
-
-func categoryExists(ctx context.Context, db *Db, userID int32, id int32) bool {
-	exists, err := db.Queries.CategoryExists(ctx, dbgen.CategoryExistsParams{
-		ID:     int64(id),
-		UserID: userID,
-	})
-	return err == nil && exists
 }
 
 func parseCategoryColor(value string) (pgtype.Text, error) {

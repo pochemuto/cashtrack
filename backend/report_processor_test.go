@@ -99,7 +99,10 @@ func createReportTables(t *testing.T, db *Db) {
 			id bigserial PRIMARY KEY,
 			user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 			name varchar(255) NOT NULL,
-			created_at timestamptz NOT NULL DEFAULT now()
+			created_at timestamptz NOT NULL DEFAULT now(),
+			color varchar(7),
+			parent_id bigint,
+			is_group boolean NOT NULL DEFAULT false
 		);
 		CREATE TABLE category_rules (
 			id bigserial PRIMARY KEY,

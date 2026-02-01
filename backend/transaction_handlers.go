@@ -69,8 +69,15 @@ func (s *TransactionService) UpdateTransactionCategory(ctx context.Context, req 
 		if value == 0 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category_id must be set or omitted"))
 		}
-		if !categoryExists(ctx, s.db, user.Id, int32(value)) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category not found"))
+		category, err := getCategory(ctx, s.db, user.Id, int32(value))
+		if err != nil {
+			if errors.Is(err, errNotFound) {
+				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category not found"))
+			}
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if category.IsGroup {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("category cannot be a group"))
 		}
 		categoryID = &value
 	}

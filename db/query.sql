@@ -70,21 +70,23 @@ ON CONFLICT (rate_date, base_currency, target_currency)
 DO UPDATE SET rate = EXCLUDED.rate;
 
 -- name: ListCategoriesByUser :many
-SELECT id, name, color, created_at
+SELECT id, name, color, created_at, parent_id, is_group
 FROM categories
 WHERE user_id = $1
 ORDER BY name;
 
 -- name: CreateCategory :one
-INSERT INTO categories (user_id, name, color)
-VALUES ($1, $2, $3)
-RETURNING id, name, color, created_at;
+INSERT INTO categories (user_id, name, color, parent_id, is_group)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, color, created_at, parent_id, is_group;
 
 -- name: UpdateCategory :execrows
 UPDATE categories
 SET name = $1,
-    color = $2
-WHERE id = $3 AND user_id = $4;
+    color = $2,
+    parent_id = $3,
+    is_group = $4
+WHERE id = $5 AND user_id = $6;
 
 -- name: DeleteCategory :execrows
 DELETE FROM categories
@@ -96,6 +98,11 @@ SELECT EXISTS(
     FROM categories
     WHERE id = $1 AND user_id = $2
 );
+
+-- name: GetCategoryByID :one
+SELECT id, name, color, created_at, parent_id, is_group
+FROM categories
+WHERE id = $1 AND user_id = $2;
 
 -- name: ListCategoryRulesByUser :many
 SELECT id, category_id, description_contains, position, created_at

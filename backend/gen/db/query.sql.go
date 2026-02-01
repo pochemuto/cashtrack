@@ -61,15 +61,17 @@ func (q *Queries) CategoryExists(ctx context.Context, arg CategoryExistsParams) 
 }
 
 const createCategory = `-- name: CreateCategory :one
-INSERT INTO categories (user_id, name, color)
-VALUES ($1, $2, $3)
-RETURNING id, name, color, created_at
+INSERT INTO categories (user_id, name, color, parent_id, is_group)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, color, created_at, parent_id, is_group
 `
 
 type CreateCategoryParams struct {
-	UserID int32
-	Name   string
-	Color  pgtype.Text
+	UserID   int32
+	Name     string
+	Color    pgtype.Text
+	ParentID pgtype.Int8
+	IsGroup  bool
 }
 
 type CreateCategoryRow struct {
@@ -77,16 +79,26 @@ type CreateCategoryRow struct {
 	Name      string
 	Color     pgtype.Text
 	CreatedAt pgtype.Timestamptz
+	ParentID  pgtype.Int8
+	IsGroup   bool
 }
 
 func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) (CreateCategoryRow, error) {
-	row := q.db.QueryRow(ctx, createCategory, arg.UserID, arg.Name, arg.Color)
+	row := q.db.QueryRow(ctx, createCategory,
+		arg.UserID,
+		arg.Name,
+		arg.Color,
+		arg.ParentID,
+		arg.IsGroup,
+	)
 	var i CreateCategoryRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Color,
 		&i.CreatedAt,
+		&i.ParentID,
+		&i.IsGroup,
 	)
 	return i, err
 }
@@ -348,6 +360,40 @@ func (q *Queries) DeleteTransactionsBySource(ctx context.Context, arg DeleteTran
 	return err
 }
 
+const getCategoryByID = `-- name: GetCategoryByID :one
+SELECT id, name, color, created_at, parent_id, is_group
+FROM categories
+WHERE id = $1 AND user_id = $2
+`
+
+type GetCategoryByIDParams struct {
+	ID     int64
+	UserID int32
+}
+
+type GetCategoryByIDRow struct {
+	ID        int64
+	Name      string
+	Color     pgtype.Text
+	CreatedAt pgtype.Timestamptz
+	ParentID  pgtype.Int8
+	IsGroup   bool
+}
+
+func (q *Queries) GetCategoryByID(ctx context.Context, arg GetCategoryByIDParams) (GetCategoryByIDRow, error) {
+	row := q.db.QueryRow(ctx, getCategoryByID, arg.ID, arg.UserID)
+	var i GetCategoryByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Color,
+		&i.CreatedAt,
+		&i.ParentID,
+		&i.IsGroup,
+	)
+	return i, err
+}
+
 const getExchangeRate = `-- name: GetExchangeRate :one
 SELECT rate
 FROM exchange_rates
@@ -432,7 +478,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUs
 }
 
 const listCategoriesByUser = `-- name: ListCategoriesByUser :many
-SELECT id, name, color, created_at
+SELECT id, name, color, created_at, parent_id, is_group
 FROM categories
 WHERE user_id = $1
 ORDER BY name
@@ -443,6 +489,8 @@ type ListCategoriesByUserRow struct {
 	Name      string
 	Color     pgtype.Text
 	CreatedAt pgtype.Timestamptz
+	ParentID  pgtype.Int8
+	IsGroup   bool
 }
 
 func (q *Queries) ListCategoriesByUser(ctx context.Context, userID int32) ([]ListCategoriesByUserRow, error) {
@@ -459,6 +507,8 @@ func (q *Queries) ListCategoriesByUser(ctx context.Context, userID int32) ([]Lis
 			&i.Name,
 			&i.Color,
 			&i.CreatedAt,
+			&i.ParentID,
+			&i.IsGroup,
 		); err != nil {
 			return nil, err
 		}
@@ -931,21 +981,27 @@ func (q *Queries) SummaryTransactions(ctx context.Context, arg SummaryTransactio
 const updateCategory = `-- name: UpdateCategory :execrows
 UPDATE categories
 SET name = $1,
-    color = $2
-WHERE id = $3 AND user_id = $4
+    color = $2,
+    parent_id = $3,
+    is_group = $4
+WHERE id = $5 AND user_id = $6
 `
 
 type UpdateCategoryParams struct {
-	Name   string
-	Color  pgtype.Text
-	ID     int64
-	UserID int32
+	Name     string
+	Color    pgtype.Text
+	ParentID pgtype.Int8
+	IsGroup  bool
+	ID       int64
+	UserID   int32
 }
 
 func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateCategory,
 		arg.Name,
 		arg.Color,
+		arg.ParentID,
+		arg.IsGroup,
 		arg.ID,
 		arg.UserID,
 	)

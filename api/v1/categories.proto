@@ -7,6 +7,8 @@ message Category {
   string name = 2;
   string color = 3;
   string created_at = 4;
+  int32 parent_id = 5;
+  bool is_group = 6;
 }
 
 message CategoryRule {
@@ -26,6 +28,8 @@ message ListCategoriesResponse {
 message CreateCategoryRequest {
   string name = 1;
   string color = 2;
+  int32 parent_id = 3;
+  bool is_group = 4;
 }
 
 message CreateCategoryResponse {
@@ -36,6 +40,8 @@ message UpdateCategoryRequest {
   int32 id = 1;
   string name = 2;
   string color = 3;
+  int32 parent_id = 4;
+  bool is_group = 5;
 }
 
 message UpdateCategoryResponse {}

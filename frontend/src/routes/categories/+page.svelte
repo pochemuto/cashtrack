@@ -20,6 +20,8 @@
     let editorCategoryId: number | null = null;
     let editorName = "";
     let editorColor: string | null = null;
+    let editorParentId: number | null = null;
+    let editorIsGroup = false;
 
     let newRuleCategoryId = "";
     let newRuleText = "";
@@ -41,8 +43,10 @@
     let deleteModalOpen = false;
     let deleteCategoryId: number | null = null;
     let deleteCategoryName = "";
+    let ruleCategories: Category[] = [];
 
     $: categoryMap = new Map($categories.map((category) => [category.id, category.name]));
+    $: ruleCategories = $categories.filter((category) => !category.isGroup);
 
     async function loadData() {
         if (!$user || !$user.id) {
@@ -89,7 +93,12 @@
         const color = (editorColor ?? "").trim();
 
         try {
-            const response = await Categories.createCategory({name, color});
+            const response = await Categories.createCategory({
+                name,
+                color,
+                parentId: editorParentId ?? 0,
+                isGroup: editorIsGroup,
+            });
             if (!response.category) {
                 actionError = "Не удалось добавить категорию.";
                 return;
@@ -106,6 +115,8 @@
         editorCategoryId = category.id;
         editorName = category.name;
         editorColor = category.color || null;
+        editorParentId = category.parentId ? category.parentId : null;
+        editorIsGroup = category.isGroup;
         editorOpen = true;
         menuOpen = null;
     }
@@ -124,6 +135,8 @@
         editorCategoryId = null;
         editorName = "";
         editorColor = null;
+        editorParentId = null;
+        editorIsGroup = false;
     }
 
     async function saveCategory(categoryId: number) {
@@ -135,10 +148,22 @@
         const color = (editorColor ?? "").trim();
 
         try {
-            await Categories.updateCategory({id: categoryId, name, color});
+            await Categories.updateCategory({
+                id: categoryId,
+                name,
+                color,
+                parentId: editorParentId ?? 0,
+                isGroup: editorIsGroup,
+            });
             const existing = $categories.find((category) => category.id === categoryId);
             if (existing) {
-                updateCategory({...existing, name, color});
+                updateCategory({
+                    ...existing,
+                    name,
+                    color,
+                    parentId: editorParentId ?? 0,
+                    isGroup: editorIsGroup,
+                });
             }
             cancelCategoryEdit();
         } catch {
@@ -184,6 +209,8 @@
         editorCategoryId = null;
         editorName = "";
         editorColor = null;
+        editorParentId = null;
+        editorIsGroup = false;
         editorOpen = true;
     }
 
@@ -471,13 +498,28 @@
                             >
                                 ✕
                             </button>
-                            <button
-                                class="p-0 cursor-pointer"
-                                type="button"
-                                on:click={() => openCategoryEditor(category)}
-                            >
-                                <CategoryBadge name={category.name} color={category.color || ""} />
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button
+                                    class="p-0 cursor-pointer"
+                                    type="button"
+                                    on:click={() => openCategoryEditor(category)}
+                                >
+                                    <CategoryBadge name={category.name} color={category.color || ""} />
+                                </button>
+                                {#if category.isGroup || category.parentId}
+                                    <div class="text-xs opacity-60 whitespace-nowrap">
+                                        {#if category.isGroup}
+                                            <span>Группа</span>
+                                        {/if}
+                                        {#if category.parentId}
+                                            <span>
+                                                {category.isGroup ? " · " : ""}
+                                                Родитель: {categoryMap.get(category.parentId) || `#${category.parentId}`}
+                                            </span>
+                                        {/if}
+                                    </div>
+                                {/if}
+                            </div>
                         </div>
                     {/each}
                 </div>
@@ -512,7 +554,7 @@
             <div class="grid gap-3 lg:grid-cols-[minmax(200px,1fr)_minmax(240px,2fr)_auto]">
                 <select class="select select-bordered" bind:value={newRuleCategoryId}>
                     <option value="" disabled>Категория</option>
-                    {#each $categories as category}
+                    {#each ruleCategories as category}
                         <option value={category.id}>{category.name}</option>
                     {/each}
                 </select>
@@ -526,7 +568,7 @@
                     class="btn btn-primary"
                     type="button"
                     on:click={createRule}
-                    disabled={!$categories.length}
+                    disabled={!ruleCategories.length}
                 >
                     Добавить
                 </button>
@@ -556,7 +598,7 @@
                                 <td>
                                     {#if editingRuleId === rule.id}
                                         <select class="select select-bordered select-sm" bind:value={editingRuleCategoryId}>
-                                            {#each $categories as category}
+                                            {#each ruleCategories as category}
                                                 <option value={category.id}>{category.name}</option>
                                             {/each}
                                         </select>
@@ -622,6 +664,10 @@
     open={editorOpen}
     bind:name={editorName}
     bind:color={editorColor}
+    bind:parentId={editorParentId}
+    bind:isGroup={editorIsGroup}
+    categories={$categories}
+    selfId={editorCategoryId}
     title={editorMode === "create" ? "Новая категория" : "Редактировать категорию"}
     confirmLabel={editorMode === "create" ? "Добавить" : "Сохранить"}
     on:save={handleCategorySave}

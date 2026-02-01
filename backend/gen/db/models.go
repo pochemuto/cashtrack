@@ -14,6 +14,8 @@ type Category struct {
 	Name      string
 	CreatedAt pgtype.Timestamptz
 	Color     pgtype.Text
+	ParentID  pgtype.Int8
+	IsGroup   bool
 }
 
 type CategoryRule struct {

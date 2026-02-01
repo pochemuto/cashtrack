@@ -27,6 +27,8 @@ type Category struct {
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Color         string                 `protobuf:"bytes,3,opt,name=color,proto3" json:"color,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ParentId      int32                  `protobuf:"varint,5,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	IsGroup       bool                   `protobuf:"varint,6,opt,name=is_group,json=isGroup,proto3" json:"is_group,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -87,6 +89,20 @@ func (x *Category) GetCreatedAt() string {
 		return x.CreatedAt
 	}
 	return ""
+}
+
+func (x *Category) GetParentId() int32 {
+	if x != nil {
+		return x.ParentId
+	}
+	return 0
+}
+
+func (x *Category) GetIsGroup() bool {
+	if x != nil {
+		return x.IsGroup
+	}
+	return false
 }
 
 type CategoryRule struct {
@@ -249,6 +265,8 @@ type CreateCategoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Color         string                 `protobuf:"bytes,2,opt,name=color,proto3" json:"color,omitempty"`
+	ParentId      int32                  `protobuf:"varint,3,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	IsGroup       bool                   `protobuf:"varint,4,opt,name=is_group,json=isGroup,proto3" json:"is_group,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -295,6 +313,20 @@ func (x *CreateCategoryRequest) GetColor() string {
 		return x.Color
 	}
 	return ""
+}
+
+func (x *CreateCategoryRequest) GetParentId() int32 {
+	if x != nil {
+		return x.ParentId
+	}
+	return 0
+}
+
+func (x *CreateCategoryRequest) GetIsGroup() bool {
+	if x != nil {
+		return x.IsGroup
+	}
+	return false
 }
 
 type CreateCategoryResponse struct {
@@ -346,6 +378,8 @@ type UpdateCategoryRequest struct {
 	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Color         string                 `protobuf:"bytes,3,opt,name=color,proto3" json:"color,omitempty"`
+	ParentId      int32                  `protobuf:"varint,4,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	IsGroup       bool                   `protobuf:"varint,5,opt,name=is_group,json=isGroup,proto3" json:"is_group,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -399,6 +433,20 @@ func (x *UpdateCategoryRequest) GetColor() string {
 		return x.Color
 	}
 	return ""
+}
+
+func (x *UpdateCategoryRequest) GetParentId() int32 {
+	if x != nil {
+		return x.ParentId
+	}
+	return 0
+}
+
+func (x *UpdateCategoryRequest) GetIsGroup() bool {
+	if x != nil {
+		return x.IsGroup
+	}
+	return false
 }
 
 type UpdateCategoryResponse struct {
@@ -1041,13 +1089,15 @@ var File_api_v1_categories_proto protoreflect.FileDescriptor
 
 const file_api_v1_categories_proto_rawDesc = "" +
 	"\n" +
-	"\x17api/v1/categories.proto\x12\x06api.v1\"c\n" +
+	"\x17api/v1/categories.proto\x12\x06api.v1\"\x9b\x01\n" +
 	"\bCategory\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05color\x18\x03 \x01(\tR\x05color\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x04 \x01(\tR\tcreatedAt\"\xad\x01\n" +
+	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x1b\n" +
+	"\tparent_id\x18\x05 \x01(\x05R\bparentId\x12\x19\n" +
+	"\bis_group\x18\x06 \x01(\bR\aisGroup\"\xad\x01\n" +
 	"\fCategoryRule\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x1f\n" +
 	"\vcategory_id\x18\x02 \x01(\x05R\n" +
@@ -1060,16 +1110,20 @@ const file_api_v1_categories_proto_rawDesc = "" +
 	"\x16ListCategoriesResponse\x120\n" +
 	"\n" +
 	"categories\x18\x01 \x03(\v2\x10.api.v1.CategoryR\n" +
-	"categories\"A\n" +
+	"categories\"y\n" +
 	"\x15CreateCategoryRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05color\x18\x02 \x01(\tR\x05color\"F\n" +
+	"\x05color\x18\x02 \x01(\tR\x05color\x12\x1b\n" +
+	"\tparent_id\x18\x03 \x01(\x05R\bparentId\x12\x19\n" +
+	"\bis_group\x18\x04 \x01(\bR\aisGroup\"F\n" +
 	"\x16CreateCategoryResponse\x12,\n" +
-	"\bcategory\x18\x01 \x01(\v2\x10.api.v1.CategoryR\bcategory\"Q\n" +
+	"\bcategory\x18\x01 \x01(\v2\x10.api.v1.CategoryR\bcategory\"\x89\x01\n" +
 	"\x15UpdateCategoryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
-	"\x05color\x18\x03 \x01(\tR\x05color\"\x18\n" +
+	"\x05color\x18\x03 \x01(\tR\x05color\x12\x1b\n" +
+	"\tparent_id\x18\x04 \x01(\x05R\bparentId\x12\x19\n" +
+	"\bis_group\x18\x05 \x01(\bR\aisGroup\"\x18\n" +
 	"\x16UpdateCategoryResponse\"'\n" +
 	"\x15DeleteCategoryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\"\x18\n" +

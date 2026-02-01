@@ -2,6 +2,7 @@
     import {onMount} from "svelte";
     import {Categories, Transactions} from "$lib/api";
     import type {Transaction, TransactionSummary} from "$lib/gen/api/v1/transactions_pb";
+    import type {Category} from "$lib/gen/api/v1/categories_pb";
     import {Code, ConnectError} from "@connectrpc/connect";
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
     import CategoryEditorModal from "$lib/components/CategoryEditorModal.svelte";
@@ -30,6 +31,8 @@
     let categoryEditorColor: string | null = null;
     let categoryEditorTransactionId: number | null = null;
     let categoryEditorSaving = false;
+    let assignableCategories: Category[] = [];
+    let categoryParentMap = new Map<number, number>();
 
     let fromDate = "";
     let toDate = "";
@@ -55,6 +58,9 @@
     let textFilterSignature = "";
     let nonTextFilterSignature = "";
     const advancedFiltersOpen = persistedBoolean("transactions.advancedFilters.open", false);
+
+    $: assignableCategories = $categories.filter((category) => !category.isGroup);
+    $: categoryParentMap = new Map($categories.map((category) => [category.id, category.parentId]));
 
     function formatYmd(date: Date): string {
         const year = date.getFullYear();
@@ -316,7 +322,12 @@
         const color = (categoryEditorColor ?? "").trim();
         categoryEditorSaving = true;
         try {
-            const response = await Categories.createCategory({name, color});
+            const response = await Categories.createCategory({
+                name,
+                color,
+                parentId: 0,
+                isGroup: false,
+            });
             if (!response.category) {
                 updateError = "Не удалось добавить категорию.";
                 return;
@@ -366,7 +377,26 @@
         if (filter.categoryId === null) {
             return transaction.categoryId === undefined || transaction.categoryId === null;
         }
-        return transaction.categoryId === filter.categoryId;
+        if (transaction.categoryId === undefined || transaction.categoryId === null) {
+            return false;
+        }
+        let current = transaction.categoryId;
+        const visited = new Set<number>();
+        while (current) {
+            if (current === filter.categoryId) {
+                return true;
+            }
+            if (visited.has(current)) {
+                break;
+            }
+            visited.add(current);
+            const parentId = categoryParentMap.get(current);
+            if (!parentId) {
+                break;
+            }
+            current = parentId;
+        }
+        return false;
     }
 
     function resolveSankeyCategoryLabel(filter: SankeyFilter): string {
@@ -542,7 +572,7 @@
                     </label>
                     <select class="select select-bordered" id="category-filter" bind:value={categoryFilter} disabled={$categoriesLoading}>
                         <option value="">Все</option>
-                        {#each $categories as category}
+                        {#each assignableCategories as category}
                             <option value={String(category.id)}>{category.name}</option>
                         {/each}
                     </select>
@@ -689,7 +719,7 @@
                                             <button
                                                 class="p-0 cursor-pointer"
                                                 type="button"
-                                                disabled={$categoriesLoading || !$categories.length || categoryUpdates[tx.id]}
+                                                disabled={$categoriesLoading || !assignableCategories.length || categoryUpdates[tx.id]}
                                             >
                                                 {#if tx.categoryId}
                                                     <CategoryBadge
@@ -706,7 +736,7 @@
                                                         <CategoryBadge name="Без категории" />
                                                     </button>
                                                 </li>
-                                                {#each $categories as category}
+                                                {#each assignableCategories as category}
                                                     <li>
                                                         <button type="button" on:click={(event) => handleCategorySelect(event, tx.id, category.id)}>
                                                             <CategoryBadge name={category.name} color={category.color} />
@@ -741,6 +771,8 @@
     title="Новая категория"
     confirmLabel="Добавить"
     saving={categoryEditorSaving}
+    showParent={false}
+    showGroupToggle={false}
     on:save={saveNewCategory}
     on:cancel={cancelNewCategoryEditor}
 />

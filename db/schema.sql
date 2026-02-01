@@ -5,7 +5,9 @@ CREATE TABLE public.categories (
     user_id integer NOT NULL,
     name character varying(255) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    color character varying(7)
+    color character varying(7),
+    parent_id bigint,
+    is_group boolean DEFAULT false NOT NULL
 );
 CREATE SEQUENCE public.categories_id_seq
     START WITH 1
@@ -144,6 +146,7 @@ ALTER TABLE ONLY public.users
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_username_key UNIQUE (username);
 CREATE INDEX categories_user_id_idx ON public.categories USING btree (user_id);
+CREATE INDEX categories_parent_id_idx ON public.categories USING btree (parent_id);
 CREATE INDEX category_rules_category_id_idx ON public.category_rules USING btree (category_id);
 CREATE INDEX category_rules_user_id_idx ON public.category_rules USING btree (user_id);
 CREATE INDEX category_rules_user_position_idx ON public.category_rules USING btree (user_id, "position");
@@ -161,6 +164,8 @@ CREATE INDEX transactions_user_id_idx ON public.transactions USING btree (user_i
 CREATE UNIQUE INDEX users_username_idx ON public.users USING btree (username);
 ALTER TABLE ONLY public.categories
     ADD CONSTRAINT categories_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.categories
+    ADD CONSTRAINT categories_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.categories(id) ON DELETE SET NULL;
 ALTER TABLE ONLY public.category_rules
     ADD CONSTRAINT category_rules_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;
 ALTER TABLE ONLY public.category_rules

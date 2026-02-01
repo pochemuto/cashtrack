@@ -28,6 +28,13 @@
         amount: number;
     };
 
+    type CategoryDescriptor = {
+        key: string;
+        label: string;
+        color: string;
+        categoryId: number | null;
+    };
+
     export let transactions: Transaction[] = [];
     export let categories: Category[] = [];
 
@@ -179,8 +186,8 @@
         sankeyHandlersAttached = false;
     }
 
-    function getCategoryDescriptor(categoryId: number | undefined, categoryLookup: Map<number, Category>) {
-        if (categoryId === undefined) {
+    function getCategoryDescriptor(categoryId: number | null | undefined, categoryLookup: Map<number, Category>): CategoryDescriptor {
+        if (categoryId === undefined || categoryId === null) {
             return {
                 key: "none",
                 label: "Без категории",
@@ -203,6 +210,25 @@
             color: normalizeColor(category.color, sankeyCategoryFallbackColor),
             categoryId,
         };
+    }
+
+    function buildCategoryChain(categoryId: number, categoryLookup: Map<number, Category>): CategoryDescriptor[] {
+        const chain: CategoryDescriptor[] = [];
+        let currentId: number | null = categoryId;
+        const visited = new Set<number>();
+
+        while (currentId !== null && currentId !== 0 && !visited.has(currentId)) {
+            visited.add(currentId);
+            const descriptor = getCategoryDescriptor(currentId, categoryLookup);
+            chain.push(descriptor);
+            const category = categoryLookup.get(currentId);
+            if (!category || !category.parentId) {
+                break;
+            }
+            currentId = category.parentId;
+        }
+
+        return chain.reverse();
     }
 
     function buildCategoryFilterItems(items: Transaction[], categoryItems: Category[]): CategoryFilterItem[] {
@@ -327,8 +353,6 @@
             string,
             {source: number; target: number; value: number; color: string; count: number; meta: FilterMeta | null}
         >();
-        const creditTotals = new Map<string, {label: string; color: string; value: number; count: number; categoryId: number | null}>();
-        const debitTotals = new Map<string, {label: string; color: string; value: number; count: number; categoryId: number | null}>();
         const netIncomeLabel = "Net income";
         const remainderLabel = "Unknown";
         let totalCredits = 0;
@@ -351,23 +375,47 @@
             return index;
         };
 
-        const addTotal = (
-            totals: Map<string, {label: string; color: string; value: number; count: number; categoryId: number | null}>,
-            key: string,
-            label: string,
-            color: string,
+        const nodeStats = new Map<string, {count: number; amount: number}>();
+
+        const addNodeStats = (key: string, value: number, count: number) => {
+            const existing = nodeStats.get(key);
+            if (existing) {
+                existing.amount += value;
+                existing.count += count;
+            } else {
+                nodeStats.set(key, {count, amount: value});
+            }
+        };
+
+        const addLink = (
+            source: number,
+            target: number,
             value: number,
+            color: string,
             count: number,
-            categoryId: number | null
+            meta: FilterMeta | null
         ) => {
-            const existing = totals.get(key);
+            const linkKey = `${source}:${target}`;
+            const existing = links.get(linkKey);
             if (existing) {
                 existing.value += value;
                 existing.count += count;
             } else {
-                totals.set(key, {label, color, value, count, categoryId});
+                links.set(linkKey, {source, target, value, color, count, meta});
             }
         };
+
+        const netIncomeIndex = ensureNode("net:income", netIncomeLabel, sankeySourceColor, null);
+
+        const entryNodeKey = (entryType: "credit" | "debit", descriptor: CategoryDescriptor) =>
+            `${entryType}:${descriptor.key}`;
+
+        const ensureCategoryNode = (entryType: "credit" | "debit", descriptor: CategoryDescriptor) =>
+            ensureNode(entryNodeKey(entryType, descriptor), descriptor.label, descriptor.color, {
+                entryType,
+                categoryId: descriptor.categoryId,
+                label: descriptor.label,
+            });
 
         for (const tx of items) {
             const amount = centsToNumber(tx.amount);
@@ -384,80 +432,108 @@
             if (tx.entryType === "credit") {
                 totalCredits += value;
                 totalCreditCount += 1;
-                addTotal(creditTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value, 1, categoryInfo.categoryId);
             } else if (tx.entryType === "debit") {
                 totalDebits += value;
-                addTotal(debitTotals, categoryInfo.key, categoryInfo.label, categoryInfo.color, value, 1, categoryInfo.categoryId);
+            } else {
+                continue;
             }
-        }
 
-        if (!creditTotals.size && !debitTotals.size) {
-            return null;
-        }
+            if (categoryInfo.categoryId === null) {
+                const nodeKey = entryNodeKey(tx.entryType, categoryInfo);
+                const nodeIndex = ensureCategoryNode(tx.entryType, categoryInfo);
+                addNodeStats(nodeKey, value, 1);
+                if (tx.entryType === "credit") {
+                    addLink(
+                        nodeIndex,
+                        netIncomeIndex,
+                        value,
+                        colorWithAlpha(categoryInfo.color, 0.45, categoryInfo.color),
+                        1,
+                        {entryType: "credit", categoryId: null, label: categoryInfo.label}
+                    );
+                } else {
+                    addLink(
+                        netIncomeIndex,
+                        nodeIndex,
+                        value,
+                        categoryInfo.color,
+                        1,
+                        {entryType: "debit", categoryId: null, label: categoryInfo.label}
+                    );
+                }
+                continue;
+            }
 
-        const nodeStats = new Map<string, {count: number; amount: number}>();
-        nodeStats.set("net:income", {count: totalCreditCount, amount: totalCredits});
-        for (const [key, entry] of creditTotals.entries()) {
-            nodeStats.set(`credit:${key}`, {count: entry.count, amount: entry.value});
-        }
-        for (const [key, entry] of debitTotals.entries()) {
-            nodeStats.set(`debit:${key}`, {count: entry.count, amount: entry.value});
-        }
+            const chain = buildCategoryChain(categoryInfo.categoryId, categoryLookup);
+            if (!chain.length) {
+                continue;
+            }
 
-        const netIncomeIndex = ensureNode("net:income", netIncomeLabel, sankeySourceColor, null);
+            for (const entry of chain) {
+                addNodeStats(entryNodeKey(tx.entryType, entry), value, 1);
+            }
 
-        for (const [key, entry] of creditTotals.entries()) {
-            const sourceIndex = ensureNode(`credit:${key}`, entry.label, entry.color, {
-                entryType: "credit",
-                categoryId: entry.categoryId,
-                label: entry.label,
-            });
-            const linkKey = `${sourceIndex}:${netIncomeIndex}`;
-            const linkColor = colorWithAlpha(entry.color, 0.45, entry.color);
-            links.set(linkKey, {
-                source: sourceIndex,
-                target: netIncomeIndex,
-                value: entry.value,
-                color: linkColor,
-                count: entry.count,
-                meta: {entryType: "credit", categoryId: entry.categoryId, label: entry.label},
-            });
-        }
-
-        for (const [key, entry] of debitTotals.entries()) {
-            const targetIndex = ensureNode(`debit:${key}`, entry.label, entry.color, {
-                entryType: "debit",
-                categoryId: entry.categoryId,
-                label: entry.label,
-            });
-            const linkKey = `${netIncomeIndex}:${targetIndex}`;
-            links.set(linkKey, {
-                source: netIncomeIndex,
-                target: targetIndex,
-                value: entry.value,
-                color: entry.color,
-                count: entry.count,
-                meta: {entryType: "debit", categoryId: entry.categoryId, label: entry.label},
-            });
-        }
-
-        const remainder = Number((totalCredits - totalDebits).toFixed(2));
-        if (includeUnknown && remainder > 0) {
-            const remainderIndex = ensureNode(`debit:${remainderLabel}`, remainderLabel, sankeyCategoryFallbackColor, null);
-            const linkKey = `${netIncomeIndex}:${remainderIndex}`;
-            links.set(linkKey, {
-                source: netIncomeIndex,
-                target: remainderIndex,
-                value: remainder,
-                color: colorWithAlpha(sankeyCategoryFallbackColor, 0.45, sankeyCategoryFallbackColor),
-                count: 0,
-                meta: null,
-            });
-            nodeStats.set(`debit:${remainderLabel}`, {count: 0, amount: remainder});
+            if (tx.entryType === "credit") {
+                for (let index = chain.length - 1; index >= 0; index -= 1) {
+                    const current = chain[index];
+                    const sourceIndex = ensureCategoryNode("credit", current);
+                    const targetIndex =
+                        index > 0 ? ensureCategoryNode("credit", chain[index - 1]) : netIncomeIndex;
+                    addLink(
+                        sourceIndex,
+                        targetIndex,
+                        value,
+                        colorWithAlpha(current.color, 0.45, current.color),
+                        1,
+                        {entryType: "credit", categoryId: current.categoryId, label: current.label}
+                    );
+                }
+            } else {
+                const root = chain[0];
+                const rootIndex = ensureCategoryNode("debit", root);
+                addLink(
+                    netIncomeIndex,
+                    rootIndex,
+                    value,
+                    root.color,
+                    1,
+                    {entryType: "debit", categoryId: root.categoryId, label: root.label}
+                );
+                for (let index = 0; index < chain.length - 1; index += 1) {
+                    const parent = chain[index];
+                    const child = chain[index + 1];
+                    const sourceIndex = ensureCategoryNode("debit", parent);
+                    const targetIndex = ensureCategoryNode("debit", child);
+                    addLink(
+                        sourceIndex,
+                        targetIndex,
+                        value,
+                        child.color,
+                        1,
+                        {entryType: "debit", categoryId: child.categoryId, label: child.label}
+                    );
+                }
+            }
         }
 
         if (!links.size) {
             return null;
+        }
+
+        nodeStats.set("net:income", {count: totalCreditCount, amount: totalCredits});
+
+        const remainder = Number((totalCredits - totalDebits).toFixed(2));
+        if (includeUnknown && remainder > 0) {
+            const remainderIndex = ensureNode(`debit:${remainderLabel}`, remainderLabel, sankeyCategoryFallbackColor, null);
+            addLink(
+                netIncomeIndex,
+                remainderIndex,
+                remainder,
+                colorWithAlpha(sankeyCategoryFallbackColor, 0.45, sankeyCategoryFallbackColor),
+                0,
+                null
+            );
+            nodeStats.set(`debit:${remainderLabel}`, {count: 0, amount: remainder});
         }
 
         const sources: number[] = [];
