@@ -123,7 +123,6 @@
             <CategoryBadge
                 name={hex ?? label}
                 color={hex ?? ""}
-                primaryWhenNoColor={true}
                 className="cursor-pointer"
             />
         </button>

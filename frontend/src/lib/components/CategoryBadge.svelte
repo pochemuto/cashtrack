@@ -1,7 +1,6 @@
 <script lang="ts">
     export let name: string;
     export let color = "";
-    export let primaryWhenNoColor = false;
     export let className = "";
     export let editable = false;
     export let placeholder = "Название";
@@ -22,7 +21,7 @@
         const textColor = luminance > 0.6 ? "#000000" : "#FFFFFF";
         return `background-color: #${hex.toUpperCase()}; border-color: #${hex.toUpperCase()}; color: ${textColor};`;
     })();
-    $: badgeClass = `badge badge-ghost${!hasColor && primaryWhenNoColor ? " badge-primary" : ""}${className ? ` ${className}` : ""}${editable ? " badge-editable" : ""}`;
+    $: badgeClass = `badge badge-ghost${className ? ` ${className}` : ""}${editable ? " badge-editable" : ""}`;
 
     function handleKeydown(event: KeyboardEvent) {
         if (!editable) {

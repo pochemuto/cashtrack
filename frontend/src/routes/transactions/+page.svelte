@@ -695,7 +695,6 @@
                                                     <CategoryBadge
                                                         name={$categories.find((category) => category.id === tx.categoryId)?.name || "Категория"}
                                                         color={$categories.find((category) => category.id === tx.categoryId)?.color || ""}
-                                                        primaryWhenNoColor={true}
                                                     />
                                                 {:else}
                                                     <CategoryBadge name="Без категории" />
@@ -710,7 +709,7 @@
                                                 {#each $categories as category}
                                                     <li>
                                                         <button type="button" on:click={(event) => handleCategorySelect(event, tx.id, category.id)}>
-                                                            <CategoryBadge name={category.name} color={category.color} primaryWhenNoColor={true} />
+                                                            <CategoryBadge name={category.name} color={category.color} />
                                                         </button>
                                                     </li>
                                                 {/each}

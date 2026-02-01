@@ -1,0 +1,88 @@
+<script lang="ts">
+    import {createEventDispatcher, onMount} from "svelte";
+    import CategoryColorPicker from "$lib/components/CategoryColorPicker.svelte";
+    import CategoryBadge from "$lib/components/CategoryBadge.svelte";
+
+    export let open = false;
+    export let title = "Категория";
+    export let name = "";
+    export let color: string | null = null;
+    export let confirmLabel = "Сохранить";
+    export let saving = false;
+
+    const dispatch = createEventDispatcher();
+    let nameInput: {focus: () => void} | null = null;
+
+    function handleCancel() {
+        dispatch("cancel");
+    }
+
+    function handleSave() {
+        dispatch("save");
+    }
+
+    function handleKeydown(event: KeyboardEvent) {
+        if (!open) {
+            return;
+        }
+        if (event.key === "Escape") {
+            event.preventDefault();
+            handleCancel();
+        }
+    }
+
+    $: if (open) {
+        queueMicrotask(() => nameInput?.focus());
+    }
+
+    onMount(() => {
+        window.addEventListener("keydown", handleKeydown);
+        return () => window.removeEventListener("keydown", handleKeydown);
+    });
+</script>
+
+{#if open}
+    <div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="category-editor-title">
+        <div class="modal-box">
+            <h3 id="category-editor-title" class="text-lg font-semibold">{title}</h3>
+            <form class="mt-4 space-y-4" on:submit|preventDefault={handleSave}>
+                <div class="form-control w-full">
+                    <CategoryBadge
+                        bind:this={nameInput}
+                        bind:name={name}
+                        color={color ?? ""}
+                        editable={true}
+                        placeholder="Название категории"
+                        className="badge-lg"
+                    />
+                </div>
+                <div class="form-control w-full">
+                    <div class="label">
+                        <button
+                            class="btn btn-ghost btn-xs"
+                            type="button"
+                            on:click={() => (color = null)}
+                            disabled={!color}
+                        >
+                            Без цвета
+                        </button>
+                    </div>
+                    <CategoryColorPicker bind:hex={color} label="Цвет" inline={true} nullable={false} />
+                </div>
+                <div class="modal-action">
+                    <button
+                        class="btn btn-primary"
+                        type="submit"
+                        disabled={saving || !name.trim()}
+                    >
+                        {confirmLabel}
+                    </button>
+                    <button class="btn btn-ghost" type="button" on:click={handleCancel}>
+                        Отмена
+                    </button>
+                </div>
+            </form>
+        </div>
+        <button class="modal-backdrop" type="button" on:click={handleCancel} aria-label="close"></button>
+    </div>
+{/if}
