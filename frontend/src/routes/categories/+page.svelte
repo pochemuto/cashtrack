@@ -38,6 +38,9 @@
     let menuElement: HTMLUListElement | null = null;
     let menuAnchor: HTMLElement | null = null;
     let lastUserId: number | null = null;
+    let deleteModalOpen = false;
+    let deleteCategoryId: number | null = null;
+    let deleteCategoryName = "";
 
     $: categoryMap = new Map($categories.map((category) => [category.id, category.name]));
 
@@ -153,6 +156,27 @@
         } catch {
             actionError = "Не удалось удалить категорию.";
         }
+    }
+
+    function requestDeleteCategory(category: Category) {
+        deleteCategoryId = category.id;
+        deleteCategoryName = category.name;
+        deleteModalOpen = true;
+    }
+
+    function cancelDeleteCategory() {
+        deleteModalOpen = false;
+        deleteCategoryId = null;
+        deleteCategoryName = "";
+    }
+
+    async function confirmDeleteCategory() {
+        if (deleteCategoryId === null) {
+            return;
+        }
+        const categoryId = deleteCategoryId;
+        cancelDeleteCategory();
+        await deleteCategory(categoryId);
     }
 
     function openCreateCategory() {
@@ -437,19 +461,22 @@
             {:else}
                 <div class="space-y-2">
                     {#each $categories as category}
-                        <div class="flex flex-wrap items-center justify-between gap-3 rounded-box border border-base-200 bg-base-100 p-3">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <CategoryBadge name={category.name} color={category.color || ""} />
-                                {#if category.color}
-                                    <span class="text-xs opacity-70">{category.color}</span>
-                                {/if}
-                            </div>
+                        <div class="flex items-center gap-2">
                             <button
-                                class="btn btn-ghost btn-sm"
+                                class="btn btn-ghost btn-xs"
                                 type="button"
-                                on:click={(event) => openMenu(event, "category", category.id)}
+                                on:click|stopPropagation={() => requestDeleteCategory(category)}
+                                aria-label="Удалить категорию"
+                                title="Удалить категорию"
                             >
-                                ⋮
+                                ✕
+                            </button>
+                            <button
+                                class="p-0 cursor-pointer"
+                                type="button"
+                                on:click={() => openCategoryEditor(category)}
+                            >
+                                <CategoryBadge name={category.name} color={category.color || ""} />
                             </button>
                         </div>
                     {/each}
@@ -600,6 +627,26 @@
     on:save={handleCategorySave}
     on:cancel={cancelCategoryEdit}
 />
+
+{#if deleteModalOpen}
+    <div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="delete-category-title">
+        <div class="modal-box">
+            <h3 id="delete-category-title" class="text-lg font-semibold">Удалить категорию?</h3>
+            <p class="mt-3 text-sm opacity-80">
+                Категория “{deleteCategoryName}” будет удалена без возможности восстановления.
+            </p>
+            <div class="modal-action">
+                <button class="btn btn-error" type="button" on:click={confirmDeleteCategory}>
+                    Удалить
+                </button>
+                <button class="btn btn-ghost" type="button" on:click={cancelDeleteCategory}>
+                    Отмена
+                </button>
+            </div>
+        </div>
+        <button class="modal-backdrop" type="button" on:click={cancelDeleteCategory} aria-label="close"></button>
+    </div>
+{/if}
 
 {#if menuOpen}
     <ul

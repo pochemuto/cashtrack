@@ -1,11 +1,12 @@
 <script lang="ts">
     import {onMount} from "svelte";
-    import {Transactions} from "$lib/api";
+    import {Categories, Transactions} from "$lib/api";
     import type {Transaction, TransactionSummary} from "$lib/gen/api/v1/transactions_pb";
     import {Code, ConnectError} from "@connectrpc/connect";
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
+    import CategoryEditorModal from "$lib/components/CategoryEditorModal.svelte";
     import TransactionsSankey from "$lib/components/TransactionsSankey.svelte";
-    import {categories, categoriesLoading, loadCategories} from "$lib/stores/categories";
+    import {addCategory, categories, categoriesLoading, loadCategories} from "$lib/stores/categories";
     import {centsToNumber, formatCurrencyAmount, formatSignedCents} from "$lib/money";
     import {persistedBoolean} from "$lib/stores/persistedBoolean";
     import {user} from "../../user";
@@ -24,6 +25,11 @@
     let updateError = "";
     let categoryUpdates: Record<number, boolean> = {};
     let lastUserId: number | null = null;
+    let categoryEditorOpen = false;
+    let categoryEditorName = "";
+    let categoryEditorColor: string | null = null;
+    let categoryEditorTransactionId: number | null = null;
+    let categoryEditorSaving = false;
 
     let fromDate = "";
     let toDate = "";
@@ -280,6 +286,56 @@
     function handleCategorySelect(event: MouseEvent, transactionId: number, categoryId: number | null) {
         closeCategoryMenu(event);
         void updateTransactionCategory(transactionId, categoryId);
+    }
+
+    function openNewCategoryEditor(event: MouseEvent, transactionId: number) {
+        closeCategoryMenu(event);
+        categoryEditorTransactionId = transactionId;
+        categoryEditorName = "";
+        categoryEditorColor = null;
+        categoryEditorOpen = true;
+    }
+
+    function cancelNewCategoryEditor() {
+        categoryEditorOpen = false;
+        categoryEditorTransactionId = null;
+        categoryEditorName = "";
+        categoryEditorColor = null;
+        categoryEditorSaving = false;
+    }
+
+    async function saveNewCategory() {
+        if (categoryEditorSaving) {
+            return;
+        }
+        updateError = "";
+        const name = categoryEditorName.trim();
+        if (!name) {
+            return;
+        }
+        const color = (categoryEditorColor ?? "").trim();
+        categoryEditorSaving = true;
+        try {
+            const response = await Categories.createCategory({name, color});
+            if (!response.category) {
+                updateError = "Не удалось добавить категорию.";
+                return;
+            }
+            addCategory(response.category);
+            const transactionId = categoryEditorTransactionId;
+            cancelNewCategoryEditor();
+            if (transactionId !== null) {
+                await updateTransactionCategory(transactionId, response.category.id);
+            }
+        } catch (err) {
+            if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+                updateError = "Нужен вход для добавления категории.";
+                return;
+            }
+            updateError = "Не удалось добавить категорию.";
+        } finally {
+            categoryEditorSaving = false;
+        }
     }
 
     function resetFilters() {
@@ -631,7 +687,7 @@
                                     <td class="whitespace-nowrap">
                                         <div class="dropdown dropdown-start">
                                             <button
-                                                class="p-0"
+                                                class="p-0 cursor-pointer"
                                                 type="button"
                                                 disabled={$categoriesLoading || !$categories.length || categoryUpdates[tx.id]}
                                             >
@@ -658,6 +714,11 @@
                                                         </button>
                                                     </li>
                                                 {/each}
+                                                <li class="mt-1 border-t border-base-200 pt-1">
+                                                    <button type="button" on:click={(event) => openNewCategoryEditor(event, tx.id)}>
+                                                        Новая категория
+                                                    </button>
+                                                </li>
                                             </ul>
                                         </div>
                                     </td>
@@ -673,6 +734,17 @@
         </div>
     </div>
 </section>
+
+<CategoryEditorModal
+    open={categoryEditorOpen}
+    bind:name={categoryEditorName}
+    bind:color={categoryEditorColor}
+    title="Новая категория"
+    confirmLabel="Добавить"
+    saving={categoryEditorSaving}
+    on:save={saveNewCategory}
+    on:cancel={cancelNewCategoryEditor}
+/>
 
 <style>
 </style>
