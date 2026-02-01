@@ -644,7 +644,7 @@
 						type="text"
 						id="search-text"
 						bind:value={searchText}
-						placeholder="例如 Uber"
+						placeholder={$t('transactions.searchExample')}
 					/>
 				</div>
 				<div class="form-control flex flex-col">

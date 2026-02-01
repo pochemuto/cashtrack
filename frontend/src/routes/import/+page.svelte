@@ -4,6 +4,7 @@
 	import type { ReportInfo } from '$lib/gen/api/v1/reports_pb';
 	import { Code, ConnectError } from '@connectrpc/connect';
 	import { user } from '../../user';
+	import { t, date as formatDateI18n } from 'svelte-i18n';
 
 	type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
@@ -42,7 +43,7 @@
 	async function handleUpload() {
 		if (!file) {
 			status = 'error';
-			errorMessage = 'Выберите CSV файл.';
+			errorMessage = $t('import.errorNoFile');
 			return;
 		}
 
@@ -59,25 +60,25 @@
 			uploadedSize = file.size;
 			file = null;
 			status = 'success';
-			showToast('Файл загружен.');
+			showToast($t('import.uploadSuccess'));
 			await loadReports();
 			return;
 		} catch (err) {
 			if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-				errorMessage = 'Нужно войти в аккаунт, чтобы загрузить отчет.';
+				errorMessage = $t('import.errorLogin');
 			} else {
-				errorMessage = 'Не удалось загрузить файл.';
+				errorMessage = $t('import.errorUpload');
 			}
 			status = 'error';
 		}
 	}
 
-	function formatDate(value: string): string {
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) {
-			return value;
+	function formatDate(value: string | Date): string {
+		const d = new Date(value);
+		if (Number.isNaN(d.getTime())) {
+			return String(value);
 		}
-		return date.toLocaleString('ru-RU', {
+		return $formatDateI18n(d, {
 			year: 'numeric',
 			month: 'short',
 			day: '2-digit',
@@ -102,19 +103,17 @@
 		} catch (err) {
 			if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
 				reports = [];
-				listError = 'Нужен вход для просмотра списка отчетов.';
+				listError = $t('import.errorListLogin');
 				return;
 			}
-			listError = 'Не удалось загрузить список отчетов.';
+			listError = $t('import.errorList');
 		} finally {
 			loadingReports = false;
 		}
 	}
 
 	async function handleDeleteReport(report: ReportInfo) {
-		const confirmed = confirm(
-			`Удалить файл "${report.filename}"? Все транзакции, загруженные из этого файла, будут удалены.`
-		);
+		const confirmed = confirm($t('import.deleteConfirm', { name: report.filename } as any));
 		if (!confirmed) {
 			return;
 		}
@@ -124,13 +123,13 @@
 		try {
 			await Reports.deleteReport({ id: report.id });
 			await loadReports();
-			showToast('Файл удален.');
+			showToast($t('import.deleteSuccess'));
 		} catch (err) {
 			if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-				listError = 'Нужен вход для удаления отчета.';
+				listError = $t('import.errorDeleteLogin');
 				return;
 			}
-			listError = 'Не удалось удалить отчет.';
+			listError = $t('import.errorDelete');
 		} finally {
 			deletingReportId = null;
 		}
@@ -153,10 +152,10 @@
 			URL.revokeObjectURL(url);
 		} catch (err) {
 			if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-				listError = 'Нужен вход для скачивания отчета.';
+				listError = $t('import.errorDownloadLogin');
 				return;
 			}
-			listError = 'Не удалось скачать отчет.';
+			listError = $t('import.errorDownload');
 		}
 	}
 
@@ -195,7 +194,7 @@
 </script>
 
 <svelte:head>
-	<title>Import Report</title>
+	<title>{$t('import.pageTitle')}</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-2xl">
@@ -209,21 +208,21 @@
 	<div class="card bg-base-100 shadow-xl">
 		<div class="card-body gap-6">
 			<div class="space-y-2">
-				<h1 class="text-2xl font-semibold">Импорт финансового отчета</h1>
+				<h1 class="text-2xl font-semibold">{$t('import.title')}</h1>
 				<p class="text-sm opacity-70">
-					Импортируйте CSV файл, он будет сохранен в базе данных без изменений.
+					{$t('import.description')}
 				</p>
 			</div>
 
 			{#if $user === undefined}
 				<div class="alert alert-warning">
-					<span>Войдите в аккаунт, чтобы загрузить отчет.</span>
+					<span>{$t('import.loginRequired')}</span>
 				</div>
 			{/if}
 
 			<div class="form-control gap-3">
 				<label class="label" for="csv-file-input">
-					<span class="label-text">CSV файл</span>
+					<span class="label-text">{$t('import.fileLabel')}</span>
 				</label>
 				<input
 					class="file-input file-input-bordered w-full"
@@ -241,7 +240,7 @@
 					onclick={handleUpload}
 					disabled={status === 'uploading' || !file}
 				>
-					{status === 'uploading' ? 'Импорт...' : 'Импортировать'}
+					{status === 'uploading' ? $t('import.buttonUploading') : $t('import.button')}
 				</button>
 				{#if file}
 					<span class="text-sm opacity-70">{file.name} · {formatBytes(file.size)}</span>
@@ -257,24 +256,24 @@
 			<div class="divider"></div>
 
 			<div class="space-y-3">
-				<h2 class="text-lg font-semibold">Загруженные файлы</h2>
+				<h2 class="text-lg font-semibold">{$t('import.uploadedFiles')}</h2>
 				{#if loadingReports}
-					<div class="text-sm opacity-70">Загрузка списка...</div>
+					<div class="text-sm opacity-70">{$t('import.loadingList')}</div>
 				{:else if listError}
 					<div class="alert alert-error">
 						<span>{listError}</span>
 					</div>
 				{:else if reports.length === 0}
-					<div class="text-sm opacity-70">Пока нет загруженных отчетов.</div>
+					<div class="text-sm opacity-70">{$t('import.listEmpty')}</div>
 				{:else}
 					<div class="overflow-x-auto">
 						<table class="table">
 							<thead>
 								<tr>
-									<th>Файл</th>
-									<th>Дата загрузки</th>
-									<th>Размер</th>
-									<th>Статус</th>
+									<th>{$t('import.table.file')}</th>
+									<th>{$t('import.table.date')}</th>
+									<th>{$t('import.table.size')}</th>
+									<th>{$t('import.table.status')}</th>
 									<th></th>
 								</tr>
 							</thead>
@@ -320,7 +319,7 @@
 												<ul class="menu dropdown-content rounded-box bg-base-100 p-2 shadow">
 													<li>
 														<button type="button" onclick={() => handleDeleteReport(report)}>
-															Удалить
+															{$t('common.delete')}
 														</button>
 													</li>
 												</ul>
