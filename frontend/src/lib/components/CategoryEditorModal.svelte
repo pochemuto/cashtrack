@@ -1,136 +1,162 @@
 <script lang="ts">
-    import {createEventDispatcher, onMount} from "svelte";
-    import type {Category} from "$lib/gen/api/v1/categories_pb";
-    import CategoryColorPicker from "$lib/components/CategoryColorPicker.svelte";
-    import CategoryBadge from "$lib/components/CategoryBadge.svelte";
+	import { onMount } from 'svelte';
+	import type { Category } from '$lib/gen/api/v1/categories_pb';
+	import CategoryColorPicker from '$lib/components/CategoryColorPicker.svelte';
+	import CategoryBadge from '$lib/components/CategoryBadge.svelte';
 
-    export let open = false;
-    export let title = "Категория";
-    export let name = "";
-    export let color: string | null = null;
-    export let categories: Category[] = [];
-    export let parentId: number | null = null;
-    export let isGroup = false;
-    export let selfId: number | null = null;
-    export let showParent = true;
-    export let showGroupToggle = true;
-    export let confirmLabel = "Сохранить";
-    export let saving = false;
+	interface Props {
+		open?: boolean;
+		title?: string;
+		name?: string;
+		color?: string | null;
+		categories?: Category[];
+		parentId?: number | null;
+		isGroup?: boolean;
+		selfId?: number | null;
+		showParent?: boolean;
+		showGroupToggle?: boolean;
+		confirmLabel?: string;
+		saving?: boolean;
+		oncancel?: () => void;
+		onsave?: () => void;
+	}
 
-    const dispatch = createEventDispatcher();
-    let nameInput: {focus: () => void} | null = null;
-    let parentIdValue = "";
-    let parentOptions: Category[] = [];
+	let {
+		open = false,
+		title = 'Категория',
+		name = $bindable(''),
+		color = $bindable(null),
+		categories = [],
+		parentId = $bindable(null),
+		isGroup = $bindable(false),
+		selfId = null,
+		showParent = true,
+		showGroupToggle = true,
+		confirmLabel = 'Сохранить',
+		saving = false,
+		oncancel,
+		onsave
+	}: Props = $props();
 
-    function handleCancel() {
-        dispatch("cancel");
-    }
+	let nameInput: { focus: () => void } | null = $state(null);
+	let parentOptions = $derived(categories.filter((category) => category.id !== selfId));
+	let parentIdValue = $derived(parentId ? String(parentId) : '');
 
-    function handleSave() {
-        dispatch("save");
-    }
+	function handleCancel() {
+		oncancel?.();
+	}
 
-    function handleParentChange(event: Event) {
-        const value = (event.currentTarget as HTMLSelectElement).value;
-        parentId = value ? Number(value) : null;
-    }
+	function handleSave() {
+		onsave?.();
+	}
 
-    function handleKeydown(event: KeyboardEvent) {
-        if (!open) {
-            return;
-        }
-        if (event.key === "Escape") {
-            event.preventDefault();
-            handleCancel();
-        }
-    }
+	function handleParentChange(event: Event) {
+		const value = (event.currentTarget as HTMLSelectElement).value;
+		parentId = value ? Number(value) : null;
+	}
 
-    $: if (open) {
-        queueMicrotask(() => nameInput?.focus());
-    }
+	function handleKeydown(event: KeyboardEvent) {
+		if (!open) {
+			return;
+		}
+		if (event.key === 'Escape') {
+			event.preventDefault();
+			handleCancel();
+		}
+	}
 
-    $: parentOptions = categories.filter((category) => category.id !== selfId);
+	$effect(() => {
+		if (open) {
+			queueMicrotask(() => nameInput?.focus());
+		}
+	});
 
-    $: parentIdValue = parentId ? String(parentId) : "";
+	$effect(() => {
+		if (parentId !== null && !parentOptions.some((category) => category.id === parentId)) {
+			parentId = null;
+		}
+	});
 
-    $: if (parentId !== null && !parentOptions.some((category) => category.id === parentId)) {
-        parentId = null;
-    }
-
-    onMount(() => {
-        window.addEventListener("keydown", handleKeydown);
-        return () => window.removeEventListener("keydown", handleKeydown);
-    });
+	$effect(() => {
+		window.addEventListener('keydown', handleKeydown);
+		return () => window.removeEventListener('keydown', handleKeydown);
+	});
 </script>
 
 {#if open}
-    <div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="category-editor-title">
-        <div class="modal-box">
-            <h3 id="category-editor-title" class="text-lg font-semibold">{title}</h3>
-            <form class="mt-4 space-y-4" on:submit|preventDefault={handleSave}>
-                <div class="form-control w-full">
-                    <CategoryBadge
-                        bind:this={nameInput}
-                        bind:name={name}
-                        color={color ?? ""}
-                        editable={true}
-                        placeholder="Название категории"
-                        className="badge-lg"
-                    />
-                </div>
-                <div class="form-control w-full">
-                    <div class="label">
-                        <button
-                            class="btn btn-ghost btn-xs"
-                            type="button"
-                            on:click={() => (color = null)}
-                            disabled={!color}
-                        >
-                            Без цвета
-                        </button>
-                    </div>
-                    <CategoryColorPicker bind:hex={color} label="Цвет" inline={true} nullable={false} />
-                </div>
-                {#if showParent}
-                    <div class="form-control w-full">
-                        <label class="label">
-                            <span class="label-text">Родительская категория</span>
-                        </label>
-                        <select
-                            class="select select-bordered"
-                            bind:value={parentIdValue}
-                            on:change={handleParentChange}
-                            disabled={!parentOptions.length}
-                        >
-                            <option value="">Без родителя</option>
-                            {#each parentOptions as category}
-                                <option value={String(category.id)}>
-                                    {category.name}{category.isGroup ? " (группа)" : ""}
-                                </option>
-                            {/each}
-                        </select>
-                    </div>
-                {/if}
-                {#if showGroupToggle}
-                    <label class="label cursor-pointer gap-2">
-                        <input class="checkbox checkbox-sm" type="checkbox" bind:checked={isGroup} />
-                        <span class="label-text">Групповая категория</span>
-                    </label>
-                {/if}
-                <div class="modal-action">
-                    <button
-                        class="btn btn-primary"
-                        type="submit"
-                        disabled={saving || !name.trim()}
-                    >
-                        {confirmLabel}
-                    </button>
-                    <button class="btn btn-ghost" type="button" on:click={handleCancel}>
-                        Отмена
-                    </button>
-                </div>
-            </form>
-        </div>
-        <button class="modal-backdrop" type="button" on:click={handleCancel} aria-label="close"></button>
-    </div>
+	<div
+		class="modal modal-open"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="category-editor-title"
+	>
+		<div class="modal-box">
+			<h3 id="category-editor-title" class="text-lg font-semibold">{title}</h3>
+			<form
+				class="mt-4 space-y-4"
+				onsubmit={(e) => {
+					e.preventDefault();
+					handleSave();
+				}}
+			>
+				<div class="form-control w-full">
+					<CategoryBadge
+						bind:this={nameInput}
+						bind:name
+						color={color ?? ''}
+						editable={true}
+						placeholder="Название категории"
+						className="badge-lg"
+					/>
+				</div>
+				<div class="form-control w-full">
+					<div class="label">
+						<button
+							class="btn btn-ghost btn-xs"
+							type="button"
+							onclick={() => (color = null)}
+							disabled={!color}
+						>
+							Без цвета
+						</button>
+					</div>
+					<CategoryColorPicker bind:hex={color} label="Цвет" inline={true} nullable={false} />
+				</div>
+				{#if showParent}
+					<div class="form-control w-full">
+						<label class="label" for="parent-category-select">
+							<span class="label-text">Родительская категория</span>
+						</label>
+						<select
+							class="select select-bordered"
+							id="parent-category-select"
+							bind:value={parentId}
+							onchange={handleParentChange}
+							disabled={!parentOptions.length}
+						>
+							<option value="">Без родителя</option>
+							{#each parentOptions as category}
+								<option value={String(category.id)}>
+									{category.name}{category.isGroup ? ' (группа)' : ''}
+								</option>
+							{/each}
+						</select>
+					</div>
+				{/if}
+				{#if showGroupToggle}
+					<label class="label cursor-pointer gap-2">
+						<input class="checkbox checkbox-sm" type="checkbox" bind:checked={isGroup} />
+						<span class="label-text">Групповая категория</span>
+					</label>
+				{/if}
+				<div class="modal-action">
+					<button class="btn btn-primary" type="submit" disabled={saving || !name.trim()}>
+						{confirmLabel}
+					</button>
+					<button class="btn btn-ghost" type="button" onclick={handleCancel}> Отмена </button>
+				</div>
+			</form>
+		</div>
+		<button class="modal-backdrop" type="button" onclick={handleCancel} aria-label="close"></button>
+	</div>
 {/if}
