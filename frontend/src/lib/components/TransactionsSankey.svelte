@@ -354,7 +354,7 @@
             {source: number; target: number; value: number; color: string; count: number; meta: FilterMeta | null}
         >();
         const netIncomeLabel = "Net income";
-        const remainderLabel = "Unknown";
+    const remainderLabel = "Remainder";
         let totalCredits = 0;
         let totalDebits = 0;
         let totalCreditCount = 0;
@@ -711,7 +711,7 @@
                     {/each}
                     <label class="flex items-center gap-2 rounded-box px-2 py-1 whitespace-nowrap">
                         <input class="checkbox checkbox-xs" type="checkbox" bind:checked={showUnknownCategory} />
-                        <span>Unknown (остаток)</span>
+                        <span>Remainder</span>
                     </label>
                 </div>
             </div>
