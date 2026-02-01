@@ -37,12 +37,16 @@ const (
 	AuthServiceMeProcedure = "/api.v1.AuthService/Me"
 	// AuthServiceLogoutProcedure is the fully-qualified name of the AuthService's Logout RPC.
 	AuthServiceLogoutProcedure = "/api.v1.AuthService/Logout"
+	// AuthServiceUpdateLanguageProcedure is the fully-qualified name of the AuthService's
+	// UpdateLanguage RPC.
+	AuthServiceUpdateLanguageProcedure = "/api.v1.AuthService/UpdateLanguage"
 )
 
 // AuthServiceClient is a client for the api.v1.AuthService service.
 type AuthServiceClient interface {
 	Me(context.Context, *v1.AuthMeRequest) (*v1.AuthMeResponse, error)
 	Logout(context.Context, *v1.AuthLogoutRequest) (*v1.AuthLogoutResponse, error)
+	UpdateLanguage(context.Context, *v1.UpdateLanguageRequest) (*v1.UpdateLanguageResponse, error)
 }
 
 // NewAuthServiceClient constructs a client for the api.v1.AuthService service. By default, it uses
@@ -68,13 +72,20 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("Logout")),
 			connect.WithClientOptions(opts...),
 		),
+		updateLanguage: connect.NewClient[v1.UpdateLanguageRequest, v1.UpdateLanguageResponse](
+			httpClient,
+			baseURL+AuthServiceUpdateLanguageProcedure,
+			connect.WithSchema(authServiceMethods.ByName("UpdateLanguage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	me     *connect.Client[v1.AuthMeRequest, v1.AuthMeResponse]
-	logout *connect.Client[v1.AuthLogoutRequest, v1.AuthLogoutResponse]
+	me             *connect.Client[v1.AuthMeRequest, v1.AuthMeResponse]
+	logout         *connect.Client[v1.AuthLogoutRequest, v1.AuthLogoutResponse]
+	updateLanguage *connect.Client[v1.UpdateLanguageRequest, v1.UpdateLanguageResponse]
 }
 
 // Me calls api.v1.AuthService.Me.
@@ -95,10 +106,20 @@ func (c *authServiceClient) Logout(ctx context.Context, req *v1.AuthLogoutReques
 	return nil, err
 }
 
+// UpdateLanguage calls api.v1.AuthService.UpdateLanguage.
+func (c *authServiceClient) UpdateLanguage(ctx context.Context, req *v1.UpdateLanguageRequest) (*v1.UpdateLanguageResponse, error) {
+	response, err := c.updateLanguage.CallUnary(ctx, connect.NewRequest(req))
+	if response != nil {
+		return response.Msg, err
+	}
+	return nil, err
+}
+
 // AuthServiceHandler is an implementation of the api.v1.AuthService service.
 type AuthServiceHandler interface {
 	Me(context.Context, *v1.AuthMeRequest) (*v1.AuthMeResponse, error)
 	Logout(context.Context, *v1.AuthLogoutRequest) (*v1.AuthLogoutResponse, error)
+	UpdateLanguage(context.Context, *v1.UpdateLanguageRequest) (*v1.UpdateLanguageResponse, error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -120,12 +141,20 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("Logout")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceUpdateLanguageHandler := connect.NewUnaryHandlerSimple(
+		AuthServiceUpdateLanguageProcedure,
+		svc.UpdateLanguage,
+		connect.WithSchema(authServiceMethods.ByName("UpdateLanguage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/api.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceMeProcedure:
 			authServiceMeHandler.ServeHTTP(w, r)
 		case AuthServiceLogoutProcedure:
 			authServiceLogoutHandler.ServeHTTP(w, r)
+		case AuthServiceUpdateLanguageProcedure:
+			authServiceUpdateLanguageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -141,4 +170,8 @@ func (UnimplementedAuthServiceHandler) Me(context.Context, *v1.AuthMeRequest) (*
 
 func (UnimplementedAuthServiceHandler) Logout(context.Context, *v1.AuthLogoutRequest) (*v1.AuthLogoutResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.v1.AuthService.Logout is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) UpdateLanguage(context.Context, *v1.UpdateLanguageRequest) (*v1.UpdateLanguageResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("api.v1.AuthService.UpdateLanguage is not implemented"))
 }

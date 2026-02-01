@@ -9,6 +9,8 @@ import (
 
 	apiv1 "cashtrack/backend/gen/api/v1"
 	"cashtrack/backend/gen/api/v1/apiv1connect"
+	dbgen "cashtrack/backend/gen/db"
+
 	"connectrpc.com/connect"
 	"connectrpc.com/validate"
 )
@@ -62,6 +64,28 @@ func (s *AuthService) Logout(ctx context.Context, req *apiv1.AuthLogoutRequest) 
 	callInfo.ResponseHeader().Add("Set-Cookie", cookie.String())
 
 	return &apiv1.AuthLogoutResponse{}, nil
+}
+
+func (s *AuthService) UpdateLanguage(ctx context.Context, req *apiv1.UpdateLanguageRequest) (*apiv1.UpdateLanguageResponse, error) {
+	if req.Language == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("language is required"))
+	}
+
+	user, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.db.Queries.UpdateUserLanguage(ctx, dbgen.UpdateUserLanguageParams{
+		Language: req.Language,
+		ID:       int32(user.Id),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	user.Language = req.Language
+	return &apiv1.UpdateLanguageResponse{User: user}, nil
 }
 
 func isSecureRequest(header http.Header) bool {

@@ -111,7 +111,8 @@ ALTER SEQUENCE public.transactions_id_seq OWNED BY public.transactions.id;
 CREATE TABLE public.users (
     id integer NOT NULL,
     username character varying(255) NOT NULL,
-    password character varying(255) NOT NULL
+    password character varying(255) NOT NULL,
+    language character varying(10) DEFAULT 'en'::character varying NOT NULL
 );
 ALTER TABLE public.users ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.users_id_seq

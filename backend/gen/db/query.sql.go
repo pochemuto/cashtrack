@@ -259,9 +259,9 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (username, password)
-VALUES ($1, $2)
-RETURNING id, username
+INSERT INTO users (username, password, language)
+VALUES ($1, $2, 'en')
+RETURNING id, username, language
 `
 
 type CreateUserParams struct {
@@ -272,12 +272,13 @@ type CreateUserParams struct {
 type CreateUserRow struct {
 	ID       int32
 	Username string
+	Language string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser, arg.Username, arg.Password)
 	var i CreateUserRow
-	err := row.Scan(&i.ID, &i.Username)
+	err := row.Scan(&i.ID, &i.Username, &i.Language)
 	return i, err
 }
 
@@ -440,7 +441,7 @@ func (q *Queries) GetReportByID(ctx context.Context, arg GetReportByIDParams) (G
 }
 
 const getUserBySession = `-- name: GetUserBySession :one
-SELECT u.id, u.username, s.expires
+SELECT u.id, u.username, u.language, s.expires
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.id = $1
@@ -449,18 +450,24 @@ WHERE s.id = $1
 type GetUserBySessionRow struct {
 	ID       int32
 	Username string
+	Language string
 	Expires  pgtype.Timestamptz
 }
 
 func (q *Queries) GetUserBySession(ctx context.Context, id pgtype.UUID) (GetUserBySessionRow, error) {
 	row := q.db.QueryRow(ctx, getUserBySession, id)
 	var i GetUserBySessionRow
-	err := row.Scan(&i.ID, &i.Username, &i.Expires)
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Language,
+		&i.Expires,
+	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username
+SELECT id, username, language
 FROM users
 WHERE username = $1
 `
@@ -468,12 +475,13 @@ WHERE username = $1
 type GetUserByUsernameRow struct {
 	ID       int32
 	Username string
+	Language string
 }
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error) {
 	row := q.db.QueryRow(ctx, getUserByUsername, username)
 	var i GetUserByUsernameRow
-	err := row.Scan(&i.ID, &i.Username)
+	err := row.Scan(&i.ID, &i.Username, &i.Language)
 	return i, err
 }
 
@@ -1124,6 +1132,22 @@ func (q *Queries) UpdateTransactionCategory(ctx context.Context, arg UpdateTrans
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const updateUserLanguage = `-- name: UpdateUserLanguage :exec
+UPDATE users
+SET language = $1
+WHERE id = $2
+`
+
+type UpdateUserLanguageParams struct {
+	Language string
+	ID       int32
+}
+
+func (q *Queries) UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error {
+	_, err := q.db.Exec(ctx, updateUserLanguage, arg.Language, arg.ID)
+	return err
 }
 
 const upsertExchangeRate = `-- name: UpsertExchangeRate :exec

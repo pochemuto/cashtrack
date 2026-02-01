@@ -6,7 +6,7 @@
 	import { cancelGoogleSignIn, initializeGoogleSignIn } from '$lib/auth/google';
 	import { resolveApiUrl } from '$lib/url';
 	import { setupI18n } from '$lib/i18n';
-	import { isLoading, t } from 'svelte-i18n';
+	import { isLoading, t, locale } from 'svelte-i18n';
 
 	setupI18n();
 
@@ -54,6 +54,12 @@
 			}
 			promptRequested = false;
 			cancelGoogleSignIn();
+
+			// Sync locale from user profile if available
+			if (value?.language) {
+				locale.set(value.language);
+				localStorage.setItem('locale', value.language);
+			}
 		});
 
 		return () => {
@@ -89,6 +95,9 @@
 					{$user.username}
 				</div>
 				<ul class="menu dropdown-content mt-2 w-40 rounded-box bg-base-100 p-2 shadow">
+					<li>
+						<a href="/settings">{$t('nav.settings')}</a>
+					</li>
 					<li>
 						<button type="button" onclick={() => logoutUser()}>{$t('auth.signOut')}</button>
 					</li>

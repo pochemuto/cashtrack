@@ -12,14 +12,14 @@ INSERT INTO todo (title, user_id)
 SELECT unnest(sqlc.arg(titles)::text[]) AS title, sqlc.arg(user_id) AS user_id;
 
 -- name: GetUserByUsername :one
-SELECT id, username
+SELECT id, username, language
 FROM users
 WHERE username = $1;
 
 -- name: CreateUser :one
-INSERT INTO users (username, password)
-VALUES ($1, $2)
-RETURNING id, username;
+INSERT INTO users (username, password, language)
+VALUES ($1, $2, 'en')
+RETURNING id, username, language;
 
 -- name: CreateSession :one
 INSERT INTO sessions (user_id, expires)
@@ -31,7 +31,7 @@ DELETE FROM sessions
 WHERE id = $1;
 
 -- name: GetUserBySession :one
-SELECT u.id, u.username, s.expires
+SELECT u.id, u.username, u.language, s.expires
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.id = $1;
@@ -269,3 +269,8 @@ WHERE user_id = $1
 ORDER BY posted_date DESC, id DESC
 LIMIT sqlc.arg(limit_count)
 OFFSET sqlc.arg(offset_count);
+
+-- name: UpdateUserLanguage :exec
+UPDATE users
+SET language = $1
+WHERE id = $2;

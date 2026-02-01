@@ -11,6 +11,7 @@ import (
 
 	apiv1 "cashtrack/backend/gen/api/v1"
 	dbgen "cashtrack/backend/gen/db"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -106,7 +107,7 @@ func parseIDToken(credential string) (idTokenClaims, error) {
 func ensureUser(ctx context.Context, db *Db, username string) (*apiv1.User, error) {
 	row, err := db.Queries.GetUserByUsername(ctx, username)
 	if err == nil {
-		return &apiv1.User{Id: row.ID, Username: row.Username}, nil
+		return &apiv1.User{Id: row.ID, Username: row.Username, Language: row.Language}, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
@@ -119,7 +120,7 @@ func ensureUser(ctx context.Context, db *Db, username string) (*apiv1.User, erro
 	if err != nil {
 		return nil, err
 	}
-	return &apiv1.User{Id: created.ID, Username: created.Username}, nil
+	return &apiv1.User{Id: created.ID, Username: created.Username, Language: created.Language}, nil
 }
 
 func createSession(ctx context.Context, db *Db, userID int32) (string, time.Time, error) {
@@ -143,7 +144,7 @@ func getUserBySession(ctx context.Context, db *Db, sessionID string) (*apiv1.Use
 	if err != nil {
 		return nil, time.Time{}, err
 	}
-	return &apiv1.User{Id: row.ID, Username: row.Username}, row.Expires.Time, nil
+	return &apiv1.User{Id: row.ID, Username: row.Username, Language: row.Language}, row.Expires.Time, nil
 }
 
 func parseSessionID(sessionID string) (pgtype.UUID, error) {

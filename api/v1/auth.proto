@@ -5,6 +5,7 @@ package api.v1;
 message User {
   int32 id = 1;
   string username = 2;
+  string language = 3;
 }
 
 message AuthMeRequest {}
@@ -17,7 +18,16 @@ message AuthLogoutRequest {}
 
 message AuthLogoutResponse {}
 
+message UpdateLanguageRequest {
+  string language = 1;
+}
+
+message UpdateLanguageResponse {
+  User user = 1;
+}
+
 service AuthService {
   rpc Me(AuthMeRequest) returns (AuthMeResponse) {}
   rpc Logout(AuthLogoutRequest) returns (AuthLogoutResponse) {}
+  rpc UpdateLanguage(UpdateLanguageRequest) returns (UpdateLanguageResponse) {}
 }

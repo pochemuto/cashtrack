@@ -24,7 +24,8 @@
         "categories": "Categories",
         "transactions": "Transactions",
         "reports": "Reports",
-        "import": "Import"
+        "import": "Import",
+        "settings": "Settings"
     },
     "categories": {
         "title": "Categories",
@@ -98,5 +99,9 @@
             "last30Days": "Last 30 days",
             "last90Days": "Last 90 days"
         }
+    },
+    "settings": {
+        "title": "Settings",
+        "language": "Language"
     }
 }

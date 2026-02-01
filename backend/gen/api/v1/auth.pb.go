@@ -25,6 +25,7 @@ type User struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Language      string                 `protobuf:"bytes,3,opt,name=language,proto3" json:"language,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -69,6 +70,13 @@ func (x *User) GetId() int32 {
 func (x *User) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *User) GetLanguage() string {
+	if x != nil {
+		return x.Language
 	}
 	return ""
 }
@@ -225,22 +233,116 @@ func (*AuthLogoutResponse) Descriptor() ([]byte, []int) {
 	return file_api_v1_auth_proto_rawDescGZIP(), []int{4}
 }
 
+type UpdateLanguageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Language      string                 `protobuf:"bytes,1,opt,name=language,proto3" json:"language,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateLanguageRequest) Reset() {
+	*x = UpdateLanguageRequest{}
+	mi := &file_api_v1_auth_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateLanguageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateLanguageRequest) ProtoMessage() {}
+
+func (x *UpdateLanguageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_auth_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateLanguageRequest.ProtoReflect.Descriptor instead.
+func (*UpdateLanguageRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_auth_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UpdateLanguageRequest) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+type UpdateLanguageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateLanguageResponse) Reset() {
+	*x = UpdateLanguageResponse{}
+	mi := &file_api_v1_auth_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateLanguageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateLanguageResponse) ProtoMessage() {}
+
+func (x *UpdateLanguageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_auth_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateLanguageResponse.ProtoReflect.Descriptor instead.
+func (*UpdateLanguageResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_auth_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *UpdateLanguageResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
 var File_api_v1_auth_proto protoreflect.FileDescriptor
 
 const file_api_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x11api/v1/auth.proto\x12\x06api.v1\"2\n" +
+	"\x11api/v1/auth.proto\x12\x06api.v1\"N\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\"\x0f\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x1a\n" +
+	"\blanguage\x18\x03 \x01(\tR\blanguage\"\x0f\n" +
 	"\rAuthMeRequest\"2\n" +
 	"\x0eAuthMeResponse\x12 \n" +
 	"\x04user\x18\x01 \x01(\v2\f.api.v1.UserR\x04user\"\x13\n" +
 	"\x11AuthLogoutRequest\"\x14\n" +
-	"\x12AuthLogoutResponse2\x87\x01\n" +
+	"\x12AuthLogoutResponse\"3\n" +
+	"\x15UpdateLanguageRequest\x12\x1a\n" +
+	"\blanguage\x18\x01 \x01(\tR\blanguage\":\n" +
+	"\x16UpdateLanguageResponse\x12 \n" +
+	"\x04user\x18\x01 \x01(\v2\f.api.v1.UserR\x04user2\xda\x01\n" +
 	"\vAuthService\x125\n" +
 	"\x02Me\x12\x15.api.v1.AuthMeRequest\x1a\x16.api.v1.AuthMeResponse\"\x00\x12A\n" +
-	"\x06Logout\x12\x19.api.v1.AuthLogoutRequest\x1a\x1a.api.v1.AuthLogoutResponse\"\x00Bt\n" +
+	"\x06Logout\x12\x19.api.v1.AuthLogoutRequest\x1a\x1a.api.v1.AuthLogoutResponse\"\x00\x12Q\n" +
+	"\x0eUpdateLanguage\x12\x1d.api.v1.UpdateLanguageRequest\x1a\x1e.api.v1.UpdateLanguageResponse\"\x00Bt\n" +
 	"\n" +
 	"com.api.v1B\tAuthProtoP\x01Z\"cashtrack/backend/gen/api/v1;apiv1\xa2\x02\x03AXX\xaa\x02\x06Api.V1\xca\x02\x06Api\\V1\xe2\x02\x12Api\\V1\\GPBMetadata\xea\x02\aApi::V1b\x06proto3"
 
@@ -256,25 +358,30 @@ func file_api_v1_auth_proto_rawDescGZIP() []byte {
 	return file_api_v1_auth_proto_rawDescData
 }
 
-var file_api_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_api_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_api_v1_auth_proto_goTypes = []any{
-	(*User)(nil),               // 0: api.v1.User
-	(*AuthMeRequest)(nil),      // 1: api.v1.AuthMeRequest
-	(*AuthMeResponse)(nil),     // 2: api.v1.AuthMeResponse
-	(*AuthLogoutRequest)(nil),  // 3: api.v1.AuthLogoutRequest
-	(*AuthLogoutResponse)(nil), // 4: api.v1.AuthLogoutResponse
+	(*User)(nil),                   // 0: api.v1.User
+	(*AuthMeRequest)(nil),          // 1: api.v1.AuthMeRequest
+	(*AuthMeResponse)(nil),         // 2: api.v1.AuthMeResponse
+	(*AuthLogoutRequest)(nil),      // 3: api.v1.AuthLogoutRequest
+	(*AuthLogoutResponse)(nil),     // 4: api.v1.AuthLogoutResponse
+	(*UpdateLanguageRequest)(nil),  // 5: api.v1.UpdateLanguageRequest
+	(*UpdateLanguageResponse)(nil), // 6: api.v1.UpdateLanguageResponse
 }
 var file_api_v1_auth_proto_depIdxs = []int32{
 	0, // 0: api.v1.AuthMeResponse.user:type_name -> api.v1.User
-	1, // 1: api.v1.AuthService.Me:input_type -> api.v1.AuthMeRequest
-	3, // 2: api.v1.AuthService.Logout:input_type -> api.v1.AuthLogoutRequest
-	2, // 3: api.v1.AuthService.Me:output_type -> api.v1.AuthMeResponse
-	4, // 4: api.v1.AuthService.Logout:output_type -> api.v1.AuthLogoutResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // 1: api.v1.UpdateLanguageResponse.user:type_name -> api.v1.User
+	1, // 2: api.v1.AuthService.Me:input_type -> api.v1.AuthMeRequest
+	3, // 3: api.v1.AuthService.Logout:input_type -> api.v1.AuthLogoutRequest
+	5, // 4: api.v1.AuthService.UpdateLanguage:input_type -> api.v1.UpdateLanguageRequest
+	2, // 5: api.v1.AuthService.Me:output_type -> api.v1.AuthMeResponse
+	4, // 6: api.v1.AuthService.Logout:output_type -> api.v1.AuthLogoutResponse
+	6, // 7: api.v1.AuthService.UpdateLanguage:output_type -> api.v1.UpdateLanguageResponse
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_auth_proto_init() }
@@ -288,7 +395,7 @@ func file_api_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_auth_proto_rawDesc), len(file_api_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

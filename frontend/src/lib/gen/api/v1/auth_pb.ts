@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file api/v1/auth.proto.
  */
 export const file_api_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("ChFhcGkvdjEvYXV0aC5wcm90bxIGYXBpLnYxIiQKBFVzZXISCgoCaWQYASABKAUSEAoIdXNlcm5hbWUYAiABKAkiDwoNQXV0aE1lUmVxdWVzdCIsCg5BdXRoTWVSZXNwb25zZRIaCgR1c2VyGAEgASgLMgwuYXBpLnYxLlVzZXIiEwoRQXV0aExvZ291dFJlcXVlc3QiFAoSQXV0aExvZ291dFJlc3BvbnNlMocBCgtBdXRoU2VydmljZRI1CgJNZRIVLmFwaS52MS5BdXRoTWVSZXF1ZXN0GhYuYXBpLnYxLkF1dGhNZVJlc3BvbnNlIgASQQoGTG9nb3V0EhkuYXBpLnYxLkF1dGhMb2dvdXRSZXF1ZXN0GhouYXBpLnYxLkF1dGhMb2dvdXRSZXNwb25zZSIAQnQKCmNvbS5hcGkudjFCCUF1dGhQcm90b1ABWiJjYXNodHJhY2svYmFja2VuZC9nZW4vYXBpL3YxO2FwaXYxogIDQVhYqgIGQXBpLlYxygIGQXBpXFYx4gISQXBpXFYxXEdQQk1ldGFkYXRh6gIHQXBpOjpWMWIGcHJvdG8z");
+  fileDesc("ChFhcGkvdjEvYXV0aC5wcm90bxIGYXBpLnYxIjYKBFVzZXISCgoCaWQYASABKAUSEAoIdXNlcm5hbWUYAiABKAkSEAoIbGFuZ3VhZ2UYAyABKAkiDwoNQXV0aE1lUmVxdWVzdCIsCg5BdXRoTWVSZXNwb25zZRIaCgR1c2VyGAEgASgLMgwuYXBpLnYxLlVzZXIiEwoRQXV0aExvZ291dFJlcXVlc3QiFAoSQXV0aExvZ291dFJlc3BvbnNlIikKFVVwZGF0ZUxhbmd1YWdlUmVxdWVzdBIQCghsYW5ndWFnZRgBIAEoCSI0ChZVcGRhdGVMYW5ndWFnZVJlc3BvbnNlEhoKBHVzZXIYASABKAsyDC5hcGkudjEuVXNlcjLaAQoLQXV0aFNlcnZpY2USNQoCTWUSFS5hcGkudjEuQXV0aE1lUmVxdWVzdBoWLmFwaS52MS5BdXRoTWVSZXNwb25zZSIAEkEKBkxvZ291dBIZLmFwaS52MS5BdXRoTG9nb3V0UmVxdWVzdBoaLmFwaS52MS5BdXRoTG9nb3V0UmVzcG9uc2UiABJRCg5VcGRhdGVMYW5ndWFnZRIdLmFwaS52MS5VcGRhdGVMYW5ndWFnZVJlcXVlc3QaHi5hcGkudjEuVXBkYXRlTGFuZ3VhZ2VSZXNwb25zZSIAQnQKCmNvbS5hcGkudjFCCUF1dGhQcm90b1ABWiJjYXNodHJhY2svYmFja2VuZC9nZW4vYXBpL3YxO2FwaXYxogIDQVhYqgIGQXBpLlYxygIGQXBpXFYx4gISQXBpXFYxXEdQQk1ldGFkYXRh6gIHQXBpOjpWMWIGcHJvdG8z");
 
 /**
  * @generated from message api.v1.User
@@ -25,6 +25,11 @@ export type User = Message<"api.v1.User"> & {
    * @generated from field: string username = 2;
    */
   username: string;
+
+  /**
+   * @generated from field: string language = 3;
+   */
+  language: string;
 };
 
 /**
@@ -91,6 +96,40 @@ export const AuthLogoutResponseSchema: GenMessage<AuthLogoutResponse> = /*@__PUR
   messageDesc(file_api_v1_auth, 4);
 
 /**
+ * @generated from message api.v1.UpdateLanguageRequest
+ */
+export type UpdateLanguageRequest = Message<"api.v1.UpdateLanguageRequest"> & {
+  /**
+   * @generated from field: string language = 1;
+   */
+  language: string;
+};
+
+/**
+ * Describes the message api.v1.UpdateLanguageRequest.
+ * Use `create(UpdateLanguageRequestSchema)` to create a new message.
+ */
+export const UpdateLanguageRequestSchema: GenMessage<UpdateLanguageRequest> = /*@__PURE__*/
+  messageDesc(file_api_v1_auth, 5);
+
+/**
+ * @generated from message api.v1.UpdateLanguageResponse
+ */
+export type UpdateLanguageResponse = Message<"api.v1.UpdateLanguageResponse"> & {
+  /**
+   * @generated from field: api.v1.User user = 1;
+   */
+  user?: User;
+};
+
+/**
+ * Describes the message api.v1.UpdateLanguageResponse.
+ * Use `create(UpdateLanguageResponseSchema)` to create a new message.
+ */
+export const UpdateLanguageResponseSchema: GenMessage<UpdateLanguageResponse> = /*@__PURE__*/
+  messageDesc(file_api_v1_auth, 6);
+
+/**
  * @generated from service api.v1.AuthService
  */
 export const AuthService: GenService<{
@@ -109,6 +148,14 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof AuthLogoutRequestSchema;
     output: typeof AuthLogoutResponseSchema;
+  },
+  /**
+   * @generated from rpc api.v1.AuthService.UpdateLanguage
+   */
+  updateLanguage: {
+    methodKind: "unary";
+    input: typeof UpdateLanguageRequestSchema;
+    output: typeof UpdateLanguageResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_api_v1_auth, 0);
