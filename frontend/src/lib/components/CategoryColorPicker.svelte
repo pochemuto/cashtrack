@@ -6,6 +6,8 @@
     export let hex: string | null = null;
     export let label = "Цвет";
     export let popoverClass = "rounded-box border border-base-200 bg-base-100 p-3 shadow-xl";
+    export let inline = false;
+    export let nullable = true;
 
     let open = false;
     let trigger: HTMLButtonElement | null = null;
@@ -13,6 +15,9 @@
     let popoverStyle = "";
 
     function updatePosition() {
+        if (inline) {
+            return;
+        }
         if (!trigger) {
             return;
         }
@@ -24,16 +29,25 @@
     }
 
     function openPicker() {
+        if (inline) {
+            return;
+        }
         open = true;
         updatePosition();
         requestAnimationFrame(updatePosition);
     }
 
     function closePicker() {
+        if (inline) {
+            return;
+        }
         open = false;
     }
 
     function togglePicker() {
+        if (inline) {
+            return;
+        }
         if (open) {
             closePicker();
         } else {
@@ -42,6 +56,9 @@
     }
 
     function handleDocumentClick(event: MouseEvent) {
+        if (inline) {
+            return;
+        }
         if (!open) {
             return;
         }
@@ -53,12 +70,18 @@
     }
 
     function handleKeydown(event: KeyboardEvent) {
+        if (inline) {
+            return;
+        }
         if (event.key === "Escape") {
             closePicker();
         }
     }
 
     onMount(() => {
+        if (inline) {
+            return;
+        }
         const handleReposition = () => {
             if (open) {
                 updatePosition();
@@ -77,34 +100,47 @@
     });
 </script>
 
-<div class="flex items-center gap-2">
-    <button
-        class="p-0"
-        type="button"
-        aria-expanded={open}
-        on:click={togglePicker}
-        bind:this={trigger}
-    >
-        <CategoryBadge
-            name={hex ?? label}
-            color={hex ?? ""}
-            primaryWhenNoColor={true}
-            className="cursor-pointer"
+{#if inline}
+    <div class="max-w-[320px]">
+        <ColorPicker
+            bind:hex={hex}
+            label={label}
+            {nullable}
+            isAlpha={false}
+            isTextInput={false}
+            isDialog={false}
         />
-    </button>
-</div>
-
-{#if open}
-    <div style={popoverStyle} class="max-w-[320px]">
-        <div class={popoverClass} bind:this={panel}>
-            <ColorPicker
-                bind:hex={hex}
-                label={label}
-                nullable={true}
-                isAlpha={false}
-                isTextInput={false}
-                isDialog={false}
-            />
-        </div>
     </div>
+{:else}
+    <div class="flex items-center gap-2">
+        <button
+            class="p-0"
+            type="button"
+            aria-expanded={open}
+            on:click={togglePicker}
+            bind:this={trigger}
+        >
+            <CategoryBadge
+                name={hex ?? label}
+                color={hex ?? ""}
+                primaryWhenNoColor={true}
+                className="cursor-pointer"
+            />
+        </button>
+    </div>
+
+    {#if open}
+        <div style={popoverStyle} class="max-w-[320px]">
+            <div class={popoverClass} bind:this={panel}>
+                <ColorPicker
+                    bind:hex={hex}
+                    label={label}
+                    {nullable}
+                    isAlpha={false}
+                    isTextInput={false}
+                    isDialog={false}
+                />
+            </div>
+        </div>
+    {/if}
 {/if}

@@ -6,7 +6,7 @@
     import {categories, addCategory, loadCategories, removeCategory, updateCategory} from "$lib/stores/categories";
     import {user} from "../../user";
     import CategoryBadge from "$lib/components/CategoryBadge.svelte";
-    import CategoryColorPicker from "$lib/components/CategoryColorPicker.svelte";
+    import CategoryEditorModal from "$lib/components/CategoryEditorModal.svelte";
 
     let rules: CategoryRule[] = [];
     let loading = false;
@@ -15,11 +15,11 @@
     let toastMessage = "";
     let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    let newCategoryName = "";
-    let newCategoryColor: string | null = null;
-    let editingCategoryId: number | null = null;
-    let editingCategoryName = "";
-    let editingCategoryColor: string | null = null;
+    let editorOpen = false;
+    let editorMode: "create" | "edit" = "create";
+    let editorCategoryId: number | null = null;
+    let editorName = "";
+    let editorColor: string | null = null;
 
     let newRuleCategoryId = "";
     let newRuleText = "";
@@ -79,11 +79,11 @@
 
     async function createCategory() {
         actionError = "";
-        const name = newCategoryName.trim();
+        const name = editorName.trim();
         if (!name) {
             return;
         }
-        const color = (newCategoryColor ?? "").trim();
+        const color = (editorColor ?? "").trim();
 
         try {
             const response = await Categories.createCategory({name, color});
@@ -92,41 +92,44 @@
                 return;
             }
             addCategory(response.category);
-            newCategoryName = "";
-            newCategoryColor = null;
+            cancelCategoryEdit();
         } catch {
             actionError = "Не удалось добавить категорию.";
         }
     }
 
-    function startCategoryEdit(category: Category) {
-        editingCategoryId = category.id;
-        editingCategoryName = category.name;
-        editingCategoryColor = category.color || null;
+    function openCategoryEditor(category: Category) {
+        editorMode = "edit";
+        editorCategoryId = category.id;
+        editorName = category.name;
+        editorColor = category.color || null;
+        editorOpen = true;
         menuOpen = null;
     }
 
-    function startCategoryEditById(categoryId: number) {
+    function openCategoryEditorById(categoryId: number) {
         const category = $categories.find((item) => item.id === categoryId);
         if (!category) {
             return;
         }
-        startCategoryEdit(category);
+        openCategoryEditor(category);
     }
 
     function cancelCategoryEdit() {
-        editingCategoryId = null;
-        editingCategoryName = "";
-        editingCategoryColor = null;
+        editorOpen = false;
+        editorMode = "create";
+        editorCategoryId = null;
+        editorName = "";
+        editorColor = null;
     }
 
     async function saveCategory(categoryId: number) {
         actionError = "";
-        const name = editingCategoryName.trim();
+        const name = editorName.trim();
         if (!name) {
             return;
         }
-        const color = (editingCategoryColor ?? "").trim();
+        const color = (editorColor ?? "").trim();
 
         try {
             await Categories.updateCategory({id: categoryId, name, color});
@@ -149,6 +152,24 @@
             rules = rules.filter((rule) => rule.categoryId !== categoryId);
         } catch {
             actionError = "Не удалось удалить категорию.";
+        }
+    }
+
+    function openCreateCategory() {
+        editorMode = "create";
+        editorCategoryId = null;
+        editorName = "";
+        editorColor = null;
+        editorOpen = true;
+    }
+
+    async function handleCategorySave() {
+        if (editorMode === "create") {
+            await createCategory();
+            return;
+        }
+        if (editorCategoryId !== null) {
+            await saveCategory(editorCategoryId);
         }
     }
 
@@ -391,22 +412,9 @@
     {/if}
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body gap-6">
-            <div class="space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-3">
                 <h1 class="text-2xl font-semibold">Категории</h1>
-                <p class="text-sm opacity-70">
-                    Управляйте списком категорий транзакций.
-                </p>
-            </div>
-
-            <div class="grid gap-3 md:grid-cols-[minmax(240px,2fr)_minmax(220px,1fr)_auto]">
-                <input
-                    class="input input-bordered flex-1 min-w-[240px]"
-                    type="text"
-                    placeholder="Название категории"
-                    bind:value={newCategoryName}
-                />
-                <CategoryColorPicker bind:hex={newCategoryColor} label="Цвет" />
-                <button class="btn btn-primary" type="button" on:click={createCategory}>
+                <button class="btn btn-primary" type="button" on:click={openCreateCategory}>
                     Добавить
                 </button>
             </div>
@@ -427,59 +435,24 @@
             {:else if $categories.length === 0}
                 <div class="text-sm opacity-70">Категории пока не добавлены.</div>
             {:else}
-                <div class="overflow-x-auto overflow-y-visible">
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th>Название</th>
-                            <th class="text-right">Действия</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {#each $categories as category}
-                            <tr>
-                                <td>
-                                    {#if editingCategoryId === category.id}
-                                        <div class="grid gap-2 lg:grid-cols-[minmax(220px,2fr)_minmax(200px,1fr)]">
-                                            <input
-                                                class="input input-bordered input-sm w-full"
-                                                type="text"
-                                                bind:value={editingCategoryName}
-                                            />
-                                            <CategoryColorPicker
-                                                bind:hex={editingCategoryColor}
-                                                label="Цвет"
-                                            />
-                                        </div>
-                                    {:else}
-                                        <div class="flex items-center gap-2">
-                                            <CategoryBadge name={category.name} color={category.color || ""} />
-                                            {#if category.color}
-                                                <span class="text-xs opacity-70">{category.color}</span>
-                                            {/if}
-                                        </div>
-                                    {/if}
-                                </td>
-                                <td class="text-right">
-                                    {#if editingCategoryId === category.id}
-                                        <div class="flex justify-end gap-2">
-                                            <button class="btn btn-sm btn-primary" type="button" on:click={() => saveCategory(category.id)}>
-                                                Сохранить
-                                            </button>
-                                            <button class="btn btn-sm btn-ghost" type="button" on:click={cancelCategoryEdit}>
-                                                Отмена
-                                            </button>
-                                        </div>
-                                    {:else}
-                                        <button class="btn btn-ghost btn-sm" type="button" on:click={(event) => openMenu(event, "category", category.id)}>
-                                            ⋮
-                                        </button>
-                                    {/if}
-                                </td>
-                            </tr>
-                        {/each}
-                        </tbody>
-                    </table>
+                <div class="space-y-2">
+                    {#each $categories as category}
+                        <div class="flex flex-wrap items-center justify-between gap-3 rounded-box border border-base-200 bg-base-100 p-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <CategoryBadge name={category.name} color={category.color || ""} />
+                                {#if category.color}
+                                    <span class="text-xs opacity-70">{category.color}</span>
+                                {/if}
+                            </div>
+                            <button
+                                class="btn btn-ghost btn-sm"
+                                type="button"
+                                on:click={(event) => openMenu(event, "category", category.id)}
+                            >
+                                ⋮
+                            </button>
+                        </div>
+                    {/each}
                 </div>
             {/if}
         </div>
@@ -618,6 +591,16 @@
     </div>
 </section>
 
+<CategoryEditorModal
+    open={editorOpen}
+    bind:name={editorName}
+    bind:color={editorColor}
+    title={editorMode === "create" ? "Новая категория" : "Редактировать категорию"}
+    confirmLabel={editorMode === "create" ? "Добавить" : "Сохранить"}
+    on:save={handleCategorySave}
+    on:cancel={cancelCategoryEdit}
+/>
+
 {#if menuOpen}
     <ul
         bind:this={menuElement}
@@ -626,7 +609,7 @@
     >
         {#if menuOpen.type === "category"}
             <li>
-                <button type="button" on:click={() => menuOpen && startCategoryEditById(menuOpen.id)}>
+                <button type="button" on:click={() => menuOpen && openCategoryEditorById(menuOpen.id)}>
                     Редактировать
                 </button>
             </li>
