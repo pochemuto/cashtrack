@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
+
 	interface Props {
 		name: string;
 		color?: string;
@@ -12,7 +14,7 @@
 		color = '',
 		className = '',
 		editable = false,
-		placeholder = 'Название'
+		placeholder = ''
 	}: Props = $props();
 
 	let badgeElement: HTMLSpanElement | null = $state(null);
@@ -57,10 +59,10 @@
 		style={badgeStyle}
 		contenteditable="true"
 		role="textbox"
-		aria-label="Название категории"
+		aria-label={$t('categories.namePlaceholder')}
 		aria-multiline="false"
 		tabindex="0"
-		data-placeholder={placeholder}
+		data-placeholder={placeholder || $t('categories.namePlaceholder')}
 		bind:textContent={name}
 		onkeydown={handleKeydown}
 	></span>

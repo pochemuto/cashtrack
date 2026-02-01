@@ -16,6 +16,7 @@
 	import { centsToNumber, formatCurrencyAmount, formatSignedCents } from '$lib/money';
 	import { persistedBoolean } from '$lib/stores/persistedBoolean';
 	import { user } from '../../user';
+	import { t } from 'svelte-i18n';
 
 	type SankeyFilter = {
 		kind: 'node' | 'link';
@@ -239,12 +240,12 @@
 			summary = response.summary ?? null;
 		} catch (err) {
 			if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-				listError = 'Нужен вход для просмотра транзакций.';
+				listError = $t('rules.loginRequired');
 				transactions = [];
 				summary = null;
 				return;
 			}
-			listError = 'Не удалось загрузить транзакции.';
+			listError = $t('transactions.errorList');
 			summary = null;
 		} finally {
 			loading = false;
@@ -265,10 +266,10 @@
 			);
 		} catch (err) {
 			if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-				updateError = 'Нужен вход для изменения категории.';
+				updateError = $t('rules.loginRequired');
 				return;
 			}
-			updateError = 'Не удалось сохранить категорию.';
+			updateError = $t('categories.errorAction');
 		} finally {
 			const { [transactionId]: _removed, ...rest } = categoryUpdates;
 			categoryUpdates = rest;
@@ -334,7 +335,7 @@
 				isGroup: false
 			});
 			if (!response.category) {
-				updateError = 'Не удалось добавить категорию.';
+				updateError = $t('categories.errorAction');
 				return;
 			}
 			addCategory(response.category);
@@ -345,10 +346,10 @@
 			}
 		} catch (err) {
 			if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-				updateError = 'Нужен вход для добавления категории.';
+				updateError = $t('rules.loginRequired');
 				return;
 			}
-			updateError = 'Не удалось добавить категорию.';
+			updateError = $t('categories.errorAction');
 		} finally {
 			categoryEditorSaving = false;
 		}
@@ -409,22 +410,23 @@
 			return filter.label;
 		}
 		if (filter.categoryId === null) {
-			return 'Без категории';
+			return $t('transactions.noCategory');
 		}
 		return (
 			$categories.find((category) => category.id === filter.categoryId)?.name ||
-			`Категория ${filter.categoryId}`
+			`${$t('transactions.category')} ${filter.categoryId}`
 		);
 	}
 
 	function formatSankeyFilterLabel(filter: SankeyFilter): string {
-		const entryLabel = filter.entryType === 'credit' ? 'Credit' : 'Debit';
+		const entryLabel =
+			filter.entryType === 'credit' ? $t('transactions.credit') : $t('transactions.debit');
 		const categoryLabel = resolveSankeyCategoryLabel(filter);
 		return `${entryLabel}: ${categoryLabel}`;
 	}
 
 	function formatSankeyFilterType(filter: SankeyFilter): string {
-		return filter.kind === 'link' ? 'Связь' : 'Узел';
+		return filter.kind === 'link' ? $t('transactions.link') : $t('transactions.node');
 	}
 
 	$effect(() => {
@@ -527,20 +529,20 @@
 </script>
 
 <svelte:head>
-	<title>Transactions</title>
+	<title>{$t('transactions.title')}</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-none">
 	<div class="card bg-base-100 shadow-xl">
 		<div class="card-body gap-6">
 			<div class="space-y-2">
-				<h1 class="text-2xl font-semibold">Транзакции</h1>
+				<h1 class="text-2xl font-semibold">{$t('transactions.title')}</h1>
 			</div>
 
 			<div class="grid gap-4 lg:grid-cols-2">
 				<div class="form-control">
 					<label class="label" for="date-range">
-						<span class="label-text">Диапазон дат</span>
+						<span class="label-text">{$t('transactions.dateRange')}</span>
 					</label>
 					<div class="relative">
 						<input
@@ -548,7 +550,7 @@
 							type="text"
 							id="date-range"
 							readonly
-							placeholder="Выберите диапазон"
+							placeholder={$t('transactions.dateRange')}
 							bind:this={calendarInput}
 							value={calendarInputValue}
 							onclick={toggleCalendar}
@@ -564,42 +566,42 @@
 										type="button"
 										onclick={() => applyPresetRange('current-month')}
 									>
-										Текущий месяц
+										{$t('transactions.presets.currentMonth')}
 									</button>
 									<button
 										class="btn btn-ghost btn-xs justify-start"
 										type="button"
 										onclick={() => applyPresetRange('previous-month')}
 									>
-										Предыдущий месяц
+										{$t('transactions.presets.previousMonth')}
 									</button>
 									<button
 										class="btn btn-ghost btn-xs justify-start"
 										type="button"
 										onclick={() => applyPresetRange('current-year')}
 									>
-										Текущий год
+										{$t('transactions.presets.currentYear')}
 									</button>
 									<button
 										class="btn btn-ghost btn-xs justify-start"
 										type="button"
 										onclick={() => applyPresetRange('previous-year')}
 									>
-										Предыдущий год
+										{$t('transactions.presets.previousYear')}
 									</button>
 									<button
 										class="btn btn-ghost btn-xs justify-start"
 										type="button"
 										onclick={() => applyPresetRange('last-30-days')}
 									>
-										Последние 30 дней
+										{$t('transactions.presets.last30Days')}
 									</button>
 									<button
 										class="btn btn-ghost btn-xs justify-start"
 										type="button"
 										onclick={() => applyPresetRange('last-90-days')}
 									>
-										Последние 90 дней
+										{$t('transactions.presets.last90Days')}
 									</button>
 								</div>
 								<calendar-range
@@ -619,7 +621,7 @@
 				</div>
 				<div class="form-control flex flex-col">
 					<label class="label" for="category-filter">
-						<span class="label-text">Категория</span>
+						<span class="label-text">{$t('transactions.category')}</span>
 					</label>
 					<select
 						class="select select-bordered"
@@ -627,7 +629,7 @@
 						bind:value={categoryFilter}
 						disabled={$categoriesLoading}
 					>
-						<option value="">Все</option>
+						<option value="">{$t('common.actions')}</option>
 						{#each assignableCategories as category}
 							<option value={String(category.id)}>{category.name}</option>
 						{/each}
@@ -635,24 +637,24 @@
 				</div>
 				<div class="form-control flex flex-col">
 					<label class="label" for="search-text">
-						<span class="label-text">Поиск по описанию</span>
+						<span class="label-text">{$t('transactions.searchPlaceholder')}</span>
 					</label>
 					<input
 						class="input input-bordered w-full"
 						type="text"
 						id="search-text"
 						bind:value={searchText}
-						placeholder="например Uber"
+						placeholder="例如 Uber"
 					/>
 				</div>
 				<div class="form-control flex flex-col">
 					<label class="label" for="entry-type">
-						<span class="label-text">Тип списания</span>
+						<span class="label-text">{$t('transactions.entryType')}</span>
 					</label>
 					<select class="select select-bordered" id="entry-type" bind:value={entryType}>
-						<option value="">Все</option>
-						<option value="debit">Debit</option>
-						<option value="credit">Credit</option>
+						<option value="">{$t('common.actions')}</option>
+						<option value="debit">{$t('transactions.debit')}</option>
+						<option value="credit">{$t('transactions.credit')}</option>
 					</select>
 				</div>
 			</div>
@@ -661,24 +663,26 @@
 				class="collapse collapse-arrow border border-base-200 bg-base-100"
 				bind:open={$advancedFiltersOpen}
 			>
-				<summary class="collapse-title text-sm font-medium">Расширенные фильтры</summary>
+				<summary class="collapse-title text-sm font-medium"
+					>{$t('transactions.advancedFilters')}</summary
+				>
 				<div class="collapse-content">
 					<div class="grid gap-4 lg:grid-cols-3">
 						<div class="form-control flex flex-col">
 							<label class="label" for="source-file-id">
-								<span class="label-text">Источник (ID файла)</span>
+								<span class="label-text">{$t('transactions.sourceFileId')}</span>
 							</label>
 							<input
 								class="input input-bordered"
 								type="text"
 								id="source-file-id"
 								bind:value={sourceFileId}
-								placeholder="например 12"
+								placeholder="12"
 							/>
 						</div>
 						<div class="form-control flex flex-col">
 							<label class="label" for="account-number">
-								<span class="label-text">Номер счета</span>
+								<span class="label-text">{$t('transactions.accountNumber')}</span>
 							</label>
 							<input
 								class="input input-bordered"
@@ -689,7 +693,7 @@
 						</div>
 						<div class="form-control flex flex-col">
 							<label class="label" for="card-number">
-								<span class="label-text">Номер карты</span>
+								<span class="label-text">{$t('transactions.cardNumber')}</span>
 							</label>
 							<input
 								class="input input-bordered"
@@ -704,7 +708,7 @@
 
 			<div class="flex flex-wrap justify-end gap-3">
 				<button class="btn btn-ghost" type="button" onclick={resetFilters} disabled={loading}>
-					Сбросить фильтры
+					{$t('transactions.resetFilters')}
 				</button>
 			</div>
 
@@ -720,40 +724,40 @@
 			{/if}
 
 			{#if loading}
-				<div class="text-sm opacity-70">Загрузка транзакций...</div>
+				<div class="text-sm opacity-70">{$t('transactions.loading')}</div>
 			{:else if transactions.length === 0}
-				<div class="text-sm opacity-70">Нет транзакций по выбранным фильтрам.</div>
+				<div class="text-sm opacity-70">{$t('transactions.empty')}</div>
 			{:else}
 				{#if summary}
 					<div class="stats stats-vertical lg:stats-horizontal bg-base-100 shadow">
 						<div class="stat">
-							<div class="stat-title">Количество</div>
+							<div class="stat-title">{$t('transactions.count')}</div>
 							<div class="stat-value text-lg">{summary.count}</div>
 						</div>
 						<div class="stat">
-							<div class="stat-title">Общая сумма</div>
+							<div class="stat-title">{$t('transactions.totalAmount')}</div>
 							<div class="stat-value text-lg">
 								{formatCurrencyAmount(centsToNumber(summary.total), summary.currency)}
 							</div>
 						</div>
 						<div class="stat">
-							<div class="stat-title">Средняя сумма</div>
+							<div class="stat-title">{$t('transactions.averageAmount')}</div>
 							<div class="stat-value text-lg">
 								{formatCurrencyAmount(centsToNumber(summary.average), summary.currency)}
 							</div>
 						</div>
 						<div class="stat">
-							<div class="stat-title">Медианная сумма</div>
+							<div class="stat-title">{$t('transactions.medianAmount')}</div>
 							<div class="stat-value text-lg">
 								{formatCurrencyAmount(centsToNumber(summary.median), summary.currency)}
 							</div>
 						</div>
 						<div class="stat">
-							<div class="stat-title">Уникальные счета</div>
+							<div class="stat-title">{$t('transactions.uniqueAccounts')}</div>
 							<div class="stat-value text-lg">{summary.uniqueAccounts}</div>
 						</div>
 						<div class="stat">
-							<div class="stat-title">Диапазон дат</div>
+							<div class="stat-title">{$t('transactions.dateRange')}</div>
 							<div class="stat-value text-lg">
 								{formatSummaryDateRange(summary.dateRangeStart, summary.dateRangeEnd)}
 							</div>
@@ -770,27 +774,27 @@
 						class="flex flex-wrap items-center justify-between gap-3 rounded-box border border-base-200 bg-base-100 p-3 text-sm"
 					>
 						<div class="flex flex-wrap items-center gap-2">
-							<span class="font-medium">Подфильтровано по Sankey:</span>
+							<span class="font-medium">{$t('transactions.sankeyFilter')}:</span>
 							<span class="badge badge-outline">{formatSankeyFilterType(sankeyFilter)}</span>
 							<span>{formatSankeyFilterLabel(sankeyFilter)}</span>
 							<button class="btn btn-ghost btn-xs" type="button" onclick={resetSankeyFilter}>
-								Сбросить
+								{$t('common.reset')}
 							</button>
 						</div>
 					</div>
 				{/if}
 				{#if tableTransactions.length === 0}
-					<div class="text-sm opacity-70">Нет транзакций для выбранного элемента Sankey.</div>
+					<div class="text-sm opacity-70">{$t('transactions.empty')}</div>
 				{:else}
 					<div class="overflow-x-auto">
 						<table class="table">
 							<thead>
 								<tr>
-									<th>Дата</th>
-									<th>Описание</th>
-									<th>Категория</th>
-									<th class="text-right">Сумма</th>
-									<th>Валюта</th>
+									<th>{$t('transactions.date')}</th>
+									<th>{$t('transactions.description')}</th>
+									<th>{$t('transactions.category')}</th>
+									<th class="text-right">{$t('transactions.amount')}</th>
+									<th>{$t('transactions.currency')}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -813,12 +817,12 @@
 													{#if tx.categoryId}
 														<CategoryBadge
 															name={$categories.find((category) => category.id === tx.categoryId)
-																?.name || 'Категория'}
+																?.name || $t('transactions.category')}
 															color={$categories.find((category) => category.id === tx.categoryId)
 																?.color || ''}
 														/>
 													{:else}
-														<CategoryBadge name="Без категории" />
+														<CategoryBadge name={$t('transactions.noCategory')} />
 													{/if}
 												</button>
 												<ul
@@ -829,7 +833,7 @@
 															type="button"
 															onclick={(event) => handleCategorySelect(event, tx.id, null)}
 														>
-															<CategoryBadge name="Без категории" />
+															<CategoryBadge name={$t('transactions.noCategory')} />
 														</button>
 													</li>
 													{#each assignableCategories as category}
@@ -847,7 +851,7 @@
 															type="button"
 															onclick={(event) => openNewCategoryEditor(event, tx.id)}
 														>
-															Новая категория
+															{$t('categories.modalTitleCreate')}
 														</button>
 													</li>
 												</ul>
@@ -872,15 +876,14 @@
 	open={categoryEditorOpen}
 	bind:name={categoryEditorName}
 	bind:color={categoryEditorColor}
-	title="Новая категория"
-	confirmLabel="Добавить"
+	title={$t('categories.modalTitleCreate')}
+	confirmLabel={$t('common.add')}
 	saving={categoryEditorSaving}
 	showParent={false}
 	showGroupToggle={false}
 	onsave={saveNewCategory}
 	oncancel={cancelNewCategoryEditor}
 />
-```
 
 <style>
 </style>

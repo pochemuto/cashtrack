@@ -46,6 +46,7 @@
 		"plotly.js-dist-min": "^2.32.0",
 		"simpledotcss": "^2.3.7",
 		"svelte-awesome-color-picker": "^4.1.1",
+		"svelte-i18n": "^4.0.1",
 		"tailwindcss": "^4.1.18"
 	}
 }

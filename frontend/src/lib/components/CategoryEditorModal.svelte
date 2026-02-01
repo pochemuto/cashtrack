@@ -3,6 +3,7 @@
 	import type { Category } from '$lib/gen/api/v1/categories_pb';
 	import CategoryColorPicker from '$lib/components/CategoryColorPicker.svelte';
 	import CategoryBadge from '$lib/components/CategoryBadge.svelte';
+	import { t } from 'svelte-i18n';
 
 	interface Props {
 		open?: boolean;
@@ -23,7 +24,7 @@
 
 	let {
 		open = false,
-		title = 'Категория',
+		title = '',
 		name = $bindable(''),
 		color = $bindable(null),
 		categories = [],
@@ -32,7 +33,7 @@
 		selfId = null,
 		showParent = true,
 		showGroupToggle = true,
-		confirmLabel = 'Сохранить',
+		confirmLabel = '',
 		saving = false,
 		oncancel,
 		onsave
@@ -91,7 +92,9 @@
 		aria-labelledby="category-editor-title"
 	>
 		<div class="modal-box">
-			<h3 id="category-editor-title" class="text-lg font-semibold">{title}</h3>
+			<h3 id="category-editor-title" class="text-lg font-semibold">
+				{title || $t('categories.modalTitleEdit')}
+			</h3>
 			<form
 				class="mt-4 space-y-4"
 				onsubmit={(e) => {
@@ -105,7 +108,7 @@
 						bind:name
 						color={color ?? ''}
 						editable={true}
-						placeholder="Название категории"
+						placeholder={$t('categories.namePlaceholder')}
 						className="badge-lg"
 					/>
 				</div>
@@ -117,15 +120,20 @@
 							onclick={() => (color = null)}
 							disabled={!color}
 						>
-							Без цвета
+							{$t('categories.noColor')}
 						</button>
 					</div>
-					<CategoryColorPicker bind:hex={color} label="Цвет" inline={true} nullable={false} />
+					<CategoryColorPicker
+						bind:hex={color}
+						label={$t('categories.color')}
+						inline={true}
+						nullable={false}
+					/>
 				</div>
 				{#if showParent}
 					<div class="form-control w-full">
 						<label class="label" for="parent-category-select">
-							<span class="label-text">Родительская категория</span>
+							<span class="label-text">{$t('categories.parentLabel')}</span>
 						</label>
 						<select
 							class="select select-bordered"
@@ -134,10 +142,10 @@
 							onchange={handleParentChange}
 							disabled={!parentOptions.length}
 						>
-							<option value="">Без родителя</option>
+							<option value="">{$t('categories.noParent')}</option>
 							{#each parentOptions as category}
 								<option value={String(category.id)}>
-									{category.name}{category.isGroup ? ' (группа)' : ''}
+									{category.name}{category.isGroup ? ` (${$t('categories.group')})` : ''}
 								</option>
 							{/each}
 						</select>
@@ -146,14 +154,16 @@
 				{#if showGroupToggle}
 					<label class="label cursor-pointer gap-2">
 						<input class="checkbox checkbox-sm" type="checkbox" bind:checked={isGroup} />
-						<span class="label-text">Групповая категория</span>
+						<span class="label-text">{$t('categories.groupToggle')}</span>
 					</label>
 				{/if}
 				<div class="modal-action">
 					<button class="btn btn-primary" type="submit" disabled={saving || !name.trim()}>
-						{confirmLabel}
+						{confirmLabel || $t('common.save')}
 					</button>
-					<button class="btn btn-ghost" type="button" onclick={handleCancel}> Отмена </button>
+					<button class="btn btn-ghost" type="button" onclick={handleCancel}>
+						{$t('common.cancel')}
+					</button>
 				</div>
 			</form>
 		</div>

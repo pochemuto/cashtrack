@@ -1,93 +1,107 @@
 <script lang="ts">
-    import favicon from '$lib/assets/favicon.svg';
-    import "../app.css";
-    import {loadUser, logoutUser, user} from "../user";
-    import {onMount} from "svelte";
-    import {cancelGoogleSignIn, initializeGoogleSignIn} from "$lib/auth/google";
-    import {resolveApiUrl} from "$lib/url";
+	import favicon from '$lib/assets/favicon.svg';
+	import '../app.css';
+	import { loadUser, logoutUser, user } from '../user';
+	import { onMount } from 'svelte';
+	import { cancelGoogleSignIn, initializeGoogleSignIn } from '$lib/auth/google';
+	import { resolveApiUrl } from '$lib/url';
+	import { setupI18n } from '$lib/i18n';
+	import { isLoading, t } from 'svelte-i18n';
 
-    let {children} = $props();
+	setupI18n();
 
-    const GOOGLE_CLIENT_ID = "1010772966942-khflv7f816n0bqebf7mll7hb0eu589r0.apps.googleusercontent.com";
+	let { children } = $props();
 
-    function handleGoogleCredential(response: google.accounts.id.CredentialResponse) {
-        console.info("Google credential received", response);
-        const redirect = window.location.origin;
-        const authUrl = resolveApiUrl(
-            `auth?credential=${encodeURIComponent(response.credential)}&redirect=${encodeURIComponent(redirect)}`
-        );
-        window.location.href = authUrl;
-    }
+	const GOOGLE_CLIENT_ID =
+		'1010772966942-khflv7f816n0bqebf7mll7hb0eu589r0.apps.googleusercontent.com';
 
-    onMount(() => {
-        let destroyed = false;
-        let promptRequested = false;
+	function handleGoogleCredential(response: google.accounts.id.CredentialResponse) {
+		console.info('Google credential received', response);
+		const redirect = window.location.origin;
+		const authUrl = resolveApiUrl(
+			`auth?credential=${encodeURIComponent(response.credential)}&redirect=${encodeURIComponent(redirect)}`
+		);
+		window.location.href = authUrl;
+	}
 
-        void loadUser();
+	onMount(() => {
+		let destroyed = false;
+		let promptRequested = false;
 
-        const tryInit = () => {
-            if (destroyed || !promptRequested) {
-                return;
-            }
-            if (initializeGoogleSignIn(null, GOOGLE_CLIENT_ID, handleGoogleCredential, {renderButton: false})) {
-                return;
-            }
-            requestAnimationFrame(tryInit);
-        };
+		void loadUser();
 
-        const unsubscribe = user.subscribe((value) => {
-            if (value === undefined) {
-                if (!promptRequested) {
-                    promptRequested = true;
-                    tryInit();
-                }
-                return;
-            }
-            promptRequested = false;
-            cancelGoogleSignIn();
-        });
+		const tryInit = () => {
+			if (destroyed || !promptRequested) {
+				return;
+			}
+			if (
+				initializeGoogleSignIn(null, GOOGLE_CLIENT_ID, handleGoogleCredential, {
+					renderButton: false
+				})
+			) {
+				return;
+			}
+			requestAnimationFrame(tryInit);
+		};
 
-        return () => {
-            destroyed = true;
-            cancelGoogleSignIn();
-            unsubscribe();
-        };
-    });
+		const unsubscribe = user.subscribe((value) => {
+			if (value === undefined) {
+				if (!promptRequested) {
+					promptRequested = true;
+					tryInit();
+				}
+				return;
+			}
+			promptRequested = false;
+			cancelGoogleSignIn();
+		});
+
+		return () => {
+			destroyed = true;
+			cancelGoogleSignIn();
+			unsubscribe();
+		};
+	});
 </script>
 
 <svelte:head>
-    <link rel="icon" href={favicon}/>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+	<link rel="icon" href={favicon} />
+	<script src="https://accounts.google.com/gsi/client" async defer></script>
 </svelte:head>
 
+{#if $isLoading}
+	<div class="flex items-center justify-center h-screen">
+		<span class="loading loading-spinner loading-lg"></span>
+	</div>
+{:else}
+	<div class="navbar bg-base-100 shadow-sm">
+		<div class="flex-1 flex items-center gap-2">
+			<a class="link link-hover text-xl pl-2" href="/">Cashtrack</a>
+			{#if $user}
+				<a class="link link-hover px-2" href="/transactions">{$t('nav.transactions')}</a>
+				<a class="link link-hover px-2" href="/categories">{$t('nav.categories')}</a>
+				<a class="link link-hover px-2" href="/import">Import</a>
+			{/if}
+		</div>
+		{#if $user}
+			<div class="dropdown dropdown-end">
+				<div tabindex="0" role="button" class="btn btn-ghost">
+					{$user.username}
+				</div>
+				<ul class="menu dropdown-content mt-2 w-40 rounded-box bg-base-100 p-2 shadow">
+					<li>
+						<button type="button" onclick={() => logoutUser()}>{$t('auth.signOut')}</button>
+					</li>
+				</ul>
+			</div>
+		{:else if $user === undefined}
+			<div class="flex-none">
+				<a class="btn btn-outline" href="/login">Login</a>
+			</div>
+		{/if}
+	</div>
 
-<div class="navbar bg-base-100 shadow-sm">
-    <div class="flex-1 flex items-center gap-2">
-        <a class="link link-hover text-xl pl-2" href="/">Cashtrack</a>
-        {#if $user}
-            <a class="link link-hover px-2" href="/transactions">Transactions</a>
-            <a class="link link-hover px-2" href="/categories">Categories</a>
-            <a class="link link-hover px-2" href="/import">Import</a>
-        {/if}
-    </div>
-    {#if $user}
-        <div class="dropdown dropdown-end">
-            <div tabindex="0" role="button" class="btn btn-ghost">
-                {$user.username}
-            </div>
-            <ul class="menu dropdown-content mt-2 w-40 rounded-box bg-base-100 p-2 shadow">
-                <li>
-                    <button type="button" onclick={() => logoutUser()}>Logout</button>
-                </li>
-            </ul>
-        </div>
-    {:else if $user === undefined}
-        <div class="flex-none">
-            <a class="btn btn-outline" href="/login">Login</a>
-        </div>
-    {/if}
-</div>
-
-<main class="w-full px-4 py-8">
-    {@render children()}
-</main>
+	<main class="w-full px-4 py-8">
+		{@render children()}
+	</main>
+{/if}

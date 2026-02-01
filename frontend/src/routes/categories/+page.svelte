@@ -13,6 +13,7 @@
 	import { user } from '../../user';
 	import CategoryBadge from '$lib/components/CategoryBadge.svelte';
 	import CategoryEditorModal from '$lib/components/CategoryEditorModal.svelte';
+	import { t } from 'svelte-i18n';
 
 	let rules = $state<CategoryRule[]>([]);
 	let loading = $state(false);
@@ -73,17 +74,17 @@
 			]);
 
 			if (!categoriesOk) {
-				listError = 'Не удалось загрузить категории.';
+				listError = $t('categories.errorList');
 			}
 
 			rules = rulesResponse.rules ?? [];
 		} catch (err) {
 			if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-				listError = 'Нужен вход для просмотра правил.';
+				listError = $t('rules.loginRequired');
 				rules = [];
 				return;
 			}
-			listError = 'Не удалось загрузить категории.';
+			listError = $t('categories.errorList');
 			rules = [];
 		} finally {
 			loading = false;
@@ -106,13 +107,13 @@
 				isGroup: editorIsGroup
 			});
 			if (!response.category) {
-				actionError = 'Не удалось добавить категорию.';
+				actionError = $t('categories.errorAction');
 				return;
 			}
 			addCategory(response.category);
 			cancelCategoryEdit();
 		} catch {
-			actionError = 'Не удалось добавить категорию.';
+			actionError = $t('categories.errorAction');
 		}
 	}
 
@@ -173,7 +174,7 @@
 			}
 			cancelCategoryEdit();
 		} catch {
-			actionError = 'Не удалось обновить категорию.';
+			actionError = $t('categories.errorAction');
 		}
 	}
 
@@ -185,7 +186,7 @@
 			removeCategory(categoryId);
 			rules = rules.filter((rule) => rule.categoryId !== categoryId);
 		} catch {
-			actionError = 'Не удалось удалить категорию.';
+			actionError = $t('categories.errorAction');
 		}
 	}
 
@@ -243,14 +244,14 @@
 				descriptionContains
 			});
 			if (!response.rule) {
-				actionError = 'Не удалось добавить правило.';
+				actionError = $t('rules.errorAction');
 				return;
 			}
 			rules = [...rules, response.rule];
 			newRuleText = '';
 			newRuleCategoryId = '';
 		} catch {
-			actionError = 'Не удалось добавить правило.';
+			actionError = $t('rules.errorAction');
 		}
 	}
 
@@ -299,7 +300,7 @@
 			);
 			cancelRuleEdit();
 		} catch {
-			actionError = 'Не удалось обновить правило.';
+			actionError = $t('rules.errorAction');
 		}
 	}
 
@@ -310,7 +311,7 @@
 			await Categories.deleteCategoryRule({ id: ruleId });
 			rules = rules.filter((rule) => rule.id !== ruleId);
 		} catch {
-			actionError = 'Не удалось удалить правило.';
+			actionError = $t('rules.errorAction');
 		}
 	}
 
@@ -367,7 +368,7 @@
 		try {
 			await Categories.reorderCategoryRules({ ruleIds: nextRules.map((rule) => rule.id) });
 		} catch {
-			actionError = 'Не удалось изменить порядок правил.';
+			actionError = $t('rules.errorAction');
 			await loadData();
 		} finally {
 			rulesReordering = false;
@@ -383,13 +384,13 @@
 		try {
 			const response = await Categories.applyCategoryRules({ applyToAll: applyRulesToAll });
 			const updatedCount = response.updatedCount ?? 0;
-			showToast(`Правила применены. Обновлено транзакций: ${updatedCount}.`);
+			showToast($t('rules.applied', { values: { count: updatedCount } }));
 		} catch (err) {
 			if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
-				actionError = 'Нужен вход для применения правил.';
+				actionError = $t('rules.loginRequired');
 				return;
 			}
-			actionError = 'Не удалось применить правила.';
+			actionError = $t('rules.errorAction');
 		} finally {
 			applyingRules = false;
 		}
@@ -457,7 +458,7 @@
 </script>
 
 <svelte:head>
-	<title>Categories</title>
+	<title>{$t('categories.title')}</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-6xl space-y-6">
@@ -471,9 +472,9 @@
 	<div class="card bg-base-100 shadow-xl">
 		<div class="card-body gap-6">
 			<div class="flex flex-wrap items-center justify-between gap-3">
-				<h1 class="text-2xl font-semibold">Категории</h1>
+				<h1 class="text-2xl font-semibold">{$t('categories.title')}</h1>
 				<button class="btn btn-primary" type="button" onclick={openCreateCategory}>
-					Добавить
+					{$t('common.add')}
 				</button>
 			</div>
 
@@ -489,9 +490,9 @@
 			{/if}
 
 			{#if loading}
-				<div class="text-sm opacity-70">Загрузка категорий...</div>
+				<div class="text-sm opacity-70">{$t('categories.loading')}</div>
 			{:else if $categories.length === 0}
-				<div class="text-sm opacity-70">Категории пока не добавлены.</div>
+				<div class="text-sm opacity-70">{$t('categories.empty')}</div>
 			{:else}
 				<div class="space-y-2">
 					{#each $categories as category}
@@ -500,8 +501,8 @@
 								class="btn btn-ghost btn-xs"
 								type="button"
 								onclick={() => requestDeleteCategory(category)}
-								aria-label="Удалить категорию"
-								title="Удалить категорию"
+								aria-label={$t('common.delete')}
+								title={$t('common.delete')}
 							>
 								✕
 							</button>
@@ -516,12 +517,13 @@
 								{#if category.isGroup || category.parentId}
 									<div class="text-xs opacity-60 whitespace-nowrap">
 										{#if category.isGroup}
-											<span>Группа</span>
+											<span>{$t('categories.group')}</span>
 										{/if}
 										{#if category.parentId}
 											<span>
 												{category.isGroup ? ' · ' : ''}
-												Родитель: {categoryMap.get(category.parentId) || `#${category.parentId}`}
+												{$t('categories.parent')}: {categoryMap.get(category.parentId) ||
+													`#${category.parentId}`}
 											</span>
 										{/if}
 									</div>
@@ -537,14 +539,14 @@
 	<div class="card bg-base-100 shadow-xl">
 		<div class="card-body gap-6">
 			<div class="space-y-2">
-				<h2 class="text-xl font-semibold">Правила категоризации</h2>
-				<p class="text-sm opacity-70">Пока поддерживается правило "описание содержит".</p>
+				<h2 class="text-xl font-semibold">{$t('rules.title')}</h2>
+				<p class="text-sm opacity-70">{$t('rules.description')}</p>
 			</div>
 
 			<div class="flex flex-wrap items-center gap-3">
 				<label class="label cursor-pointer gap-2 p-0">
 					<input class="checkbox checkbox-sm" type="checkbox" bind:checked={applyRulesToAll} />
-					<span class="label-text">Применить ко всем транзакциям</span>
+					<span class="label-text">{$t('rules.applyToAll')}</span>
 				</label>
 				<button
 					class="btn btn-outline btn-sm"
@@ -552,13 +554,13 @@
 					onclick={applyRules}
 					disabled={applyingRules || rules.length === 0}
 				>
-					{applyingRules ? 'Применение...' : 'Применить правила'}
+					{applyingRules ? $t('rules.applying') : $t('rules.applyButton')}
 				</button>
 			</div>
 
 			<div class="grid gap-3 lg:grid-cols-[minmax(200px,1fr)_minmax(240px,2fr)_auto]">
 				<select class="select select-bordered" bind:value={newRuleCategoryId}>
-					<option value="" disabled>Категория</option>
+					<option value="" disabled>{$t('rules.categoryPlaceholder')}</option>
 					{#each ruleCategories as category}
 						<option value={category.id}>{category.name}</option>
 					{/each}
@@ -566,7 +568,7 @@
 				<input
 					class="input input-bordered"
 					type="text"
-					placeholder="Описание содержит"
+					placeholder={$t('rules.textPlaceholder')}
 					bind:value={newRuleText}
 				/>
 				<button
@@ -575,22 +577,22 @@
 					onclick={createRule}
 					disabled={!ruleCategories.length}
 				>
-					Добавить
+					{$t('common.add')}
 				</button>
 			</div>
 
 			{#if loading}
-				<div class="text-sm opacity-70">Загрузка правил...</div>
+				<div class="text-sm opacity-70">{$t('rules.loading')}</div>
 			{:else if rules.length === 0}
-				<div class="text-sm opacity-70">Правила пока не настроены.</div>
+				<div class="text-sm opacity-70">{$t('rules.empty')}</div>
 			{:else}
 				<div class="overflow-x-auto overflow-y-visible">
 					<table class="table">
 						<thead>
 							<tr>
-								<th>Категория</th>
-								<th>Описание содержит</th>
-								<th class="text-right">Действия</th>
+								<th>{$t('rules.categoryPlaceholder')}</th>
+								<th>{$t('rules.textPlaceholder')}</th>
+								<th class="text-right">{$t('common.actions')}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -646,10 +648,10 @@
 													type="button"
 													onclick={() => saveRule(rule.id)}
 												>
-													Сохранить
+													{$t('common.save')}
 												</button>
 												<button class="btn btn-sm btn-ghost" type="button" onclick={cancelRuleEdit}>
-													Отмена
+													{$t('common.cancel')}
 												</button>
 											</div>
 										{:else}
@@ -680,8 +682,10 @@
 	bind:isGroup={editorIsGroup}
 	categories={$categories}
 	selfId={editorCategoryId}
-	title={editorMode === 'create' ? 'Новая категория' : 'Редактировать категорию'}
-	confirmLabel={editorMode === 'create' ? 'Добавить' : 'Сохранить'}
+	title={editorMode === 'create'
+		? $t('categories.modalTitleCreate')
+		: $t('categories.modalTitleEdit')}
+	confirmLabel={editorMode === 'create' ? $t('common.add') : $t('common.save')}
 	onsave={handleCategorySave}
 	oncancel={cancelCategoryEdit}
 />
@@ -694,15 +698,19 @@
 		aria-labelledby="delete-category-title"
 	>
 		<div class="modal-box">
-			<h3 id="delete-category-title" class="text-lg font-semibold">Удалить категорию?</h3>
+			<h3 id="delete-category-title" class="text-lg font-semibold">
+				{$t('categories.deleteTitle')}
+			</h3>
 			<p class="mt-3 text-sm opacity-80">
-				Категория “{deleteCategoryName}” будет удалена без возможности восстановления.
+				{$t('categories.deleteConfirmation', { values: { name: deleteCategoryName } })}
 			</p>
 			<div class="modal-action">
 				<button class="btn btn-error" type="button" onclick={confirmDeleteCategory}>
-					Удалить
+					{$t('common.delete')}
 				</button>
-				<button class="btn btn-ghost" type="button" onclick={cancelDeleteCategory}> Отмена </button>
+				<button class="btn btn-ghost" type="button" onclick={cancelDeleteCategory}>
+					{$t('common.cancel')}
+				</button>
 			</div>
 		</div>
 		<button class="modal-backdrop" type="button" onclick={cancelDeleteCategory} aria-label="close"
@@ -719,22 +727,24 @@
 		{#if menuOpen.type === 'category'}
 			<li>
 				<button type="button" onclick={() => menuOpen && openCategoryEditorById(menuOpen.id)}>
-					Редактировать
+					{$t('common.edit')}
 				</button>
 			</li>
 			<li>
 				<button type="button" onclick={() => menuOpen && deleteCategory(menuOpen.id)}>
-					Удалить
+					{$t('common.delete')}
 				</button>
 			</li>
 		{:else}
 			<li>
 				<button type="button" onclick={() => menuOpen && startRuleEditById(menuOpen.id)}>
-					Редактировать
+					{$t('common.edit')}
 				</button>
 			</li>
 			<li>
-				<button type="button" onclick={() => menuOpen && deleteRule(menuOpen.id)}> Удалить </button>
+				<button type="button" onclick={() => menuOpen && deleteRule(menuOpen.id)}>
+					{$t('common.delete')}
+				</button>
 			</li>
 		{/if}
 	</ul>
