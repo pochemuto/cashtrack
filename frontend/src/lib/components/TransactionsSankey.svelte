@@ -1,5 +1,6 @@
 <script lang="ts">
     import {createEventDispatcher, onMount} from "svelte";
+    import {browser} from "$app/environment";
     import type {Category} from "$lib/gen/api/v1/categories_pb";
     import type {Transaction} from "$lib/gen/api/v1/transactions_pb";
     import {persistedBoolean} from "$lib/stores/persistedBoolean";
@@ -54,10 +55,12 @@
     let categoryFilterItems: CategoryFilterItem[] = [];
     let categoryVisibility: Record<string, boolean> = {};
     let showUnknownCategory = true;
+    let visibilityLoaded = false;
 
     const sankeySourceColor = "#e2e8f0";
     const sankeyCategoryFallbackColor = "#94a3b8";
     const uncategorizedKey = "null";
+    const sankeyVisibilityStorageKey = "transactions.sankey.categoryVisibility";
 
     function normalizeColor(value: string | null, fallback: string): string {
         if (!value) {
@@ -303,10 +306,6 @@
         }
 
         return changed ? next : current;
-    }
-
-    function isCategoryVisible(categoryId: number | null): boolean {
-        return categoryVisibility[categoryKey(categoryId)] ?? true;
     }
 
     function setCategoryVisibility(categoryId: number | null, visible: boolean) {
@@ -629,10 +628,18 @@
 
     $: categoryFilterItems = buildCategoryFilterItems(transactions, categories);
 
-    $: {
+    $: if (categoryFilterItems.length > 0) {
         const nextVisibility = syncCategoryVisibility(categoryVisibility, categoryFilterItems);
         if (nextVisibility !== categoryVisibility) {
             categoryVisibility = nextVisibility;
+        }
+    }
+
+    $: if (visibilityLoaded && browser) {
+        try {
+            localStorage.setItem(sankeyVisibilityStorageKey, JSON.stringify(categoryVisibility));
+        } catch {
+            // Ignore storage failures.
         }
     }
 
@@ -675,6 +682,29 @@
                 }
             });
 
+        if (browser) {
+            try {
+                const raw = localStorage.getItem(sankeyVisibilityStorageKey);
+                if (raw) {
+                    const parsed = JSON.parse(raw) as Record<string, unknown> | null;
+                    if (parsed && typeof parsed === "object") {
+                        const restored: Record<string, boolean> = {};
+                        for (const [key, value] of Object.entries(parsed)) {
+                            if (typeof value === "boolean") {
+                                restored[key] = value;
+                            }
+                        }
+                        if (Object.keys(restored).length > 0) {
+                            categoryVisibility = restored;
+                        }
+                    }
+                }
+            } catch {
+                // Keep default in-memory visibility when storage is unavailable.
+            }
+        }
+        visibilityLoaded = true;
+
         return () => {
             cancelled = true;
             detachSankeyHandlers();
@@ -699,7 +729,7 @@
                             <input
                                 class="checkbox checkbox-xs"
                                 type="checkbox"
-                                checked={isCategoryVisible(item.categoryId)}
+                                checked={categoryVisibility[categoryKey(item.categoryId)] ?? true}
                                 on:change={(event) =>
                                     setCategoryVisibility(item.categoryId, (event.currentTarget as HTMLInputElement).checked)}
                             />
